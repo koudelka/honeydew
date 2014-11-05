@@ -23,7 +23,7 @@ defmodule Honeydew do
     end
 
     # start a HomeSupervisor
-    {:ok, _pid} = Supervisor.start_child(Honeydew.Supervisor, [honey_module, honey_init_args, opts])
+    Supervisor.start_child(Honeydew.Supervisor, [honey_module, honey_init_args, opts])
   end
 
 
