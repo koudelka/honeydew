@@ -32,10 +32,11 @@ defmodule Honeydew.Honey do
         job_list = Honeydew.job_list(honey_module)
         GenServer.call(job_list, :monitor_me)
         GenServer.cast(self, :ask_for_job)
+        Logger.info("#{honey_module}.init/1 succeeded.")
         {:ok, {job_list, honey_module, state}}
       error ->
         :timer.apply_after(retry_secs * 1000, HoneySupervisor, :start_child, [honey_module, honey_init_args, retry_secs])
-        Logger.warn("#{honey_module}.init/0 must return {:ok, state}, got: #{inspect(error)}, retrying in #{retry_secs}s")
+        Logger.warn("#{honey_module}.init/1 must return {:ok, state}, got: #{inspect(error)}, retrying in #{retry_secs}s")
         :ignore
     end
   end
