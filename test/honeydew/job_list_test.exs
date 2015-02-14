@@ -75,17 +75,14 @@ defmodule Honeydew.JobListTest do
   end
 
   test "should recover jobs from honeys that have crashed mid-process", c do
-    task = fn(_) -> :timer.sleep(500) end
+    task = fn(_) -> raise "ignore this error" end
     Worker.cast(task)
 
     assert backlog_length == 1
 
-    {:ok, honey} = Honey.start(Worker)
+    {:ok, _honey} = Honey.start(Worker)
 
     assert backlog_length == 0
-
-    Process.exit(honey, :kill)
-
     assert num_waiting_honeys == 0
     assert backlog_length == 1
 
@@ -95,27 +92,24 @@ defmodule Honeydew.JobListTest do
   end
 
   test "should stop trying to process a job after max failures", c do
-    task = fn(_) -> :timer.sleep(500) end
+    task = fn(_) -> raise "ignore this error" end
     Worker.cast(task)
 
-    {:ok, honey} = Honey.start(Worker)
-    Process.exit(honey, :kill)
+    {:ok, _honey} = Honey.start(Worker)
     :timer.sleep(10) # let the job list handle the failure
     assert backlog_length == 1
     job = :queue.get(state(c).jobs)
     assert job.task == task
     assert job.failures == 1
 
-    {:ok, honey} = Honey.start(Worker)
-    Process.exit(honey, :kill)
+    {:ok, _honey} = Honey.start(Worker)
     :timer.sleep(10) # let the job list handle the failure
     assert backlog_length == 1
     job = :queue.get(state(c).jobs)
     assert job.task == task
     assert job.failures == 2
 
-    {:ok, honey} = Honey.start(Worker)
-    Process.exit(honey, :kill)
+    {:ok, _honey} = Honey.start(Worker)
     :timer.sleep(10) # let the job list handle the failure
     assert backlog_length == 0
   end

@@ -12,7 +12,7 @@ defmodule Honeydew.HoneySupervisor do
 
     {:ok, honey_supervisor} = Supervisor.start_link(children, opts)
 
-    # let the honey supervisor finish starting, then try to start children asyncronously.
+    # let the honey supervisor finish starting, then try to start children asynchronously.
     Enum.each(1..num_workers, fn(_) ->
       :timer.apply_after(0, __MODULE__, :start_child, [honey_module, honey_init_args, init_retry_secs])
     end)

@@ -46,7 +46,7 @@ defmodule Honeydew.JobList do
   end
   def handle_call(_msg, _from, state), do: {:reply, :ok, state}
 
-  # A honey has died, puts its job back on the queue and increment the job's "failures" count
+  # A honey has died, put its job back on the queue and increment the job's "failures" count
   def handle_info({:DOWN, _ref, _type, honey_pid, _reason}, state) do
     case Dict.pop(state.working, honey_pid) do
       # honey wasn't working on anything
