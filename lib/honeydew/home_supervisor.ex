@@ -4,7 +4,7 @@ defmodule Honeydew.HomeSupervisor do
     import Supervisor.Spec
 
     children = [
-      worker(Honeydew.JobList, [honey_module, pool_opts[:max_failures] || 3]),
+      worker(Honeydew.JobList, [honey_module, pool_opts[:max_failures] || 3, pool_opts[:delay_secs] || 30]),
       supervisor(Honeydew.HoneySupervisor, [honey_module, honey_init_args, pool_opts[:workers] || 10, pool_opts[:init_retry_secs] || 5])
     ]
 

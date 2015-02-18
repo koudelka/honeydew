@@ -7,7 +7,7 @@ defmodule Honeydew.HoneyTest do
     Application.stop(:honeydew)
     Application.start(:honeydew)
 
-    {:ok, _job_list} = JobList.start_link(Worker, 3)
+    {:ok, _job_list} = JobList.start_link(Worker, 3, 30)
     {:ok, _honey} = Honey.start_link(Worker, [], 0)
 
     :ok
@@ -32,7 +32,7 @@ defmodule Honeydew.HoneyTest do
       end
     end
 
-    {:ok, _job_list} = JobList.start_link(RaiseOnInitWorker, 3)
+    {:ok, _job_list} = JobList.start_link(RaiseOnInitWorker, 3, 30)
     assert Honey.start(RaiseOnInitWorker) == :ignore
   end
 
@@ -43,7 +43,7 @@ defmodule Honeydew.HoneyTest do
       end
     end
 
-    {:ok, _job_list} = JobList.start_link(BadInitWorker, 3)
+    {:ok, _job_list} = JobList.start_link(BadInitWorker, 3, 30)
     assert Honey.start(BadInitWorker) == :ignore
   end
 
@@ -69,7 +69,7 @@ defmodule Honeydew.HoneyTest do
     Worker.cast({:send_msg, [test_process, "i'm"]})
     assert_receive "i'm"
 
-    {:ok, _job_list} = JobList.start_link(SendBack, 3)
+    {:ok, _job_list} = JobList.start_link(SendBack, 3, 30)
     {:ok, _honey} = Honey.start_link(SendBack, self, 0)
 
     SendBack.cast(:send)

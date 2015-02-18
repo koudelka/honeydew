@@ -97,6 +97,14 @@ defmodule Honeydew.Honey do
       def call(task, timeout \\ 5000) do
         GenServer.call(@job_list, {:add_task, task}, timeout)
       end
+
+      @doc """
+        Gets the current status of the honey's home (job list, backlog, waiting/working honeys)
+      """
+      def status do
+        job_list = Honeydew.job_list(__MODULE__)
+        GenServer.call(job_list, :status)
+      end
     end
   end
 

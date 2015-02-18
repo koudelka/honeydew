@@ -4,6 +4,9 @@ defmodule Honeydew do
   def start(_type, _args) do
     import Supervisor.Spec
 
+    # used for random ids for job backlog set (otherwise some jobs would be seen as identical and not added to the set)
+    :random.seed(:erlang.now)
+
     children = [
       supervisor(Honeydew.HomeSupervisor, [])
     ]

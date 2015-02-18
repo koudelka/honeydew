@@ -3,13 +3,20 @@ defmodule Honeydew.JobList do
   require Logger
   alias Honeydew.Job
 
+  # after max_failures, delay the job by delay_secs
   defmodule State do
-    defstruct jobs: :queue.new, waiting: :queue.new, working: HashDict.new, honey_module: nil, max_failures: nil
+    defstruct honey_module: nil,
+              max_failures: nil,
+              delay_secs: nil,
+              jobs: :queue.new, # jobs waiting to be taken by a honey
+              backlog: HashSet.new, # jobs that have failed max_failures number of times, and are waiting to be re-queued after delay_secs
+              waiting: :queue.new, # honeys that are waiting for a job
+              working: HashDict.new # honeys that are currently working mapped to their current jobs
   end
 
 
-  def start_link(honey_module, max_failures) do
-    GenServer.start_link(__MODULE__, %State{honey_module: honey_module, max_failures: max_failures}, name: Honeydew.job_list(honey_module))
+  def start_link(honey_module, max_failures, delay_secs) do
+    GenServer.start_link(__MODULE__, %State{honey_module: honey_module, max_failures: max_failures, delay_secs: delay_secs}, name: Honeydew.job_list(honey_module))
   end
 
   #
@@ -21,6 +28,7 @@ defmodule Honeydew.JobList do
     {:noreply, add_job(job, state)}
   end
   def handle_cast(_msg, state), do: {:noreply, state}
+
 
   def handle_call({:add_task, task}, from, state) do
     job = %Job{task: task, from: from}
@@ -44,7 +52,22 @@ defmodule Honeydew.JobList do
     Process.monitor(honey)
     {:reply, nil, state}
   end
+
+  def handle_call(:status, _from, state) do
+    %State{jobs: jobs, backlog: backlog, working: working, waiting: waiting} = state
+
+    status = %{
+       jobs: :queue.len(jobs),
+       backlog: Set.size(backlog),
+       working: Dict.size(working),
+       waiting: :queue.len(waiting)
+    }
+
+    {:reply, status, state}
+  end
+
   def handle_call(_msg, _from, state), do: {:reply, :ok, state}
+
 
   # A honey has died, put its job back on the queue and increment the job's "failures" count
   def handle_info({:DOWN, _ref, _type, honey_pid, _reason}, state) do
@@ -53,14 +76,23 @@ defmodule Honeydew.JobList do
       {nil, _working} -> nil
       {job, working} ->
         state = %{state | working: working}
-        failures = job.failures + 1
-        if failures < state.max_failures do
-          state = add_job(%{job | failures: failures}, state)
-        else
-          Logger.warn "[Honeydew] #{state.honey_module} Job failed too many times: #{inspect job}"
-        end
+        job = %{job | failures: job.failures + 1}
+        state = \
+          if job.failures < state.max_failures do
+            add_job(job, state)
+          else
+            Logger.warn "[Honeydew] #{state.honey_module} Job failed too many times, delaying #{state.delay_secs}s: #{inspect job}"
+            delay_job(job, state)
+          end
     end
     {:noreply, state}
+  end
+
+  # delay_secs has elapsed and a failing job is ready to be tried again
+  def handle_info({:enqueue_delayed_job, job}, state) do
+    Logger.info "[Honeydew] [#{__MODULE__}] Enqueuing delayed job: #{inspect job}"
+    state = %{state | backlog: Set.delete(state.backlog, job)}
+    {:noreply, add_job(job, state)}
   end
   def handle_info(_msg, state), do: {:noreply, state}
 
@@ -78,6 +110,14 @@ defmodule Honeydew.JobList do
     end
   end
 
+  defp delay_job(job, state) do
+    # random ids are needed so the backlog HashSet sees all jobs as unique
+    delay_id = [:random.uniform(100_000), :random.uniform(100_000)] ++ Tuple.to_list(:erlang.now)
+    job = %{job | id: delay_id}
+    :erlang.send_after(state.delay_secs * 1000, self, {:enqueue_delayed_job, job})
+    %{state | backlog: Set.put(state.backlog, job)}
+  end
+
   defp next_alive_honey(waiting) do
     case :queue.out(waiting) do
       {{:value, from_honey}, waiting} ->
@@ -92,18 +132,5 @@ defmodule Honeydew.JobList do
     end
   end
 
-  #
-  # Testing Helpers
-  #
-
-  def backlog_length(pid) do
-    %State{jobs: jobs} = :sys.get_state(pid)
-    :queue.len(jobs)
-  end
-
-  def num_waiting_honeys(pid) do
-    %State{waiting: waiting} = :sys.get_state(pid)
-    :queue.len(waiting)
-  end
 end
 
