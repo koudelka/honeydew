@@ -28,7 +28,7 @@ defmodule Honeydew.Honey do
     Process.flag(:trap_exit, false)
 
     case init_result do
-      {:ok, state} -> 
+      {:ok, state} ->
         job_list = Honeydew.job_list(honey_module)
         GenServer.call(job_list, :monitor_me)
         GenServer.cast(self, :ask_for_job)
@@ -46,9 +46,9 @@ defmodule Honeydew.Honey do
     job = GenServer.call(job_list, :job_please, :infinity)
     result = \
       case job.task do
-        fun when is_function(fun) -> fun.(honey_state)
-        f   when is_atom(f) -> apply(honey_module, f, [honey_state])
-        {f, a} -> apply(honey_module, f, a ++ [honey_state])
+        f when is_function(f) -> f.(honey_state)
+        f when is_atom(f)     -> apply(honey_module, f, [honey_state])
+        {f, a}                -> apply(honey_module, f, a ++ [honey_state])
       end
 
     if job.from do
