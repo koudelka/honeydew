@@ -69,7 +69,7 @@ defmodule Honeydew.Honey do
 
         You can provide any of the following pool options:
           - `workers`: the number of workers in the pool
-          - `max_failrues`: the maximum number of times a job is allowed to fail before it's abandoned
+          - `max_failures`: the maximum number of times a job is allowed to fail before it's abandoned
           - `init_retry_secs`: the amount of time, in seconds, to wait before respawning a worker who's `init/1` function failed
       """
       def start_pool(honey_init_args, opts \\ []) do

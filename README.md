@@ -1,7 +1,7 @@
 Honeydew
 ========
 
-Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a worker pool library for Elixir.
+Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a job queue library for Elixir.
 
 - Workers ("Honeys") are permanent and hold immutable state.
 - Honeys pull jobs from the work queue ("Job List").
