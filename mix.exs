@@ -1,19 +1,15 @@
 defmodule Honeydew.Mixfile do
   use Mix.Project
 
+  @version "0.0.1"
+
   def project do
     [app: :honeydew,
-     version: "0.0.1",
+     version: @version,
      elixir: "~> 1.0",
      deps: deps,
-     package: [
-       contributors: ["Michael Shapiro"],
-       licenses: ["MIT"],
-       links: %{github: "https://github.com/koudelka/elixir-honeydew"}
-     ],
-     description: """
-     Elixir worker pool with a centralized job queue and permanent workers.
-     """]
+     package: package,
+     description: "Elixir job queue with permanent workers."]
   end
 
   # Configuration for the OTP application
@@ -26,16 +22,13 @@ defmodule Honeydew.Mixfile do
     ]
   end
 
-  # Dependencies can be Hex packages:
-  #
-  #   {:mydep, "~> 0.3.0"}
-  #
-  # Or git/path repositories:
-  #
-  #   {:mydep, git: "https://github.com/elixir-lang/mydep.git", tag: "0.1.0"}
-  #
-  # Type `mix help deps` for more examples and options
   defp deps do
     []
+  end
+
+  defp package do
+    [contributors: ["Michael Shapiro"],
+     licenses: ["MIT"],
+     links: %{"GitHub": "https://github.com/koudelka/elixir-honeydew"}]
   end
 end
