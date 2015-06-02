@@ -9,7 +9,7 @@ defmodule Honeydew.Mixfile do
      elixir: "~> 1.0",
      deps: deps,
      package: package,
-     description: "Elixir job queue with permanent workers."]
+     description: "Job queue + worker pool with permanent workers."]
   end
 
   # Configuration for the OTP application
