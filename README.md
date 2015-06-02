@@ -1,121 +1,112 @@
 Honeydew
 ========
 
-Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a job queue library for Elixir.
+Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a job queue + worker pool for Elixir.
 
-- Workers ("Honeys") are permanent and hold immutable state.
-- Honeys pull jobs from the work queue ("Job List").
-- Tasks are executed using `cast/1` and `call/2`, somewhat like a `GenServer`.
-- If a Honey crashes while processing a job, the job is recovered and placed back on the queue.
+- Workers are permanent and hold immutable state.
+- Workers pull jobs from the work queue.
+- Tasks are executed using `cast/2` and `call/2`, somewhat like a `GenServer`.
+- If a worker crashes while processing a job, the job is recovered and placed back on the queue.
 
 ## Usage
-Simply create a module and `use Honeydew`, then start the pool with `YourModule.start_pool/2`.
+Create a worker module and `use Honeydew`, then start the pool in your supervision tree with `Honeydew.child_spec/4`.
 
-You can request tasks be processed using `cast/1` or `call/2`, like so:
+Honeydew will call your worker's `init/1` and will keep the state from `{:ok, state}`.
 
-`Your.Module.cast({:insert_thing_in_db, ["key", "value"]})`
-`Your.Module.call({:get_thing_from_db, ["key"]}) # -> "value"`
+You can add tasks to the queue using `cast/2` or `call/2`, like so:
+
+`Database.cast(:poolname, {:put, ["key", "value"]})`
+
+`Database.call(:poolname, :up?)`
 
 ## Example
+
 ```elixir
-# This is your worker
-defmodule CatFeedingHoney do
+defmodule Riak do
   use Honeydew
 
-  def init(pantry_location) do
-    Pantry.init(pantry_location)
+  @moduledoc """
+    This is an example Worker to interface with Riak.
+    You'll need to add the erlang riak driver to your mix.exs:
+      `{:riakc, github: "basho/riak-erlang-client"}`
+  """
+
+  def init({ip, port}) do
+    :riakc_pb_socket.start_link(ip, port)
   end
 
-  # the last argument is always the honey's state
-  def make_snack(kind, kitty, pantry) do
-    snack = Pantry.get(pantry, :snacks, kind)
-    "#{snack} snack for #{kitty}!"
+  def up?(riak) do
+    :riakc_pb_socket.ping(riak) == :pong
   end
 
-  def go_shopping(pantry) do
-    Pantry.put(pantry, :snacks, :tuna)
-    IO.puts("went shopping")
-  end
-end
-
-
-# This is your database
-defmodule Pantry do
-  def init(_location) do
-    {:ok, :pantry_connection}
+  def put(bucket, key, obj, content_type, riak) do
+    :riakc_pb_socket.put(riak, :riakc_obj.new(bucket, key, obj, content_type))
   end
 
-  def get(_pantry_connection, _shelf, item) do
-    item
-  end
-
-  def put(_pantry_connection, _shelf, item) do
-    item
+  def get(bucket, key, riak) do
+    case :riakc_pb_socket.get(riak, bucket, key) do
+      {:ok, obj} -> :riakc_obj.get_value(obj)
+      {:error, :notfound} -> nil
+      error -> error
+    end
   end
 end
 
-CatFeedingHoney.start_pool("kitchen")
+```
 
-#
-# Blocking call
-#
-CatFeedingHoney.call(:make_snack, [:tuna, :darwin]) # -> "tuna snack for darwin!"
+Add the pool to your application's supervision tree:
 
-#
-# Non-blocking cast
-#
-CatFeedingHoney.cast(:go_shopping) # -> prints "went shopping"
+```elixir
+def start(_type, _args) do
+  import Supervisor.Spec, warn: false
 
-#
-# You can pass arbitrary functions to be executed, too.
-#
-CatFeedingHoney.call(fn(pantry) -> IO.inspect pantry end) # -> :pantry_connection
+  children = [
+    Honeydew.child_spec(:riak_pool, Riak, {'127.0.0.1', 8087})
+  ]
 
+  Supervisor.start_link(children, strategy: :one_for_one))
+end
+```
+
+```elixir
+iex(1)> Riak.call(:riak_pool, :up?)
+true
+iex(2)> Riak.cast(:riak_pool, {:put, ["bucket", "key", "value", "text/plain"]})
+:ok
+iex(3)> Riak.call(:riak_pool, {:get, ["bucket", "key"]})                       
+"value"
 ```
 
 ## Worker State
-Worker State itself is immutable, the only way to change it is to cause the worker to crash and restart.
+Worker state is immutable, the only way to change it is to cause the worker to crash and let the supervisor restart it.
 
 Your worker module's `init/1` function must return `{:ok, state}`. If anything else is returned or the function raises an error, the worker will die and restart after a given time interval (by default, five seconds).
 
-## Configuration
+## Pool Options
 
-### Worker Respawn Delay
-You can configure the worker module's respawn delay time, in case `init/1` fails, like so:
+`Honeydew.child_spec/4`'s last argument is a keyword list of pool options.
 
-`Your.Module.start_pool([:some_worker_args], init_retry_secs: 20)`
-
-### Maximum Failures
-Jobs are only allowed to fail a certain number of times before they are no longer retried (default, three times), this is also configurable via `start_pool/1`:
-
-`Your.Module.start_pool([:some_worker_args], max_failures: 5)`
-
-(at present, jobs that fail too much are abandoned, but in the future will be written to disk)
-
-### Number of Workers
-
-Honeydew will supervise the number of workers you specify (default, ten worker)
-
-`Your.Module.start_pool[:some_worker_args], workers: 50)`
+See the [Honeydew](https://github.com/koudelka/honeydew/blob/master/lib/honeydew.ex) module for the possible options.
 
 
 ## Process Tree
-After calling `Your.Module.start_pool/2`, a process tree like this will be created under the supervision of Honeydew:
 
 ```
 Honeydew.Supervisor
-└── Honeydew.Your.Module.HomeSupervisor
-    ├── Honeydew.Your.Module.JobList
-    └── Honeydew.Your.Module.HoneySupervisor
-        ├── Honeydew.Honey
-        ├── Honeydew.Honey
-        ├── Honeydew.Honey
-        └── Honeydew.Honey
+├── Honeydew.WorkQueue
+└── Honeydew.WorkerSupervisor
+    └── Honeydew.Worker (x 10, by default)
 ```
 
-## Disclaimer
+## TODO:
 
-This library is under active development, please don't use it in production yet, and please contribute if you find it useful! :)
+- Failure backends
+  - :abandon
+  - :requeue
+    - delay interval
+    - action after max_tries (abandon, keep in queue, marshal)
+- Distribution
+  - jobs in mnesia, to allow other nodes to run work queues?
 
 ## Acknowledgements
 

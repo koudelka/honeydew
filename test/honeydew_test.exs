@@ -1,37 +1,24 @@
 defmodule HoneydewTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
+  # pools register processes globally, so async: false
 
-  setup do
-    Application.stop(:honeydew)
-    Application.start(:honeydew)
+  test "work_queue_name/2" do
+    assert Honeydew.work_queue_name(Sender, :poolname) == :"Elixir.Honeydew.Sender.poolname"
   end
 
-  test "home_supervisor/1" do
-    assert Honeydew.home_supervisor(Worker) == Honeydew.Worker.HomeSupervisor
+  test "starts a correct supervision tree" do
+    {:ok, supervisor} = Honeydew.Supervisor.start_link(:poolname, Sender, [:state_here], workers: 7)
+    assert [{:worker_supervisor, worker_supervisor, :supervisor, _},
+            {:work_queue,              _work_queue, :worker,     _}] = Supervisor.which_children(supervisor)
+
+    assert worker_supervisor |> Supervisor.which_children |> Enum.count == 7
   end
 
-  test "job_list/1" do
-    assert Honeydew.job_list(Worker) == Honeydew.Worker.JobList
-  end
+  test "calls the worker module's init/1 and keeps it as state" do
+    {:ok, _} = Honeydew.Supervisor.start_link(:poolname, Sender, :state_here)
 
-  test "honey_supervisor/1" do
-    assert Honeydew.honey_supervisor(Worker) == Honeydew.Worker.HoneySupervisor
-  end
-
-
-  test "start_pool/2 should fail when the honey module doesn't exist" do
-    assert_raise RuntimeError, ~s(Honeydew can't find the worker module named "Elixir.NotAModule"), fn ->
-      Honeydew.start_pool(NotAModule, [], [])
-    end
-  end
-
-  test "start_pool/2 starts a JobList and HoneySupervisor with a default of ten Honeys" do
-    {:ok, home_supervisor} = Honeydew.start_pool(Worker, [], [])
-    assert [{Honeydew.HoneySupervisor, honey_sup_pid, :supervisor, _},
-            {Honeydew.JobList,                     _, :worker    , _}] = Supervisor.which_children(home_supervisor)
-
-    honey_supervisor_children = Supervisor.which_children(honey_sup_pid)
-    assert Enum.count(honey_supervisor_children) == 10
+    Sender.call(:poolname, {:send_state, [self]})
+    assert_receive :state_here
   end
 
 end

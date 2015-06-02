@@ -17,7 +17,7 @@ defmodule Honeydew.Mixfile do
   # Type `mix help compile.app` for more information
   def application do
     [
-      mod: {Honeydew, []},
+      # mod: {Honeydew, []},
       applications: [:logger]
     ]
   end
