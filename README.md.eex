@@ -8,6 +8,16 @@ Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a job 
 - Tasks are executed using `cast/2` and `call/2`, somewhat like a `GenServer`.
 - If a worker crashes while processing a job, the job is recovered and placed back on the queue.
 
+## Getting Started
+
+In your mix.exs file:
+
+```elixir
+defp deps do
+  [{:honeydew, " ~> <%= Honeydew.Mixfile.project[:version] %>"}]
+end
+```
+
 ## Usage
 Create a worker module and `use Honeydew`, then start the pool in your supervision tree with `Honeydew.child_spec/4`.
 
