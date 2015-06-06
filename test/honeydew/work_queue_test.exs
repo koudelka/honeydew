@@ -18,9 +18,7 @@ defmodule Honeydew.WorkQueueTest do
   end
 
   def start_worker do
-    Sender
-    |> Honeydew.work_queue_name(:poolname)
-    |> Worker.start_link(Sender, [], 5)
+    Worker.start_link(:poolname, Sender, [], 5)
   end
 
   def queue_dummy_task, do: Sender.cast(:poolname, fn(_) -> :noop end)

@@ -26,4 +26,16 @@ defmodule Sender do
   end
 end
 
+defmodule BadInit do
+  def init(_) do
+    :bad
+  end
+end
+
+defmodule RaiseOnInit do
+  def init(_) do
+    raise "bad"
+  end
+end
+
 ExUnit.start()

@@ -18,7 +18,12 @@ defmodule Honeydew do
 
   @doc false
   def work_queue_name(worker_module, pool_name) do
-    Module.concat([Honeydew, worker_module, pool_name])
+    Module.concat([Honeydew, WorkQueue, worker_module, pool_name])
+  end
+
+  @doc false
+  def worker_supervisor_name(worker_module, pool_name) do
+    Module.concat([Honeydew, WorkerSupervisor, worker_module, pool_name])
   end
 
 
