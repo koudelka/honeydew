@@ -12,7 +12,9 @@ defmodule Honeydew do
           - `init_retry_secs`: the amount of time, in seconds, to wait before respawning a worker who's `init/1` function failed
       """
   def child_spec(pool_name, worker_module, worker_opts, pool_opts \\ []) do
-    Supervisor.Spec.supervisor(Honeydew.Supervisor, [pool_name, worker_module, worker_opts, pool_opts])
+    id = Module.concat([Honeydew, Supervisor, worker_module, pool_name])
+
+    Supervisor.Spec.supervisor(Honeydew.Supervisor, [pool_name, worker_module, worker_opts, pool_opts], id: id)
   end
 
 

@@ -10,7 +10,6 @@ defmodule Honeydew.Supervisor do
     init_retry_secs = pool_opts[:init_retry_secs] || 5
 
     work_queue = Honeydew.work_queue_name(worker_module, pool_name)
-    worker_supervisor = Honeydew.worker_supervisor_name(worker_module, pool_name)
 
     children = [
       worker(Honeydew.WorkQueue, [work_queue, max_failures, failure_delay_secs], id: :work_queue),
