@@ -7,6 +7,7 @@ defmodule Honeydew.WorkQueue do
   defmodule State do
     defstruct max_failures: nil,
               delay_secs: nil,
+              suspended: false,
               queue: :queue.new, # jobs waiting to be taken by a worker
               backlog: HashSet.new, # jobs that have failed max_failures number of times, and are waiting to be re-queued after delay_secs
               waiting: :queue.new, # workers that are waiting for a job
@@ -37,6 +38,11 @@ defmodule Honeydew.WorkQueue do
     {:noreply, add_job(job, state)}
   end
 
+  def handle_call(:job_please, from_honey, %{suspended: true} = state) do
+    {honey, _msg_ref} = from_honey
+    {:noreply, %{state | waiting: :queue.in(from_honey, state.waiting), working: Dict.delete(state.working, honey)}}
+  end
+  
   def handle_call(:job_please, {worker, _msg_ref} = from, state) do
     case :queue.out(state.queue) do
       # there's a job in the queue, honey do it, please!
@@ -53,14 +59,24 @@ defmodule Honeydew.WorkQueue do
     {:reply, :ok, state}
   end
 
+  def handle_call(:suspend, _from, state) do
+    {:reply, :ok, Map.put(state, :suspended, true)}
+  end
+
+  def handle_call(:resume, _from, state) do
+    state = resume_waiting_jobs(state)
+    {:reply, :ok, Map.put(state, :suspended, false)}
+  end
+  
   def handle_call(:status, _from, state) do
-    %State{queue: queue, backlog: backlog, working: working, waiting: waiting} = state
+    %State{queue: queue, backlog: backlog, working: working, waiting: waiting, suspended: suspended} = state
 
     status = %{
       queue: :queue.len(queue),
       backlog: Set.size(backlog),
       working: Dict.size(working),
-      waiting: :queue.len(waiting)
+      waiting: :queue.len(waiting),
+      suspended: suspended
     }
 
     {:reply, status, state}
@@ -95,6 +111,9 @@ defmodule Honeydew.WorkQueue do
   end
   def handle_info(_msg, state), do: {:noreply, state}
 
+  defp add_job(job, %{suspended: true} = state) do 
+    %{state | queue: :queue.in(job, state.queue)}
+  end
 
   defp add_job(job, state) do
     case next_alive_worker(state.waiting) do
@@ -131,5 +150,26 @@ defmodule Honeydew.WorkQueue do
     end
   end
 
-end
+  defp resume_waiting_jobs(state) do
+    case :queue.out(state.queue) do
+      # there's a job in the jobs
+      {{:value, job}, jobs} ->
+        # see if there is a honey available
+        case next_alive_worker(state.waiting) do
+          # no honey is waiting, leave
+          {nil, waiting} ->
+            %{state | waiting: waiting}
+          # there is a honey, give it a job
+          {from_honey, waiting} ->
+            {honey, _msg_ref} = from_honey
+            GenServer.reply(from_honey, job)
+            resume_waiting_jobs(
+              %{state | queue: jobs, waiting: waiting, working: Dict.put(state.working, honey, job)})
+          end
+      # no jobs
+      {:empty, _} ->
+        state
+      end
+    end
 
+end

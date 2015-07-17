@@ -81,6 +81,29 @@ defmodule Honeydew.WorkQueueTest do
     assert queue_length == 1
   end
 
+  test "should not run jobs while in 'suspend' mode" do
+    start_worker 
+    Sender.suspend(:poolname)
+    queue_dummy_task
+    assert num_waiting_workers == 1
+    assert queue_length == 1
+    :timer.sleep(100)
+    assert queue_length == 1
+  end
+
+  test "run all suspended jobs once the pool is resumed" do
+    start_worker
+    Sender.suspend(:poolname)
+    queue_dummy_task
+    queue_dummy_task
+    queue_dummy_task
+    assert queue_length == 3
+    Sender.resume(:poolname)
+    :timer.sleep(100)
+    assert queue_length == 0   
+  end
+ 
+
   # test "should recover jobs from honeys that have crashed mid-process", c do
   #   task = fn(_) -> raise "ignore this error" end
   #   Worker.cast(task)

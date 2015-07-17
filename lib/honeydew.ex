@@ -65,6 +65,18 @@ defmodule Honeydew do
         |> Honeydew.work_queue_name(pool_name)
         |> GenServer.call(:status)
       end
+
+      def suspend(pool_name)  do
+        __MODULE__
+        |> Honeydew.work_queue_name(pool_name)
+        |> GenServer.call(:suspend)
+      end
+
+      def resume(pool_name) do
+        __MODULE__
+        |> Honeydew.work_queue_name(pool_name)
+        |> GenServer.call(:resume)
+      end
     end
   end
 
