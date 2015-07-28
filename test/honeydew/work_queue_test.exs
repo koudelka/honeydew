@@ -8,7 +8,11 @@ defmodule Honeydew.WorkQueueTest do
     |> Honeydew.work_queue_name(:poolname)
     |> WorkQueue.start_link(3, 1)
 
-    {:ok, work_queue: work_queue}
+    on_exit fn ->
+      Process.exit(work_queue, :kill)
+    end
+
+    :ok
   end
 
   def work_queue_state do
@@ -82,7 +86,7 @@ defmodule Honeydew.WorkQueueTest do
   end
 
   test "should not run jobs while in 'suspend' mode" do
-    start_worker 
+    start_worker
     Sender.suspend(:poolname)
     queue_dummy_task
     assert num_waiting_workers == 1
@@ -94,13 +98,22 @@ defmodule Honeydew.WorkQueueTest do
   test "run all suspended jobs once the pool is resumed" do
     start_worker
     Sender.suspend(:poolname)
-    queue_dummy_task
-    queue_dummy_task
-    queue_dummy_task
-    assert queue_length == 3
-    Sender.resume(:poolname)
+
+    assert queue_length == 0
+
+    Sender.cast(:poolname, {:send_msg, [self, "honey"]})
+    Sender.cast(:poolname, {:send_msg, [self, "i'm"]})
+    Sender.cast(:poolname, {:send_msg, [self, "home"]})
+
     :timer.sleep(100)
-    assert queue_length == 0   
+    assert queue_length == 3
+
+    Sender.resume(:poolname)
+    assert_receive "honey"
+    assert_receive "i'm"
+    assert_receive "home"
+
+    assert queue_length == 0
   end
  
 
