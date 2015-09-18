@@ -14,32 +14,20 @@ In your mix.exs file:
 
 ```elixir
 defp deps do
-  [{:honeydew, " ~> 0.0.5"}]
+  [{:honeydew, " ~> 0.0.6"}]
 end
 ```
 
 ## Usage
-
-### Starting Your Worker Pool
 Create a worker module and `use Honeydew`, then start the pool in your supervision tree with `Honeydew.child_spec/4`.
 
 Honeydew will call your worker's `init/1` and will keep the state from `{:ok, state}`.
-
-### Queueing Tasks
 
 You can add tasks to the queue using `cast/2` or `call/2`, like so:
 
 `Database.cast(:poolname, {:put, ["key", "value"]})`
 
 `Database.call(:poolname, :up?)`
-
-### Suspending and Resuming Queues
-
-You can pause and resume your queues using `suspend/1` and `resume/1`, like so:
-
-`Database.suspend(:poolname)`
-
-`Database.resume(:poolname)`
 
 ## Example
 
