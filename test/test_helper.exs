@@ -38,4 +38,10 @@ defmodule RaiseOnInit do
   end
 end
 
+defmodule LinkDiesOnInit do
+  def init(_) do
+    spawn_link fn -> :born_to_die end
+  end
+end
+
 ExUnit.start()

@@ -14,11 +14,12 @@ defmodule Honeydew.Worker do
                     {:error, e}
                   end
 
-    # consumes the possible DOWN message thrown by the worker module's init/1
-    receive do
-    after
-      50 -> :ok
-    end
+    # the worker module's init/1 could link a process that dies right away, watch for that and consider it an init/1 error
+    init_result = receive do
+                    msg = {:EXIT, linked_pid, reason} -> {:error, msg}
+                  after
+                    100 -> init_result
+                  end
     Process.flag(:trap_exit, false)
 
     case init_result do

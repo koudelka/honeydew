@@ -28,6 +28,7 @@ defmodule Honeydew.WorkerTest do
   test "init/1 should tell its supervisor to ignore it if the worker module doesn't init properly" do
     assert Worker.start_link(:pool, RaiseOnInit, [], 5) == :ignore
     assert Worker.start_link(:pool, BadInit, [], 5) == :ignore
+    assert Worker.start_link(:pool, LinkDiesOnInit, [], 5) == :ignore
   end
 
   test "should ask its supervisor to restart it if init/1 does't succeed" do
