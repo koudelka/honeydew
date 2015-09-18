@@ -39,7 +39,7 @@ defmodule HoneydewTest do
     before_crash = child_pids(worker_supervisor)
     assert Enum.count(before_crash) == 10
 
-    Sender.cast(:poolname_2, :this_crash_is_intentional)
+    Sender.cast(:poolname_2, fn _state -> :this_is_an = :intentional_crash end)
 
     # # let the pool restart the worker
     :timer.sleep 100

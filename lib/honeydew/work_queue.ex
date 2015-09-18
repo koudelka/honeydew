@@ -125,7 +125,7 @@ defmodule Honeydew.WorkQueue do
 
   defp queue_job(job, state) do
     case next_alive_worker(state.waiting) do
-      # no workers are waiting, add the job to the backlog
+      # no workers are waiting, add the job to the queue
       {nil, waiting} ->
         %{state | queue: :queue.in(job, state.queue), waiting: waiting}
       # there's a worker waiting, give them the job
