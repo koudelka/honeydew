@@ -6,6 +6,10 @@ defmodule Honeydew.Worker do
     GenServer.start_link(__MODULE__, [pool_name, worker_module, worker_init_args, retry_secs])
   end
 
+  def start(pool_name, worker_module, worker_init_args, retry_secs) do
+    GenServer.start(__MODULE__, [pool_name, worker_module, worker_init_args, retry_secs])
+  end
+
   def init([pool_name, worker_module, worker_init_args, retry_secs]) do
     Process.flag(:trap_exit, true)
     init_result = try do
