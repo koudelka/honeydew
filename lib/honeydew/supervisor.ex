@@ -16,6 +16,6 @@ defmodule Honeydew.Supervisor do
       supervisor(Honeydew.WorkerSupervisor, [pool_name, worker_module, worker_init_args, init_retry_secs, num_workers], id: :worker_supervisor)
     ]
 
-    Supervisor.start_link(children, strategy: :rest_for_one)
+    Supervisor.start_link(children, strategy: :one_for_one)
   end
 end
