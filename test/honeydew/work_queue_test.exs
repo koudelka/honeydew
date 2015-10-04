@@ -120,7 +120,7 @@ defmodule Honeydew.WorkQueueTest do
   end
 
 
-  test "should recover jobs from workers that have crashed mid-process", c do
+  test "should recover jobs from workers that have crashed mid-process" do
     test_process = self
     task = fn(_) -> send test_process, :hi; raise "ignore this error" end
     Sender.cast(:poolname, task)
@@ -143,7 +143,7 @@ defmodule Honeydew.WorkQueueTest do
     assert job.failures == 1
   end
 
-  test "should delay processing of a job after max failures", c do
+  test "should delay processing of a job after max failures" do
     test_process = self
     task = fn(_) -> send test_process, :hi; raise "ignore this error" end
     Sender.cast(:poolname, task)

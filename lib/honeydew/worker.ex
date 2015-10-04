@@ -20,7 +20,7 @@ defmodule Honeydew.Worker do
 
     # the worker module's init/1 could link a process that dies right away, watch for that and consider it an init/1 error
     init_result = receive do
-                    msg = {:EXIT, linked_pid, reason} -> {:error, msg}
+                    msg = {:EXIT, _linked_pid, _reason} -> {:error, msg}
                   after
                     100 -> init_result
                   end

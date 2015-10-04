@@ -9,16 +9,13 @@ defmodule Honeydew.WorkQueue do
               delay_secs: nil,
               suspended: false,
               queue: :queue.new, # jobs waiting to be taken by a worker
-              backlog: HashSet.new, # jobs that have failed max_failures number of times, and are waiting to be re-queued after delay_secs
+              backlog: MapSet.new, # jobs that have failed max_failures number of times, and are waiting to be re-queued after delay_secs
               waiting: :queue.new, # workers that are waiting for a job
               working: HashDict.new # workers that are currently working mapped to their current jobs
   end
 
 
   def start_link(name, max_failures, delay_secs) do
-    # used for random ids for job backlog set (otherwise some jobs would be seen as identical and not added to the set)
-    :random.seed(:erlang.now)
-
     GenServer.start_link(__MODULE__, %State{max_failures: max_failures, delay_secs: delay_secs}, name: name)
   end
 
@@ -137,9 +134,8 @@ defmodule Honeydew.WorkQueue do
   end
 
   defp delay_job(job, state) do
-    # random ids are needed so the backlog HashSet sees all jobs as unique
-    delay_id = [:random.uniform(100_000), :random.uniform(100_000)] ++ Tuple.to_list(:erlang.now)
-    job = %{job | id: delay_id}
+    # random ids are needed so the backlog Set sees all jobs as unique
+    job = %{job | id: :erlang.unique_integer}
     :erlang.send_after(state.delay_secs * 1000, self, {:enqueue_delayed_job, job})
     %{state | backlog: Set.put(state.backlog, job)}
   end

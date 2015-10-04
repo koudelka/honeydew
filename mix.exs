@@ -6,7 +6,7 @@ defmodule Honeydew.Mixfile do
   def project do
     [app: :honeydew,
      version: @version,
-     elixir: "~> 1.0",
+     elixir: "~> 1.1.0",
      deps: deps,
      package: package,
      description: "Job queue + worker pool with permanent workers."]
@@ -27,7 +27,7 @@ defmodule Honeydew.Mixfile do
   end
 
   defp package do
-    [contributors: ["Michael Shapiro"],
+    [maintainers: ["Michael Shapiro"],
      licenses: ["MIT"],
      links: %{"GitHub": "https://github.com/koudelka/elixir-honeydew"}]
   end
