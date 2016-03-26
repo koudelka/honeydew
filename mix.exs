@@ -6,7 +6,7 @@ defmodule Honeydew.Mixfile do
   def project do
     [app: :honeydew,
      version: @version,
-     elixir: "~> 1.1.0",
+     elixir: "~> 1.2.3",
      deps: deps,
      package: package,
      description: "Job queue + worker pool with permanent workers."]

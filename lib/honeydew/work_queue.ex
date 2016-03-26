@@ -11,7 +11,7 @@ defmodule Honeydew.WorkQueue do
               queue: :queue.new, # jobs waiting to be taken by a worker
               backlog: MapSet.new, # jobs that have failed max_failures number of times, and are waiting to be re-queued after delay_secs
               waiting: :queue.new, # workers that are waiting for a job
-              working: HashDict.new # workers that are currently working mapped to their current jobs
+              working: Map.new # workers that are currently working mapped to their current jobs
   end
 
 
@@ -48,7 +48,7 @@ defmodule Honeydew.WorkQueue do
     case :queue.out(state.queue) do
       # there's a job in the queue, honey do it, please!
       {{:value, job}, queue} ->
-        {:reply, job, %{state | queue: queue, working: Dict.put(state.working, worker, job)}}
+        {:reply, job, %{state | queue: queue, working: Map.put(state.working, worker, job)}}
       # nothing for the worker to do right now, we'll get back to them later when something arrives
       {:empty, _} ->
         {:noreply, queue_worker(from, state)}
@@ -67,7 +67,7 @@ defmodule Honeydew.WorkQueue do
   def handle_call(:resume, _from, state) do
     state.queue
     |> :queue.to_list
-    |> Enum.each &GenServer.cast(self, {:add_job, &1})
+    |> Enum.each(&GenServer.cast(self, {:add_job, &1}))
 
     {:reply, :ok, %{state | queue: :queue.new, suspended: false}}
   end
@@ -78,7 +78,7 @@ defmodule Honeydew.WorkQueue do
     status = %{
       queue: :queue.len(queue),
       backlog: Set.size(backlog),
-      working: Dict.size(working),
+      working: Map.size(working),
       waiting: :queue.len(waiting),
       suspended: suspended
     }
@@ -91,7 +91,7 @@ defmodule Honeydew.WorkQueue do
 
   # A worker has died, put its job back on the queue and increment the job's "failures" count
   def handle_info({:DOWN, _ref, _type, worker_pid, _reason}, state) do
-    case Dict.pop(state.working, worker_pid) do
+    case Map.pop(state.working, worker_pid) do
       # worker wasn't working on anything
       {nil, _working} -> nil
       {job, working} ->
@@ -129,7 +129,7 @@ defmodule Honeydew.WorkQueue do
       {from_worker, waiting} ->
         {worker, _msg_ref} = from_worker
         GenServer.reply(from_worker, job)
-        %{state | waiting: waiting, working: Dict.put(state.working, worker, job)}
+        %{state | waiting: waiting, working: Map.put(state.working, worker, job)}
     end
   end
 
@@ -141,7 +141,7 @@ defmodule Honeydew.WorkQueue do
   end
 
   defp queue_worker({worker, _msg_ref} = from, state) do
-    %{state | waiting: :queue.in(from, state.waiting), working: Dict.delete(state.working, worker)}
+    %{state | waiting: :queue.in(from, state.waiting), working: Map.delete(state.working, worker)}
   end
 
   defp next_alive_worker(waiting) do
