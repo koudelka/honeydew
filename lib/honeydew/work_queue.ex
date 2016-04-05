@@ -3,13 +3,12 @@ defmodule Honeydew.WorkQueue do
   require Logger
   alias Honeydew.Job
 
-  # after max_failures, delay the job by delay_secs
   defmodule State do
     defstruct max_failures: nil,
               delay_secs: nil,
               suspended: false,
               queue: :queue.new, # jobs waiting to be taken by a worker
-              backlog: MapSet.new, # jobs that have failed max_failures number of times, and are waiting to be re-queued after delay_secs
+              backlog: MapSet.new, # jobs that have failed, and are waiting to be re-queued after delay_secs
               waiting: :queue.new, # workers that are waiting for a job
               working: Map.new # workers that are currently working mapped to their current jobs
   end
@@ -98,10 +97,10 @@ defmodule Honeydew.WorkQueue do
         state = %{state | working: working}
         job = %{job | failures: job.failures + 1}
         state = if job.failures < state.max_failures do
-                  queue_job(job, state)
-                else
-                  # Logger.warn "[Honeydew] #{state.worker_module} Job failed too many times, delaying #{state.delay_secs}s: #{inspect job}"
                   delay_job(job, state)
+                else
+                  # Logger.warn "[Honeydew] Job failed too many times, abandoning: #{inspect job}"
+                  state
                 end
     end
     {:noreply, state}

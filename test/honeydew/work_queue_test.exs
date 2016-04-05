@@ -120,7 +120,7 @@ defmodule Honeydew.WorkQueueTest do
   end
 
 
-  test "should recover jobs from workers that have crashed mid-process" do
+  test "should abandon jobs after max_failures" do
     test_process = self
     task = fn(_) -> send test_process, :hi; raise "ignore this error" end
     Sender.cast(:poolname, task)
@@ -129,44 +129,40 @@ defmodule Honeydew.WorkQueueTest do
     assert num_waiting_workers == 0
 
     {:ok, _worker} = start_worker
+    assert_receive :hi
+    :timer.sleep(10) # let the work queue process handle the failure
+    job = work_queue_state.backlog |> Set.to_list |> List.first
+    assert job.failures == 1
+    assert backlog_length == 1
+    assert num_waiting_workers == 0
+
+    :timer.sleep(1000) # let the work queue requeue the job
+
+    {:ok, _worker} = start_worker
+    assert_receive :hi
+    :timer.sleep(10) # let the work queue process handle the failure
+    job = work_queue_state.backlog |> Set.to_list |> List.first
+    assert job.failures == 2
+    assert backlog_length == 1
+    assert num_waiting_workers == 0
+
+    :timer.sleep(1000) # let the work queue requeue the job
+
+    {:ok, _worker} = start_worker
+    assert_receive :hi
+    :timer.sleep(10) # let the work queue process handle the failure
+
+    :timer.sleep(1000) # let the work abandon the job
 
     assert queue_length == 0
+    assert backlog_length == 0
     assert num_waiting_workers == 0
-
-    assert_receive :hi
-
-    assert queue_length == 1
-    assert num_waiting_workers == 0
-
-    job = :queue.get(work_queue_state.queue)
-    assert job.task == task
-    assert job.failures == 1
   end
 
-  test "should delay processing of a job after max failures" do
+  test "should delay processing of a job after failure" do
     test_process = self
     task = fn(_) -> send test_process, :hi; raise "ignore this error" end
     Sender.cast(:poolname, task)
-
-    {:ok, _worker} = start_worker
-    :timer.sleep(10) # let the work queue process handle the failure
-    assert_receive :hi
-    assert queue_length == 1
-    job = :queue.get(work_queue_state.queue)
-    assert job.id == nil
-    assert job.task == task
-    assert job.failures == 1
-    assert backlog_length == 0
-
-    {:ok, _worker} = start_worker
-    :timer.sleep(10) # let the work queue process handle the failure
-    assert_receive :hi
-    assert queue_length == 1
-    job = :queue.get(work_queue_state.queue)
-    assert job.id == nil
-    assert job.task == task
-    assert job.failures == 2
-    assert backlog_length == 0
 
     {:ok, _worker} = start_worker
     :timer.sleep(10) # let the work queue process handle the failure
@@ -179,7 +175,7 @@ defmodule Honeydew.WorkQueueTest do
     job = work_queue_state.backlog |> Set.to_list |> List.first
     assert job.id != nil
     assert job.task == task
-    assert job.failures == 3
+    assert job.failures == 1
 
     {:ok, _worker} = start_worker
 

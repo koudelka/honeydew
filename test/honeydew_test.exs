@@ -32,7 +32,7 @@ defmodule HoneydewTest do
   end
 
   test "workers restart after crashing" do
-    {:ok, supervisor} = Honeydew.Supervisor.start_link(:poolname_2, Sender, :state_here, workers: 10, max_failures: 3)
+    {:ok, supervisor} = Honeydew.Supervisor.start_link(:poolname_2, Sender, :state_here, workers: 10)
 
     [{:worker_supervisor, worker_supervisor, :supervisor, _}, _] = Supervisor.which_children(supervisor)
 
@@ -47,8 +47,8 @@ defmodule HoneydewTest do
     after_crash = child_pids(worker_supervisor)
     assert Enum.count(after_crash) == 10
 
-    # three workers crashed, so there should still be seven with the same pids before and after
-    assert Set.intersection(before_crash, after_crash) |> Enum.count == 7
+    # one workers crashed, so there should still be nine with the same pids before and after
+    assert Set.intersection(before_crash, after_crash) |> Enum.count == 9
   end
 
 end
