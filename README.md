@@ -115,8 +115,10 @@ Honeydew.Supervisor
   - :requeue
     - delay interval
     - action after max_tries (abandon, keep in queue, marshal)
-- Distribution
-  - jobs in mnesia, to allow other nodes to run work queues?
+- GenRouter
+  - Split into generic source/sink components
+- Generic Queues
+  - Allow user-implemented queues (local, mnesia, rabbitmq, redis, etc)
 
 ## Acknowledgements
 
