@@ -90,19 +90,20 @@ defmodule Honeydew.WorkQueue do
 
   # A worker has died, put its job back on the queue and increment the job's "failures" count
   def handle_info({:DOWN, _ref, _type, worker_pid, _reason}, state) do
-    case Map.pop(state.working, worker_pid) do
-      # worker wasn't working on anything
-      {nil, _working} -> nil
-      {job, working} ->
-        state = %{state | working: working}
-        job = %{job | failures: job.failures + 1}
-        state = if job.failures < state.max_failures do
-                  delay_job(job, state)
-                else
-                  # Logger.warn "[Honeydew] Job failed too many times, abandoning: #{inspect job}"
-                  state
-                end
-    end
+    state =
+      case Map.pop(state.working, worker_pid) do
+        # worker wasn't working on anything
+        {nil, _working} -> state
+        {job, working} ->
+          state = %{state | working: working}
+          job = %{job | failures: job.failures + 1}
+          if job.failures < state.max_failures do
+            delay_job(job, state)
+          else
+            # Logger.warn "[Honeydew] Job failed too many times, abandoning: #{inspect job}"
+            state
+          end
+      end
     {:noreply, state}
   end
 
