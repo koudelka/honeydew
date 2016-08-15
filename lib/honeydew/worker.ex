@@ -11,20 +11,11 @@ defmodule Honeydew.Worker do
   end
 
   def init([pool_name, worker_module, worker_init_args, retry_secs]) do
-    Process.flag(:trap_exit, true)
     init_result = try do
                     apply(worker_module, :init, [worker_init_args])
                   rescue e ->
                     {:error, e}
                   end
-
-    # the worker module's init/1 could link a process that dies right away, watch for that and consider it an init/1 error
-    init_result = receive do
-                    msg = {:EXIT, _linked_pid, _reason} -> {:error, msg}
-                  after
-                    100 -> init_result
-                  end
-    Process.flag(:trap_exit, false)
 
     case init_result do
       {:ok, state} ->
