@@ -1,12 +1,12 @@
 defmodule Honeydew.Mixfile do
   use Mix.Project
 
-  @version "0.0.10"
+  @version "0.0.11"
 
   def project do
     [app: :honeydew,
      version: @version,
-     elixir: "~> 1.2.3",
+     elixir: "~> 1.3.0",
      deps: deps,
      package: package,
      description: "Job queue + worker pool with permanent workers."]

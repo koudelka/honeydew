@@ -14,7 +14,7 @@ In your mix.exs file:
 
 ```elixir
 defp deps do
-  [{:honeydew, " ~> 0.0.10"}]
+  [{:honeydew, " ~> 0.0.11"}]
 end
 ```
 
