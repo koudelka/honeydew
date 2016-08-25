@@ -1,54 +1,58 @@
 defmodule HoneydewTest do
-  use ExUnit.Case, async: false
-  # pools register processes globally, so async: false
-  def child_pids(supervisor) do
-    supervisor
-    |> Supervisor.which_children
-    |> Enum.into(HashSet.new, fn {_, pid, _, _} -> pid end)
+  use ExUnit.Case
+
+  test "queue_spec/2" do
+    queue = :erlang.unique_integer
+
+    spec =  Honeydew.queue_spec(queue, queue: {:abc, [1,2,3]}, dispatcher: {Dis.Patcher, [:a, :b]}, failure_mode: {Fail.Ure, [:a, :b]})
+    assert spec == {Honeydew.QueueSupervisor,
+                    {Honeydew.QueueSupervisor, :start_link,
+                     [queue, :abc, [1, 2, 3], 1, {Dis.Patcher, [:a, :b]},
+                      {Fail.Ure, [:a, :b]}]}, :permanent, :infinity, :supervisor,
+                    [Honeydew.QueueSupervisor]}
   end
 
+  test "queue_spec/2 defaults" do
+    queue = :erlang.unique_integer
+    spec =  Honeydew.queue_spec(queue)
 
-  test "work_queue_name/2" do
-    assert Honeydew.work_queue_name(Sender, :poolname) == :"Elixir.Honeydew.WorkQueue.Sender.poolname"
+    assert spec == {Honeydew.QueueSupervisor,
+                    {Honeydew.QueueSupervisor, :start_link,
+                     [queue, Honeydew.Queue.ErlangQueue, [], 1,
+                      Experimental.GenStage.DemandDispatcher, {Honeydew.FailureMode.Abandon, []}]},
+                    :permanent, :infinity, :supervisor, [Honeydew.QueueSupervisor]}
   end
 
-  test "worker_supervisor_name/2" do
-    assert Honeydew.worker_supervisor_name(Sender, :poolname) == :"Elixir.Honeydew.WorkerSupervisor.Sender.poolname"
+  test "worker_spec/2" do
+    queue = :erlang.unique_integer
+
+    spec = Honeydew.worker_spec(queue, {Worker, [1, 2, 3]}, num: 123, init_retry_secs: 5)
+    assert spec == {Honeydew.WorkerSupervisor,
+                    {Honeydew.WorkerSupervisor, :start_link,
+                     [queue, Worker, [1, 2, 3], 123, 5, 10_000]}, :permanent,
+                    :infinity, :supervisor, [Honeydew.WorkerSupervisor]}
   end
 
-  test "starts a correct supervision tree" do
-    {:ok, supervisor} = Honeydew.Supervisor.start_link(:poolname, Sender, [:state_here], workers: 7)
-    assert [{:worker_supervisor, worker_supervisor, :supervisor, _},
-            {:work_queue,              _work_queue, :worker,     _}] = Supervisor.which_children(supervisor)
+  test "worker_spec/2 defaults" do
+    queue = :erlang.unique_integer
 
-    assert worker_supervisor |> Supervisor.which_children |> Enum.count == 7
+    spec =  Honeydew.worker_spec(queue, Worker)
+    assert spec == {Honeydew.WorkerSupervisor,
+                    {Honeydew.WorkerSupervisor, :start_link,
+                     [queue, Worker, [], 10, 5, 10000]}, :permanent, :infinity,
+                    :supervisor, [Honeydew.WorkerSupervisor]}
   end
 
-  test "calls the worker module's init/1 and keeps it as state" do
-    {:ok, _} = Honeydew.Supervisor.start_link(:poolname_1, Sender, :state_here)
-
-    Sender.call(:poolname_1, {:send_state, [self]})
-    assert_receive :state_here
+  test "group/1" do
+    assert Honeydew.group(:my_queue, :workers) == :"honeydew.workers.my_queue"
   end
 
-  test "workers restart after crashing" do
-    {:ok, supervisor} = Honeydew.Supervisor.start_link(:poolname_2, Sender, :state_here, workers: 10)
+  test "supervisor/1" do
+    assert Honeydew.supervisor(:my_queue, :worker) == :"honeydew.worker_supervisor.my_queue"
+  end
 
-    [{:worker_supervisor, worker_supervisor, :supervisor, _}, _] = Supervisor.which_children(supervisor)
-
-    before_crash = child_pids(worker_supervisor)
-    assert Enum.count(before_crash) == 10
-
-    Sender.cast(:poolname_2, fn _state -> :this_is_an = :intentional_crash end)
-
-    # # let the pool restart the worker
-    :timer.sleep 100
-
-    after_crash = child_pids(worker_supervisor)
-    assert Enum.count(after_crash) == 10
-
-    # one workers crashed, so there should still be nine with the same pids before and after
-    assert Set.intersection(before_crash, after_crash) |> Enum.count == 9
+  test "supervisor/1 with global queue" do
+    assert Honeydew.supervisor({:global, :my_queue}, :worker) == :"honeydew.worker_supervisor.global.my_queue"
   end
 
 end

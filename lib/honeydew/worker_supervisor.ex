@@ -1,26 +1,27 @@
 defmodule Honeydew.WorkerSupervisor do
   alias Honeydew.Worker
 
-  def start_link(pool_name, worker_module, worker_init_args, init_retry_secs, num_workers) do
+  def start_link(queue, module, args, num_workers, init_retry_secs, shutdown) do
     import Supervisor.Spec
 
-    children = [
-      worker(Worker, [pool_name, worker_module, worker_init_args, init_retry_secs], restart: :transient)
-    ]
-
+    children = [worker(Worker, [queue, module, args, init_retry_secs], restart: :transient, shutdown: shutdown)]
 
     opts = [strategy: :simple_one_for_one,
-            name: Honeydew.worker_supervisor_name(worker_module, pool_name),
+            name: Honeydew.supervisor(queue, :worker),
             max_restarts: num_workers,
             max_seconds: init_retry_secs]
 
     {:ok, supervisor} = Supervisor.start_link(children, opts)
 
-    # start up workers
-    Enum.each(1..num_workers, fn(_) ->
-      Supervisor.start_child(supervisor, [])
-    end)
+    start_children(supervisor, num_workers)
 
     {:ok, supervisor}
   end
+
+  defp start_children(_supervisor, 0), do: :noop
+  defp start_children(supervisor, num) do
+    Supervisor.start_child(supervisor, [])
+    start_children(supervisor, num-1)
+  end
+
 end
