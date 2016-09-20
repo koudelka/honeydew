@@ -4,7 +4,7 @@ defmodule HoneydewTest do
   def child_pids(supervisor) do
     supervisor
     |> Supervisor.which_children
-    |> Enum.into(HashSet.new, fn {_, pid, _, _} -> pid end)
+    |> Enum.into(MapSet.new, fn {_, pid, _, _} -> pid end)
   end
 
 
@@ -48,7 +48,7 @@ defmodule HoneydewTest do
     assert Enum.count(after_crash) == 10
 
     # one workers crashed, so there should still be nine with the same pids before and after
-    assert Set.intersection(before_crash, after_crash) |> Enum.count == 9
+    assert MapSet.intersection(before_crash, after_crash) |> Enum.count == 9
   end
 
 end
