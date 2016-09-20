@@ -76,7 +76,7 @@ defmodule Honeydew.WorkQueue do
 
     status = %{
       queue: :queue.len(queue),
-      backlog: Set.size(backlog),
+      backlog: MapSet.size(backlog),
       working: Map.size(working),
       waiting: :queue.len(waiting),
       suspended: suspended
@@ -110,7 +110,7 @@ defmodule Honeydew.WorkQueue do
   # delay_secs has elapsed and a failing job is ready to be tried again
   def handle_info({:enqueue_delayed_job, job}, state) do
     Logger.info "[Honeydew] [#{__MODULE__}] Enqueuing delayed job: #{inspect job}"
-    state = %{state | backlog: Set.delete(state.backlog, job)}
+    state = %{state | backlog: MapSet.delete(state.backlog, job)}
     {:noreply, queue_job(job, state)}
   end
   def handle_info(_msg, state), do: {:noreply, state}

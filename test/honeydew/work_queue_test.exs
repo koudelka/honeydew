@@ -131,7 +131,7 @@ defmodule Honeydew.WorkQueueTest do
     {:ok, _worker} = start_worker
     assert_receive :hi
     :timer.sleep(10) # let the work queue process handle the failure
-    job = work_queue_state.backlog |> Set.to_list |> List.first
+    job = work_queue_state.backlog |> MapSet.to_list |> List.first
     assert job.failures == 1
     assert backlog_length == 1
     assert num_waiting_workers == 0
@@ -141,7 +141,7 @@ defmodule Honeydew.WorkQueueTest do
     {:ok, _worker} = start_worker
     assert_receive :hi
     :timer.sleep(10) # let the work queue process handle the failure
-    job = work_queue_state.backlog |> Set.to_list |> List.first
+    job = work_queue_state.backlog |> MapSet.to_list |> List.first
     assert job.failures == 2
     assert backlog_length == 1
     assert num_waiting_workers == 0
@@ -172,7 +172,7 @@ defmodule Honeydew.WorkQueueTest do
 
     # the task is now on the backlog
 
-    job = work_queue_state.backlog |> Set.to_list |> List.first
+    job = work_queue_state.backlog |> MapSet.to_list |> List.first
     assert job.id != nil
     assert job.task == task
     assert job.failures == 1
