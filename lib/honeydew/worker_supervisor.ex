@@ -1,7 +1,7 @@
 defmodule Honeydew.WorkerSupervisor do
   alias Honeydew.Worker
 
-  def start_link(pool_name, worker_module, worker_init_args, init_retry_secs, num_workers) do
+  def start_link(pool_name, worker_module, worker_init_args, init_retry_secs, num_workers, max_errors_per_second) do
     import Supervisor.Spec
 
     children = [
@@ -11,8 +11,8 @@ defmodule Honeydew.WorkerSupervisor do
 
     opts = [strategy: :simple_one_for_one,
             name: Honeydew.worker_supervisor_name(worker_module, pool_name),
-            max_restarts: num_workers,
-            max_seconds: init_retry_secs]
+            max_restarts: num_workers * max_errors_per_second,
+            max_seconds: 1]
 
     {:ok, supervisor} = Supervisor.start_link(children, opts)
 
