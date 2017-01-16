@@ -16,7 +16,7 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 
 
 ### tl;dr
-- Check out the [examples](https://github.com/koudelka/honeydew/tree/gen_stage/examples).
+- Check out the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
 - Enqueue and receive responses with `async/3` and `yield/2`.
 - Suspend and resume with `Honeydew.suspend/1` and `Honeydew.resume/1`
 - List jobs with `Honeydew.filter/2`
@@ -44,7 +44,7 @@ end
 You can run honeydew on a single node, or with components distributed over a cluster.
 
 ### Local Queue Example
-![local queue](https://github.com/koudelka/honeydew/blob/gen_stage/doc/local.png)
+![local queue](https://github.com/koudelka/honeydew/blob/master/doc/local.png)
 
 There's an uncaring firehose of data pointed at us, we need to store it all in our database, Riak. The requester isn't expecting a response, and we can't drop a write due to overloaded workers.
 
@@ -129,7 +129,7 @@ If you pass `reply: true`, and you never call `yield/2` to read the result, your
 The `Honeydew.Job` struct above is used to track the status of a job, you can send it to `cancel/1`, if you want to try to kill the job.
 
 ### Distributed Queue Example
-![distributed queue](https://github.com/koudelka/honeydew/blob/gen_stage/doc/distributed.png)
+![distributed queue](https://github.com/koudelka/honeydew/blob/master/doc/distributed.png)
 
 Say we've got some pretty heavy tasks that we want to distribute over a farm of background job processing nodes, they're too heavy to process on our client-facing nodes. In a distributed Erlang scenario, you have the option of distributing Honeydew's various components around different nodes in your cluster. Honeydew is basically a simple collection of queue processes and worker processes. Honeydew detects when nodes go up and down, and reconnects workers.
 
