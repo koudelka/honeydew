@@ -61,7 +61,15 @@ defmodule Honeydew do
     busy_workers =
       queue
       |> get_all_members(:monitors)
-      |> Enum.map(&GenServer.call(&1, :current_job))
+      |> Enum.map(fn monitor ->
+           try do
+             GenServer.call(monitor, :current_job)
+           catch
+             # the monitor may have shut down
+             :exit, _ -> nil
+           end
+         end)
+      |> Enum.reject(&(!&1))
       |> Enum.into(%{})
 
     workers =
