@@ -1,5 +1,3 @@
-alias Experimental.GenStage
-
 defmodule Honeydew.FailureMode.Requeue do
   require Logger
   alias Honeydew.Job

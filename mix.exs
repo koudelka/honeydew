@@ -19,8 +19,7 @@ defmodule Honeydew.Mixfile do
 
   defp deps do
     [
-      {:gen_stage, ">= 0.10.0"},
-
+      {:gen_stage, ">= 0.11.0"},
       {:amqp, ">= 0.1.4", only: :dev},
       {:amqp_client, git: "https://github.com/dsrosario/amqp_client.git", branch: "erlang_otp_19", override: true, only: :dev},
       {:riakc, ">= 2.4.1", only: :dev},

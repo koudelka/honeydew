@@ -1,5 +1,3 @@
-alias Experimental.GenStage
-
 defmodule Honeydew.Monitor do
   use GenServer
   require Logger

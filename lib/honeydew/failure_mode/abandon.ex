@@ -1,5 +1,3 @@
-alias Experimental.GenStage
-
 defmodule Honeydew.FailureMode.Abandon do
   require Logger
   alias Honeydew.Job

@@ -1,5 +1,3 @@
-alias Experimental.GenStage
-
 defmodule Honeydew.QueueSupervisorTest do
   use ExUnit.Case
   alias Honeydew.Queue.ErlangQueue

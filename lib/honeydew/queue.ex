@@ -1,5 +1,3 @@
-alias Experimental.GenStage
-
 defmodule Honeydew.Queue do
 
   defmodule State do

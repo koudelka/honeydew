@@ -1,5 +1,3 @@
-alias Experimental.GenStage
-
 defmodule Honeydew do
   alias Honeydew.Job
   alias Honeydew.Queue

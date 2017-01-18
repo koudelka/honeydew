@@ -1,5 +1,3 @@
-alias Experimental.GenStage
-
 defmodule Honeydew.Worker do
   use GenStage
   alias Honeydew.Job
