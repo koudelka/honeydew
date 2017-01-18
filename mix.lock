@@ -4,10 +4,10 @@
   "earmark": {:hex, :earmark, "1.0.3", "89bdbaf2aca8bbb5c97d8b3b55c5dd0cff517ecc78d417e87f1d0982e514557b", [:mix], []},
   "ex_doc": {:hex, :ex_doc, "0.14.5", "c0433c8117e948404d93ca69411dd575ec6be39b47802e81ca8d91017a0cf83c", [:mix], [{:earmark, "~> 1.0", [hex: :earmark, optional: false]}]},
   "exquisite": {:hex, :exquisite, "0.1.7", "4106503e976f409246731b168cd76eb54262bd04f4facc5cba82c2f53982aaf0", [:mix], []},
-  "gen_stage": {:hex, :gen_stage, "0.10.0", "ce1eb93a3f9708f2e215f70b3d3c7f55dea4a4ed7e9615195e28d543c9086656", [:mix], []},
-  "hamcrest": {:hex, :hamcrest, "0.1.2", "2f06fad05983ce98a7832c4a7a508aab935b68865fdf607d30a030c129ec1365", [], []},
-  "meck": {:hex, :meck, "0.8.4", "59ca1cd971372aa223138efcf9b29475bde299e1953046a0c727184790ab1520", [], []},
-  "protobuffs": {:hex, :protobuffs, "0.8.4", "d38ca5f7380d8477c274680273372011890f8d0037c0d7e7db5c0207b89a4e0b", [], [{:meck, "~> 0.8.4", [hex: :meck, optional: false]}]},
+  "gen_stage": {:hex, :gen_stage, "0.11.0", "943bdfa85c75fa624e0a36a9d135baad20a523be040178f5a215444b45c66ea4", [:mix], []},
+  "hamcrest": {:hex, :hamcrest, "0.1.2", "2f06fad05983ce98a7832c4a7a508aab935b68865fdf607d30a030c129ec1365", [:make, :rebar], []},
+  "meck": {:hex, :meck, "0.8.4", "59ca1cd971372aa223138efcf9b29475bde299e1953046a0c727184790ab1520", [:make, :rebar], []},
+  "protobuffs": {:hex, :protobuffs, "0.8.4", "d38ca5f7380d8477c274680273372011890f8d0037c0d7e7db5c0207b89a4e0b", [:make, :rebar], [{:meck, "~> 0.8.4", [hex: :meck, optional: false]}]},
   "rabbit_common": {:git, "https://github.com/jbrisbin/rabbit_common.git", "eea16abd375981d16595d2cefaac893c7281187b", [tag: "rabbitmq-3.5.6"]},
-  "riak_pb": {:hex, :riak_pb, "2.1.4", "0de76c3b44a950dc9ffe50f45f7b55128bacce12170705c5e364af95b96a33cf", [], [{:hamcrest, "~> 0.1", [hex: :hamcrest, optional: false]}, {:protobuffs, "~> 0.8", [hex: :protobuffs, optional: false]}]},
-  "riakc": {:hex, :riakc, "2.4.1", "5d2e191ac6597e1a4cfb5628bf78219d126c5ffa42dbb904af622136d8426a32", [], [{:riak_pb, "~> 2.1", [hex: :riak_pb, optional: false]}]}}
+  "riak_pb": {:hex, :riak_pb, "2.1.4", "0de76c3b44a950dc9ffe50f45f7b55128bacce12170705c5e364af95b96a33cf", [:make, :rebar], [{:hamcrest, "~> 0.1", [hex: :hamcrest, optional: false]}, {:protobuffs, "~> 0.8", [hex: :protobuffs, optional: false]}]},
+  "riakc": {:hex, :riakc, "2.4.1", "5d2e191ac6597e1a4cfb5628bf78219d126c5ffa42dbb904af622136d8426a32", [:make, :rebar], [{:riak_pb, "~> 2.1", [hex: :riak_pb, optional: false]}]}}
