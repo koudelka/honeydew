@@ -3,7 +3,7 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
   alias Honeydew.Job
 
   setup do
-    queue = :erlang.unique_integer |> Integer.to_string
+    queue = "#{:erlang.monotonic_time}_#{:erlang.unique_integer}"
     nodes = [node()]
     {:ok, _} = Helper.start_queue_link(queue, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
     {:ok, _} = Helper.start_worker_link(queue, Stateless)
@@ -98,6 +98,7 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     me = self()
     assert {:error, :in_progress} =
       fn ->
+        Process.sleep(50)
         send(me, :hi)
       end
       |> Honeydew.async(queue)

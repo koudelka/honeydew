@@ -3,7 +3,7 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
   alias Honeydew.Job
 
   setup do
-    queue = :erlang.unique_integer
+    queue = "#{:erlang.monotonic_time}_#{:erlang.unique_integer}"
     {:ok, _} = Helper.start_queue_link(queue, queue: Honeydew.Queue.ErlangQueue)
     {:ok, _} = Helper.start_worker_link(queue, Stateless)
 
@@ -45,6 +45,7 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
     {:sleep, [1_000]} |> Honeydew.async(queue)
     Honeydew.suspend(queue)
     Enum.each(1..3, fn _ -> {:send_msg, [self(), :hi]} |> Honeydew.async(queue) end)
+    Process.sleep(200) # let monitors send acks
     assert %{queue: %{count: 4, in_progress: 1, suspended: true}} = Honeydew.status(queue)
   end
 
