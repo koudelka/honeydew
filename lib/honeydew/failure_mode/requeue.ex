@@ -2,7 +2,7 @@ defmodule Honeydew.FailureMode.Requeue do
   require Logger
   alias Honeydew.Job
 
-  @behaviour Honeydew.FailureMode
+  # @behaviour Honeydew.FailureMode
 
   def handle_failure(%Job{queue: queue, from: from} = job, reason, [queue: to_queue]) do
     Logger.info "Job failed because #{inspect reason}, requeuing to #{inspect to_queue}: #{inspect job}"
@@ -10,7 +10,7 @@ defmodule Honeydew.FailureMode.Requeue do
     # tell the queue that that job can be removed.
     queue
     |> Honeydew.get_queue
-    |> GenStage.cast({:ack, job})
+    |> GenServer.cast({:ack, job})
 
     {:ok, job} =
       %{job | queue: to_queue}

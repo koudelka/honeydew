@@ -1,5 +1,4 @@
 defmodule Honeydew.Worker do
-  use GenStage
   alias Honeydew.Job
   require Logger
 
@@ -8,7 +7,7 @@ defmodule Honeydew.Worker do
   end
 
   def start_link(queue, module, args, init_retry_secs) do
-    GenStage.start_link(__MODULE__, [queue, module, args, init_retry_secs])
+    GenServer.start_link(__MODULE__, [queue, module, args, init_retry_secs])
   end
 
   def init([queue, module, args, init_retry_secs]) do
@@ -23,8 +22,8 @@ defmodule Honeydew.Worker do
            |> Honeydew.group(:workers)
            |> :pg2.join(self())
 
-           GenStage.cast(self(), :subscribe_to_queues)
-           {:consumer, state}
+           GenServer.cast(self(), :subscribe_to_queues)
+           {:ok, state}
          bad ->
            Logger.warn("#{module}.init/1 must return {:ok, state}, got: #{inspect(bad)}, retrying...")
            :timer.apply_after(init_retry_secs, Supervisor, :start_child, [Honeydew.supervisor(queue, :worker), []])
@@ -44,7 +43,7 @@ defmodule Honeydew.Worker do
   end
   def worker_init(false, _args, state), do: {:ok, %{state | user_state: :no_state}}
 
-  def handle_events([%Job{task: task, from: from, monitor: monitor} = job], _from, %State{module: module, user_state: user_state} = state) do
+  def handle_cast({:run, %Job{task: task, from: from, monitor: monitor} = job}, %State{queue: queue, module: module, user_state: user_state} = state) do
     job = %{job | by: node()}
 
     :ok = GenServer.call(monitor, {:claim, job})
@@ -69,19 +68,29 @@ defmodule Honeydew.Worker do
 
     :ok = GenServer.call(monitor, :ack)
 
-    {:noreply, [], state}
+    queue
+    |> Honeydew.get_queue
+    |> GenServer.cast({:worker_ready, self()})
+
+    {:noreply, state}
   end
 
   def handle_cast(:subscribe_to_queues, %State{queue: queue} = state) do
+    Logger.debug "[Honeydew] Worker #{inspect self()} sending ready"
     queue
     |> Honeydew.get_all_members(:queues)
-    |> Enum.each(&GenStage.async_subscribe(self(), to: &1, max_demand: 1, min_demand: 0, cancel: :temporary))
+    |> Enum.each(&GenServer.cast(&1, {:worker_ready, self()}))
 
-    {:noreply, [], state}
+    {:noreply, state}
   end
 
   def handle_info(msg, state) do
     Logger.warn "[Honeydew] Worker #{inspect self()} received unexpected message #{inspect msg}"
     {:noreply, state}
   end
+
+  def terminate(reason, _state) do
+    Logger.info "[Honeydew] Worker #{inspect self()} crashed because #{inspect reason}"
+  end
+
 end

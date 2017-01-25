@@ -19,7 +19,7 @@ defmodule HoneydewTest do
     assert spec == {Honeydew.QueueSupervisor,
                     {Honeydew.QueueSupervisor, :start_link,
                      [queue, Honeydew.Queue.ErlangQueue, [], 1,
-                      GenStage.DemandDispatcher, {Honeydew.FailureMode.Abandon, []}]},
+                      {Honeydew.Dispatcher.LRU, []}, {Honeydew.FailureMode.Abandon, []}]},
                     :permanent, :infinity, :supervisor, [Honeydew.QueueSupervisor]}
   end
 

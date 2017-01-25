@@ -41,20 +41,20 @@ defmodule Honeydew do
   def suspend(queue) do
     queue
     |> get_all_members(:queues)
-    |> Enum.each(&Queue.suspend/1)
+    |> Enum.each(&GenServer.cast(&1, :suspend))
   end
 
   def resume(queue) do
     queue
     |> get_all_members(:queues)
-    |> Enum.each(&Queue.resume/1)
+    |> Enum.each(&GenServer.cast(&1, :resume))
   end
 
   def status(queue) do
     queue_status =
       queue
       |> get_queue
-      |> GenStage.call(:status)
+      |> GenServer.call(:status)
 
     busy_workers =
       queue
@@ -84,7 +84,7 @@ defmodule Honeydew do
     {:ok, jobs} =
       queue
       |> get_queue
-      |> GenStage.call({:filter, function})
+      |> GenServer.call({:filter, function})
 
     jobs
   end
@@ -92,14 +92,14 @@ defmodule Honeydew do
   def cancel(%Job{queue: queue} = job) do
     queue
     |> get_queue
-    |> GenStage.call({:cancel, job})
+    |> GenServer.call({:cancel, job})
   end
 
   # FIXME: remove
   def state(queue) do
     queue
     |> get_all_members(:queues)
-    |> Enum.map(&GenStage.call(&1, :"$honeydew.state"))
+    |> Enum.map(&GenServer.call(&1, :"$honeydew.state"))
   end
 
   @doc false
@@ -108,7 +108,7 @@ defmodule Honeydew do
     |> get_queue
     |> case do
          {:error, {:no_such_group, _queue}} -> raise RuntimeError, no_queues_running_error(job)
-         queue -> GenStage.call(queue, {:enqueue, job})
+         queue -> GenServer.call(queue, {:enqueue, job})
        end
   end
 
@@ -139,7 +139,7 @@ defmodule Honeydew do
 
   You can provide any of the following `opts`:
   - `queue` is the module that queue will use, you may also provide init/1 args: {module, args}
-  - `dispatcher` the job dispatching strategy, must implement the `GenStage.Dispatcher` behaviour
+  - `dispatcher` the job dispatching strategy, must implement the `GenServer.Dispatcher` behaviour
   - `failure_mode`: the way that failed jobs should be handled. You can pass either a module, or {module, args}, the module must implement the `Honeydew.FailureMode` behaviour. `args` defaults to `[]`.
 
   For example:
@@ -154,7 +154,7 @@ defmodule Honeydew do
         {module, args} -> {module, args}
       end
 
-    dispatcher = opts[:dispatcher] || GenStage.DemandDispatcher
+    dispatcher = opts[:dispatcher] || {Honeydew.Dispatcher.LRU, []}
     # this is intentionally undocumented, i'm not yet sure there's a real use case for multiple queue processes
     num = opts[:num] || 1
 

@@ -1,10 +1,10 @@
 Honeydew 💪🏻🍈
 ========
 
-Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a pluggable job queue + worker pool for Elixir, powered by [GenStage](https://github.com/elixir-lang/gen_stage). 
+Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a pluggable job queue + worker pool for Elixir.
 
 - Workers are permanent and hold immutable state (a network connection, for example).
-- Workers pull jobs from the queue in a demand-driven fashion.
+- Workers are issued only one job at a time, a job is only ever removed from the queue when it succeeds.
 - Queues can exist locally, on another node in the cluster, or on a remote queue server (rabbitmq, etc...).
 - Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](http://elixir-lang.org/docs/stable/elixir/Task.html).
 - If a worker crashes while processing a job, the job is recovered and a "failure mode" (abandon, requeue, etc) is executed.
@@ -229,21 +229,23 @@ In general, a job goes through the following stages:
 - The requesting process calls `async/2`, which packages the task tuple/fn up into a "job" then sends
   it to a member of the queue group.
 
-- The queue process will enqueue the job, then, depending on its current "demand", take one of the
-  following actions:
-  ├─ If there is outstanding demand (> 0), the queue will dispatch the job immediately to a waiting
+- The queue process will enqueue the job, then take one of the following actions:
+  ├─ If there is a worker available, the queue will dispatch the job immediately to the waiting
   |  worker via the selected dispatch strategy.
-  └─ If there is no outstanding demand, the job will remain in the queue until demand arrives.
+  └─ If there aren't any workers available, the job will remain in the queue until a worker announces
+     that it's ready
 
 - Upon dispatch, the queue "reserves" the job (marks it as in-progress), then spawns a local Monitor
-  process to watch the worker. Since GenStage doesn't guarantee delivery to a consumer, the monitor
-  starts a timer after which the job will be returned to the queue.
+  process to watch the worker. The monitor starts a timer after which the job will be returned to the queue.
+  This is done to avoid blocking the queue waiting for confirmation from a worker that it has received the job.
   └─ When the worker receives the job, it informs the monitor associated with the job. The monitor
-     then watches the worker in case the job crashes it.
+     then watches the worker in case the job crashes.
      ├─ When the job succeeds:
-     |  └─ If the job was enqueued with `reply: true`, the result is sent.
-     |  └─ The worker sends an acknowledgement message to the monitor. The monitor sends an
-     |     acknowledgement to the queue to remove the job.
+     |  ├─ If the job was enqueued with `reply: true`, the result is sent.
+     |  ├─ The worker sends an acknowledgement message to the monitor. The monitor sends an
+     |  |  acknowledgement to the queue to remove the job.
+     |  └─ The worker informs the queue that it's ready for a new job. The queue checks the worker in with the
+     |     dispatcher.
      └─ If the worker crashes, the monitor executes the selected "Failure Mode" and terminates.
 ```
 
@@ -261,7 +263,7 @@ Honeydew includes a few basic queue modules:
 If you want to implement your own queue, check out the included queues as a guide. Try to keep in mind where exactly your queue state lives, is your queue process(es) where jobs live, or is it a completely stateless connector for some external broker? Or a hybrid? I'm excited to see what you come up with, please open a PR! <3
 
 ### Dispatchers
-By default, Honeydew uses GenStage's [DemandDispatcher](https://hexdocs.pm/gen_stage/GenStage.DemandDispatcher.html), but you can use any module that implements the [GenStage.Dispatcher](https://hexdocs.pm/gen_stage/GenStage.Dispatcher.html) behaviour. Simply pass the module as the `:dispatcher` option to `Honeydew.queue_spec/2`. I haven't experimented with any other dispatchers aside from the default, if you do, please let me know how it goes.
+Honeydew provides a number of dispatchers, it defaults to the Least Recently Used (FIFO) dispatcher.
 
 ### Worker State
 Worker state is immutable, the only way to change it is to cause the worker to crash and let the supervisor restart it.
@@ -270,12 +272,11 @@ Your worker module's `init/1` function must return `{:ok, state}`. If anything e
 
 
 ### TODO:
-- the example RabbitMQ connector is broken
 - failover/takeover for global queues
 - statistics?
 - `yield_many/2` support?
 - benchmark mnesia queue's dual filter implementations, discard one?
-- using a global queue, control which node executes a job on-the-fly with a [ParitionDispatcher](https://hexdocs.pm/gen_stage/GenStage.PartitionDispatcher.html)?
+- using a global queue, control which node executes a job on-the-fly with a dispatcher
 - more tests
 
 ### Acknowledgements

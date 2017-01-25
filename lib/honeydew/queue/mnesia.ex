@@ -12,6 +12,7 @@ defmodule Honeydew.Queue.Mnesia do
   # TODO: document. :(
   @pending_match_spec [{Job.job(private: {false, :_}, _: :_) |> Job.to_record(:_), [], [:"$_"]}]
 
+
   def init(queue_name, [nodes, table_opts, opts]) do
     access_context = Keyword.get(opts, :access_context, :sync_transaction)
 
@@ -41,51 +42,52 @@ defmodule Honeydew.Queue.Mnesia do
   end
 
   #
-  # GenStage Callbacks
+  # Enqueue/Reserve
   #
 
-  def handle_demand(demand, %State{outstanding: 0} = state) when demand > 0 do
-    jobs = reserve(state, demand)
+  def enqueue(%State{private: %PState{table: table, access_context: access_context}} = state, job) do
+    job = %{job | private: {false, :erlang.unique_integer([:monotonic])}} # {in_progress, :id}
 
-    {:noreply, jobs, %{state | outstanding: demand - Enum.count(jobs)}}
+    :mnesia.activity(access_context, fn ->
+      :ok =
+        job
+        |> Job.to_record(table)
+        |> :mnesia.write
+    end)
+
+    {state, job}
   end
 
-  #
-  # Enqueuing
-  #
+  # should the recursion be outside of the transaction?
+  def reserve(%State{private: %PState{table: table, access_context: access_context}} = state) do
+    :mnesia.activity(access_context, fn ->
+      case :mnesia.select(table, @pending_match_spec, 1, :read) do
+        :"$end_of_table" -> nil
+        {[job], _cont} ->
+          {_, id} = Job.job(job, :private)
 
-  def handle_call({:enqueue, job}, _from, %State{suspended: true} = state) do
-    job = enqueue(state, job)
+          :ok = :mnesia.delete_object(job)
 
-    {:reply, {:ok, job}, [], state}
-  end
+          job = Job.job(job, private: {true, id})
 
-  # there's no demand outstanding, queue the task.
-  def handle_call({:enqueue, job}, _from, %State{outstanding: 0} = state) do
-    job = enqueue(state, job)
+          :ok = :mnesia.write(job)
 
-    {:reply, {:ok, job}, [], state}
-  end
-
-  # there's demand outstanding, enqueue the job and issue as many jobs as possible
-  def handle_call({:enqueue, job}, _from, %State{outstanding: outstanding} = state) do
-    job = enqueue(state, job)
-    jobs = reserve(state, outstanding)
-
-    {:reply, {:ok, job}, jobs, %{state | outstanding: outstanding - Enum.count(jobs)}}
+          {state, Job.from_record(job)}
+      end
+    end)
   end
 
   #
   # Ack/Nack
   #
 
-  def handle_cast({:ack, %Job{private: private}}, %State{private: %PState{table: table}} = state) do
+  def ack(%State{private: %PState{table: table}} = state, %Job{private: private}) do
     :ok = :mnesia.dirty_delete(table, private)
 
-    {:noreply, [], state}
+    state
   end
 
-  def handle_cast({:nack, %Job{private: {_, id}} = job, true}, %State{private: %PState{table: table, access_context: access_context}} = state) do
+  def nack(%State{private: %PState{table: table, access_context: access_context}} = state, %Job{private: {_, id}} = job) do
     :mnesia.activity(access_context, fn ->
       :ok = :mnesia.delete({table, {true, id}})
 
@@ -95,24 +97,8 @@ defmodule Honeydew.Queue.Mnesia do
         |> :mnesia.write
     end)
 
-    {:noreply, [], state}
+    state
   end
-  def handle_cast({:nack, job, false}, state), do: handle_cast({:ack, job}, state)
-
-  #
-  # Suspend/Resume
-  #
-
-  def handle_cast(:suspend, state) do
-    {:noreply, [], state}
-  end
-
-  def handle_cast(:resume, %State{outstanding: outstanding} = state) do
-    jobs = reserve(state, outstanding)
-
-    {:noreply, jobs, %{state | outstanding: outstanding - Enum.count(jobs)}}
-  end
-
 
   #
   # Helpers
@@ -165,7 +151,6 @@ defmodule Honeydew.Queue.Mnesia do
     end)
   end
 
-
   def cancel(%PState{table: table, access_context: access_context} = queue, %Job{private: {_, id}}) do
     reply =
       :mnesia.activity(access_context, fn ->
@@ -183,42 +168,5 @@ defmodule Honeydew.Queue.Mnesia do
       end)
 
     {reply, queue}
-  end
-
-
-  def enqueue(%State{private: %PState{table: table, access_context: access_context}}, job) do
-    job = %{job | private: {false, :erlang.unique_integer([:monotonic])}} # {in_progress, :id}
-    :mnesia.activity(access_context, fn ->
-      :ok =
-        job
-        |> Job.to_record(table)
-        |> :mnesia.write
-    end)
-
-    job
-  end
-
-  # should the recursion be outside of the transaction?
-  defp reserve(_state, 0), do: []
-  defp reserve(%State{private: %PState{table: table, access_context: access_context}} = state, num) do
-    :mnesia.activity(access_context, fn ->
-      case :mnesia.select(table, @pending_match_spec, num, :read) do
-        :"$end_of_table" -> []
-        {jobs, _cont} ->
-          Enum.map(jobs, fn job ->
-            {_, id} = Job.job(job, :private)
-
-            :ok = :mnesia.delete_object(job)
-
-            job = Job.job(job, private: {true, id})
-
-            :ok = :mnesia.write(job)
-
-            job
-            |> Job.from_record
-            |> start_monitor(state)
-          end)
-      end
-    end)
   end
 end
