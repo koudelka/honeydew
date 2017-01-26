@@ -263,13 +263,17 @@ Honeydew includes a few basic queue modules:
 If you want to implement your own queue, check out the included queues as a guide. Try to keep in mind where exactly your queue state lives, is your queue process(es) where jobs live, or is it a completely stateless connector for some external broker? Or a hybrid? I'm excited to see what you come up with, please open a PR! <3
 
 ### Dispatchers
-Honeydew provides a number of dispatchers, it defaults to the Least Recently Used (FIFO) dispatcher.
+By default, Honeydew uses a Least Recently Used (FIFO) dispatcher. Other built-in dispatchers are:
+
+- `Honeydew.Dispatcher.MRU` - Most Recently Used (LIFO)
+
+
+You can also use your own dispatching strategy by passing it to `Honeydew.queue_spec/2`. Check out the [built-in dispatchers](https://github.com/koudelka/honeydew/tree/master/lib/honeydew/dispatcher) for reference.
 
 ### Worker State
 Worker state is immutable, the only way to change it is to cause the worker to crash and let the supervisor restart it.
 
 Your worker module's `init/1` function must return `{:ok, state}`. If anything else is returned or the function raises an error, the worker will die and restart after a given time interval (by default, five seconds).
-
 
 ### TODO:
 - failover/takeover for global queues
