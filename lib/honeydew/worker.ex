@@ -11,6 +11,7 @@ defmodule Honeydew.Worker do
   end
 
   def init([queue, module, args, init_retry_secs]) do
+    Process.flag(:trap_exit, true)
     state = %State{queue: queue, module: module}
 
     module.__info__(:functions)
@@ -25,8 +26,8 @@ defmodule Honeydew.Worker do
            GenServer.cast(self(), :subscribe_to_queues)
            {:ok, state}
          bad ->
-           Logger.warn("#{module}.init/1 must return {:ok, state}, got: #{inspect(bad)}, retrying...")
-           :timer.apply_after(init_retry_secs, Supervisor, :start_child, [Honeydew.supervisor(queue, :worker), []])
+           Logger.warn("#{module}.init/1 must return {:ok, state}, got: #{inspect bad}, retrying in #{init_retry_secs}s...")
+           :timer.apply_after(init_retry_secs * 1_000, Supervisor, :start_child, [Honeydew.supervisor(queue, :worker), []])
            :ignore
        end
   end
@@ -34,8 +35,10 @@ defmodule Honeydew.Worker do
   def worker_init(true, args, %State{module: module} = state) do
     try do
       case apply(module, :init, [args]) do
-        {:ok, user_state} -> {:ok, %{state | user_state: {:state, user_state}}}
-        bad -> {:error, bad}
+        {:ok, user_state} ->
+          {:ok, %{state | user_state: {:state, user_state}}}
+        bad ->
+          {:error, bad}
       end
     rescue e ->
         {:exception, e}
@@ -84,13 +87,18 @@ defmodule Honeydew.Worker do
     {:noreply, state}
   end
 
+  def handle_info({:EXIT, pid, reason}, state) do
+    Logger.warn "[Honeydew] Worker #{inspect self()} died because linked process #{inspect pid} crashed"
+    {:stop, reason, %{state | user_state: nil}}
+  end
+
   def handle_info(msg, state) do
     Logger.warn "[Honeydew] Worker #{inspect self()} received unexpected message #{inspect msg}"
     {:noreply, state}
   end
 
   def terminate(reason, _state) do
-    Logger.info "[Honeydew] Worker #{inspect self()} crashed because #{inspect reason}"
+    Logger.info "[Honeydew] Worker #{inspect self()} stopped because #{inspect reason}"
   end
 
 end

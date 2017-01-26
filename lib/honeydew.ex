@@ -1,6 +1,5 @@
 defmodule Honeydew do
   alias Honeydew.Job
-  alias Honeydew.Queue
 
   #
   # Parts of this module were lovingly stolen from
