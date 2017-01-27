@@ -263,10 +263,11 @@ Honeydew includes a few basic queue modules:
 If you want to implement your own queue, check out the included queues as a guide. Try to keep in mind where exactly your queue state lives, is your queue process(es) where jobs live, or is it a completely stateless connector for some external broker? Or a hybrid? I'm excited to see what you come up with, please open a PR! <3
 
 ### Dispatchers
-By default, Honeydew uses a Least Recently Used (FIFO) dispatcher. Other built-in dispatchers are:
+Honeydew provides the following dispatchers:
 
-- `Honeydew.Dispatcher.MRU` - Most Recently Used (LIFO)
-- `Honeydew.Dispatcher.LRUNode` - Least Recently Used Node (sends jobs to the least recently used worker on the least recently used node)
+- `Honeydew.Dispatcher.LRUNode` - Least Recently Used Node (sends jobs to the least recently used worker on the least recently used node, the default for global queues)
+- `Honeydew.Dispatcher.LRU` - Most Recently Used Worker (LIFO, the default for local queues)
+- `Honeydew.Dispatcher.MRU` - Most Recently Used Worker (LIFO)
 
 You can also use your own dispatching strategy by passing it to `Honeydew.queue_spec/2`. Check out the [built-in dispatchers](https://github.com/koudelka/honeydew/tree/master/lib/honeydew/dispatcher) for reference.
 

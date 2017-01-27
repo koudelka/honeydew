@@ -153,7 +153,13 @@ defmodule Honeydew do
         {module, args} -> {module, args}
       end
 
-    dispatcher = opts[:dispatcher] || {Honeydew.Dispatcher.LRU, []}
+    dispatcher =
+      opts[:dispatcher] ||
+      case name do
+        {:global, _} -> {Honeydew.Dispatcher.LRUNode, []}
+        _ -> {Honeydew.Dispatcher.LRU, []}
+      end
+
     # this is intentionally undocumented, i'm not yet sure there's a real use case for multiple queue processes
     num = opts[:num] || 1
 

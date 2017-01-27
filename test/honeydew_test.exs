@@ -21,6 +21,15 @@ defmodule HoneydewTest do
                      [queue, Honeydew.Queue.ErlangQueue, [], 1,
                       {Honeydew.Dispatcher.LRU, []}, {Honeydew.FailureMode.Abandon, []}]},
                     :permanent, :infinity, :supervisor, [Honeydew.QueueSupervisor]}
+
+    queue = {:global, :erlang.unique_integer}
+    spec =  Honeydew.queue_spec(queue)
+
+    assert spec == {Honeydew.QueueSupervisor,
+                    {Honeydew.QueueSupervisor, :start_link,
+                     [queue, Honeydew.Queue.ErlangQueue, [], 1,
+                      {Honeydew.Dispatcher.LRUNode, []}, {Honeydew.FailureMode.Abandon, []}]},
+                    :permanent, :infinity, :supervisor, [Honeydew.QueueSupervisor]}
   end
 
   test "worker_spec/2" do
