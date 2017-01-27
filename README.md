@@ -266,7 +266,7 @@ If you want to implement your own queue, check out the included queues as a guid
 By default, Honeydew uses a Least Recently Used (FIFO) dispatcher. Other built-in dispatchers are:
 
 - `Honeydew.Dispatcher.MRU` - Most Recently Used (LIFO)
-
+- `Honeydew.Dispatcher.LRUNode` - Least Recently Used Node (sends jobs to the least recently used worker on the least recently used node)
 
 You can also use your own dispatching strategy by passing it to `Honeydew.queue_spec/2`. Check out the [built-in dispatchers](https://github.com/koudelka/honeydew/tree/master/lib/honeydew/dispatcher) for reference.
 
