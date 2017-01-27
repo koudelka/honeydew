@@ -3,7 +3,7 @@ defmodule Honeydew.Mixfile do
 
   def project do
     [app: :honeydew,
-     version: "1.0.0-rc1",
+     version: "1.0.0-rc2",
      elixir: "~> 1.4.0",
      deps: deps(),
      package: package(),
