@@ -13,6 +13,8 @@ defmodule Honeydew.Dispatcher.LRUTest do
   end
 
   test "enqueue/dequeue least recently used", %{state: state} do
+    assert LRU.available?(state)
+
     {worker, state} = LRU.check_out(nil, state)
     assert worker == "a"
     {worker, state} = LRU.check_out(nil, state)
@@ -26,8 +28,10 @@ defmodule Honeydew.Dispatcher.LRUTest do
     {_worker, state} = LRU.check_out(nil, state)
     {_worker, state} = LRU.check_out(nil, state)
 
-    {worker, _state} = LRU.check_out(nil, state)
+    {worker, state} = LRU.check_out(nil, state)
     assert worker == nil
+
+    refute LRU.available?(state)
   end
 
   test "removes workers", %{state: state} do

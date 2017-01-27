@@ -9,7 +9,7 @@ defmodule Honeydew.Dispatcher.MRU do
   end
 
   def available?(free) do
-    :queue.len(free) > 0
+    !:queue.is_empty(free)
   end
 
   def check_in(worker, free) do

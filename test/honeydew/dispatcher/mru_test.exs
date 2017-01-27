@@ -13,6 +13,8 @@ defmodule Honeydew.Dispatcher.MRUTest do
   end
 
   test "enqueue/dequeue most recently used", %{state: state} do
+    assert MRU.available?(state)
+
     {worker, state} = MRU.check_out(nil, state)
     assert worker == "c"
     {worker, state} = MRU.check_out(nil, state)
@@ -26,8 +28,10 @@ defmodule Honeydew.Dispatcher.MRUTest do
     {_worker, state} = MRU.check_out(nil, state)
     {_worker, state} = MRU.check_out(nil, state)
 
-    {worker, _state} = MRU.check_out(nil, state)
+    {worker, state} = MRU.check_out(nil, state)
     assert worker == nil
+
+    refute MRU.available?(state)
   end
 
   test "removes workers", %{state: state} do
