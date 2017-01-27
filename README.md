@@ -215,8 +215,8 @@ There are various options you can pass to `queue_spec/2` and `worker_spec/3`, se
 ### Failure Modes
 When a worker crashes, a monitoring process runs the `handle_failure/4` function from the selected module on the queue's node. Honeydew ships with two failure modes, at present:
 
-- `Abandon`: Simply forgets about the job.
-- `Requeue`: Removes the job from the original queue, and places it on another.
+- `Honeydew.FailureMode.Abandon`: Simply forgets about the job.
+- `Honeydew.FailureMode.Requeue`: Removes the job from the original queue, and places it on another.
 
 See `Honeydew.queue_spec/2` to select a failure mode.
 
@@ -266,7 +266,7 @@ If you want to implement your own queue, check out the included queues as a guid
 Honeydew provides the following dispatchers:
 
 - `Honeydew.Dispatcher.LRUNode` - Least Recently Used Node (sends jobs to the least recently used worker on the least recently used node, the default for global queues)
-- `Honeydew.Dispatcher.LRU` - Most Recently Used Worker (LIFO, the default for local queues)
+- `Honeydew.Dispatcher.LRU` - Least Recently Used Worker (FIFO, the default for local queues)
 - `Honeydew.Dispatcher.MRU` - Most Recently Used Worker (LIFO)
 
 You can also use your own dispatching strategy by passing it to `Honeydew.queue_spec/2`. Check out the [built-in dispatchers](https://github.com/koudelka/honeydew/tree/master/lib/honeydew/dispatcher) for reference.
