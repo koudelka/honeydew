@@ -87,11 +87,15 @@ defmodule Honeydew.Worker do
     {:noreply, state}
   end
 
+  def handle_info({:EXIT, _pid, :normal}, state), do: {:noreply, state}
+  def handle_info({:EXIT, _pid, :shutdown}, state), do: {:noreply, state}
   def handle_info({:EXIT, pid, reason}, state) do
     Logger.warn "[Honeydew] Worker #{inspect self()} died because linked process #{inspect pid} crashed"
     {:stop, reason, %{state | user_state: nil}}
   end
 
+  def handle_info({_, {:DOWN, _, :normal}}, state), do: {:noreply, state}
+  def handle_info({_, {:DOWN, _, :shutdown}}, state), do: {:noreply, state}
   def handle_info(msg, state) do
     Logger.warn "[Honeydew] Worker #{inspect self()} received unexpected message #{inspect msg}"
     {:noreply, state}
