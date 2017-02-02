@@ -4,8 +4,15 @@ defmodule HoneydewTest do
   test "queue_spec/2" do
     queue = :erlang.unique_integer
 
-    spec =  Honeydew.queue_spec(queue, queue: {:abc, [1,2,3]}, dispatcher: {Dis.Patcher, [:a, :b]}, failure_mode: {Fail.Ure, [:a, :b]})
-    assert spec == {Honeydew.QueueSupervisor,
+    spec =
+      Honeydew.queue_spec(
+        queue,
+        queue: {:abc, [1,2,3]},
+        dispatcher: {Dis.Patcher, [:a, :b]},
+        failure_mode: {Fail.Ure, [:a, :b]},
+        supervisor_opts: [id: :my_queue_supervisor])
+
+    assert spec == {:my_queue_supervisor,
                     {Honeydew.QueueSupervisor, :start_link,
                      [queue, :abc, [1, 2, 3], 1, {Dis.Patcher, [:a, :b]},
                       {Fail.Ure, [:a, :b]}]}, :permanent, :infinity, :supervisor,
@@ -35,8 +42,14 @@ defmodule HoneydewTest do
   test "worker_spec/2" do
     queue = :erlang.unique_integer
 
-    spec = Honeydew.worker_spec(queue, {Worker, [1, 2, 3]}, num: 123, init_retry_secs: 5)
-    assert spec == {Honeydew.WorkerSupervisor,
+    spec = Honeydew.worker_spec(
+      queue,
+      {Worker, [1, 2, 3]},
+      num: 123,
+      init_retry_secs: 5,
+      supervisor_opts: [id: :my_worker_supervisor])
+
+    assert spec == {:my_worker_supervisor,
                     {Honeydew.WorkerSupervisor, :start_link,
                      [queue, Worker, [1, 2, 3], 123, 5, 10_000]}, :permanent,
                     :infinity, :supervisor, [Honeydew.WorkerSupervisor]}
