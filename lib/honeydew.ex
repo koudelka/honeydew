@@ -137,9 +137,10 @@ defmodule Honeydew do
   `name` is how you'll refer to the queue to add a task.
 
   You can provide any of the following `opts`:
-  - `queue` is the module that queue will use, you may also provide init/1 args: {module, args}
-  - `dispatcher` the job dispatching strategy, `{module, init_args}`.`
+  - `queue`: is the module that queue will use, you may also provide init/1 args: {module, args}
+  - `dispatcher`: the job dispatching strategy, `{module, init_args}`.`
   - `failure_mode`: the way that failed jobs should be handled. You can pass either a module, or {module, args}, the module must implement the `Honeydew.FailureMode` behaviour. `args` defaults to `[]`.
+  - `supervisor_opts`: options accepted by `Supervisor.Spec.supervisor/3`.
 
   For example:
     `Honeydew.queue_spec("my_awesome_queue")`
@@ -170,9 +171,17 @@ defmodule Honeydew do
         {module, args} -> {module, args}
       end
 
+    supervisor_opts =
+      opts
+      |> Keyword.get(:supervisor_opts, [])
+      |> Keyword.put_new(:id, {:queue, name})
+
     Honeydew.create_groups(name)
 
-    Supervisor.Spec.supervisor(Honeydew.QueueSupervisor, [name, module, args, num, dispatcher, failure_mode])
+    Supervisor.Spec.supervisor(
+      Honeydew.QueueSupervisor,
+      [name, module, args, num, dispatcher, failure_mode],
+      supervisor_opts)
   end
 
   @doc """
@@ -185,6 +194,7 @@ defmodule Honeydew do
   - `num`: the number of workers to start
   - `init_retry`: the amount of time, in milliseconds, to wait before respawning a worker who's `init/1` function failed
   - `shutdown`: if a worker is in the middle of a job, the amount of time, in milliseconds, to wait before brutally killing it.
+  - `supervisor_opts` options accepted by `Supervisor.Spec.supervisor/3`.
 
   For example:
     `Honeydew.worker_spec("my_awesome_queue", MyJobModule)`
@@ -201,9 +211,17 @@ defmodule Honeydew do
     init_retry = opts[:init_retry] || 5
     shutdown = opts[:shutdown] || 10_000
 
+    supervisor_opts =
+      opts
+      |> Keyword.get(:supervisor_opts, [])
+      |> Keyword.put_new(:id, {:worker, name})
+
     Honeydew.create_groups(name)
 
-    Supervisor.Spec.supervisor(Honeydew.WorkerSupervisor, [name, module, args, num, init_retry, shutdown])
+    Supervisor.Spec.supervisor(
+      Honeydew.WorkerSupervisor,
+      [name, module, args, num, init_retry, shutdown],
+      supervisor_opts)
   end
 
   @groups [:workers,
