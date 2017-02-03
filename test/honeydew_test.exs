@@ -23,7 +23,7 @@ defmodule HoneydewTest do
     queue = :erlang.unique_integer
     spec =  Honeydew.queue_spec(queue)
 
-    assert spec == {Honeydew.QueueSupervisor,
+    assert spec == {{:queue, queue},
                     {Honeydew.QueueSupervisor, :start_link,
                      [queue, Honeydew.Queue.ErlangQueue, [], 1,
                       {Honeydew.Dispatcher.LRU, []}, {Honeydew.FailureMode.Abandon, []}]},
@@ -32,7 +32,7 @@ defmodule HoneydewTest do
     queue = {:global, :erlang.unique_integer}
     spec =  Honeydew.queue_spec(queue)
 
-    assert spec == {Honeydew.QueueSupervisor,
+    assert spec == {{:queue, queue},
                     {Honeydew.QueueSupervisor, :start_link,
                      [queue, Honeydew.Queue.ErlangQueue, [], 1,
                       {Honeydew.Dispatcher.LRUNode, []}, {Honeydew.FailureMode.Abandon, []}]},
@@ -59,7 +59,7 @@ defmodule HoneydewTest do
     queue = :erlang.unique_integer
 
     spec =  Honeydew.worker_spec(queue, Worker)
-    assert spec == {Honeydew.WorkerSupervisor,
+    assert spec == {{:worker, queue},
                     {Honeydew.WorkerSupervisor, :start_link,
                      [queue, Worker, [], 10, 5, 10000]}, :permanent, :infinity,
                     :supervisor, [Honeydew.WorkerSupervisor]}
