@@ -171,7 +171,10 @@ defmodule Honeydew do
         {module, args} -> {module, args}
       end
 
-    supervisor_opts = opts[:supervisor_opts] || [id: {:queue, name}]
+    supervisor_opts =
+      opts
+      |> Keyword.get(:supervisor_opts, [])
+      |> Keyword.put_new(:id, {:queue, name})
 
     Honeydew.create_groups(name)
 
@@ -207,7 +210,11 @@ defmodule Honeydew do
     num = opts[:num] || 10
     init_retry = opts[:init_retry] || 5
     shutdown = opts[:shutdown] || 10_000
-    supervisor_opts = opts[:supervisor_opts] || [id: {:worker, name}]
+
+    supervisor_opts =
+      opts
+      |> Keyword.get(:supervisor_opts, [])
+      |> Keyword.put_new(:id, {:worker, name})
 
     Honeydew.create_groups(name)
 
