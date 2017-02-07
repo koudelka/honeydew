@@ -3,11 +3,12 @@ Honeydew 💪🏻🍈
 
 Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a pluggable job queue + worker pool for Elixir.
 
-- Workers are permanent and hold immutable state (a network connection, for example).
+- Workers are permanent and hold immutable state (a database connection, for example).
 - Workers are issued only one job at a time, a job is only ever removed from the queue when it succeeds.
 - Queues can exist locally, on another node in the cluster, or on a remote queue server (rabbitmq, etc...).
-- Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](http://elixir-lang.org/docs/stable/elixir/Task.html).
 - If a worker crashes while processing a job, the job is recovered and a "failure mode" (abandon, requeue, etc) is executed.
+- Can optionally heal your cluster after a disconnect or downed node.
+- Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](http://elixir-lang.org/docs/stable/elixir/Task.html).
 - Queues, workers, dispatch strategies and failure modes are all plugable with user modules.
 
 Honeydew attempts to provide "at least once" job execution, it's possible that circumstances could conspire to execute a job, and prevent Honeydew from reporting that success back to the queue. I encourage you to write your jobs idempotently.
@@ -159,6 +160,9 @@ iex(queue@dax)1> QueueApp.start
 And we'll run our workers on `background@dax` with:
 ```elixir
 defmodule HeavyTask do
+
+  # note that in this case, our worker is stateless, so we left out `init/1`
+
   def work_really_hard(secs) do
     :timer.sleep(1_000 * secs)
     IO.puts "I worked really hard for #{secs} secs!"
@@ -168,31 +172,23 @@ end
 defmodule WorkerApp do
   def start do
     children = [
-      Honeydew.worker_spec({:global, :my_queue}, HeavyTask, num: 10)
+      Honeydew.worker_spec({:global, :my_queue}, HeavyTask, num: 10, nodes: [:clientfacing@dax, :queue@dax])
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)
   end
 end
 
-iex(background@dax)1> Node.ping :queue@dax
-:pong
-
-iex(background@dax)2> WorkerApp.start
+iex(background@dax)1> WorkerApp.start
 {:ok, #PID<0.205.0>}
 ```
 
-(note that in this case, our worker is stateless, so we left out `init/1`)
-
-You can connect the nodes together at any point in the process, Honeydew will automatically detect where its components are running.
+Note that we've provided a list of nodes to the worker spec, Honeydew will attempt to heal the cluster if any of these nodes go down.
 
 Then on any node in the cluster, we can enqueue a job:
 
 ```elixir
-iex(clientfacing@dax)1> Node.ping :queue@dax
-:pong
-
-iex(clientfacing@dax)2> {:work_really_hard, [5]} |> Honeydew.async({:global, :my_queue})
+iex(clientfacing@dax)1> {:work_really_hard, [5]} |> Honeydew.async({:global, :my_queue})
 %Honeydew.Job{by: nil, failure_private: nil, from: nil, monitor: nil,
  private: {false, -576460752303423485}, queue: {:global, :my_queue},
  result: nil, task: {:work_really_hard, [5]}}

@@ -1,6 +1,7 @@
 defmodule Honeydew.Worker do
-  alias Honeydew.Job
+  use GenServer
   require Logger
+  alias Honeydew.Job
 
   defmodule State do
     defstruct [:queue, :module, :user_state]

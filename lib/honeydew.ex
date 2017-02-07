@@ -195,10 +195,12 @@ defmodule Honeydew do
   - `init_retry`: the amount of time, in milliseconds, to wait before respawning a worker who's `init/1` function failed
   - `shutdown`: if a worker is in the middle of a job, the amount of time, in milliseconds, to wait before brutally killing it.
   - `supervisor_opts` options accepted by `Supervisor.Spec.supervisor/3`.
+  - `nodes`: for :global queues, you can provide a list of nodes to stay connected to (your queue node and enqueuing nodes)
 
   For example:
     `Honeydew.worker_spec("my_awesome_queue", MyJobModule)`
     `Honeydew.worker_spec("my_awesome_queue", {MyJobModule, [key: "secret key"]}, num: 3)`
+    `Honeydew.worker_spec({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
   """
   def worker_spec(name, module_and_args, opts \\ []) do
     {module, args} =
@@ -210,6 +212,7 @@ defmodule Honeydew do
     num = opts[:num] || 10
     init_retry = opts[:init_retry] || 5
     shutdown = opts[:shutdown] || 10_000
+    nodes = opts[:nodes] || []
 
     supervisor_opts =
       opts
@@ -219,8 +222,8 @@ defmodule Honeydew do
     Honeydew.create_groups(name)
 
     Supervisor.Spec.supervisor(
-      Honeydew.WorkerSupervisor,
-      [name, module, args, num, init_retry, shutdown],
+      Honeydew.WorkerGroupSupervisor,
+      [name, module, args, num, init_retry, shutdown, nodes],
       supervisor_opts)
   end
 
@@ -236,6 +239,8 @@ defmodule Honeydew do
   end)
 
   @supervisors [:worker,
+                :worker_group,
+                :node_monitor,
                 :queue]
 
   Enum.each(@supervisors, fn supervisor ->
