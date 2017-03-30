@@ -29,7 +29,7 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 |------------------------|:------:|:------:|:------:|:---------:|:-----------:|
 | ErlangQueue (`:queue`) | ✅*    | ✅     | ✅*    | ✅       | ❌         |
 | Mnesia                 | ✅*    | ✅*    | ✅     | ✅ (ets) | ✅ (dets)   |
-- * careful with this, it's slow, O(n)
+* careful with this, it's slow, O(n)
 
 
 ## Getting Started
@@ -39,6 +39,7 @@ In your mix.exs file:
 ```elixir
 defp deps do
   [{:honeydew, "~> 1.0.0-rc4"}]
+
 end
 ```
 
