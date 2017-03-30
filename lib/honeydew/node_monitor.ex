@@ -31,6 +31,7 @@ defmodule Honeydew.NodeMonitor do
 
     {:noreply, node}
   end
+  def handle_info({:nodeup, _}, node), do: {:noreply, node}
 
   def handle_info({:nodedown, node}, node) do
     Logger.warn "[Honeydew] Lost connection to #{node}, attempting to reestablish..."
@@ -39,4 +40,6 @@ defmodule Honeydew.NodeMonitor do
 
     {:noreply, node}
   end
+  def handle_info({:nodedown, _}, node), do: {:noreply, node}
+
 end
