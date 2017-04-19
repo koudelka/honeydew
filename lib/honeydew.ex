@@ -138,7 +138,7 @@ defmodule Honeydew do
 
   You can provide any of the following `opts`:
   - `queue`: is the module that queue will use, you may also provide init/1 args: {module, args}
-  - `dispatcher`: the job dispatching strategy, `{module, init_args}`.`
+  - `dispatcher`: the job dispatching strategy, `{module, init_args}`.
   - `failure_mode`: the way that failed jobs should be handled. You can pass either a module, or {module, args}, the module must implement the `Honeydew.FailureMode` behaviour. `args` defaults to `[]`.
   - `supervisor_opts`: options accepted by `Supervisor.Spec.supervisor/3`.
 

@@ -46,7 +46,7 @@ end
 You can run honeydew on a single node, or with components distributed over a cluster.
 
 ### Local Queue Example
-![local queue](https://github.com/koudelka/honeydew/blob/master/doc/local.png)
+![local queue](assets/local.png)
 
 There's an uncaring firehose of data pointed at us, we need to store it all in our database, Riak. The requester isn't expecting a response, and we can't drop a write due to overloaded workers.
 
@@ -131,7 +131,7 @@ If you pass `reply: true`, and you never call `yield/2` to read the result, your
 The `Honeydew.Job` struct above is used to track the status of a job, you can send it to `cancel/1`, if you want to try to kill the job.
 
 ### Distributed Queue Example
-![distributed queue](https://github.com/koudelka/honeydew/blob/master/doc/distributed.png)
+![distributed queue](assets/distributed.png)
 
 Say we've got some pretty heavy tasks that we want to distribute over a farm of background job processing nodes, they're too heavy to process on our client-facing nodes. In a distributed Erlang scenario, you have the option of distributing Honeydew's various components around different nodes in your cluster. Honeydew is basically a simple collection of queue processes and worker processes. Honeydew detects when nodes go up and down, and reconnects workers.
 
@@ -253,7 +253,7 @@ Queues are the most critical location of state in Honeydew, a job will not be re
 Honeydew includes a few basic queue modules:
  - A simple FIFO queue implemented with the `:queue` and `Map` modules, this is the default.
  - An Mnesia queue, configurable in all the ways mnesia is, for example:
-   * Run with replication (with queues running on multiple nodes) 
+   * Run with replication (with queues running on multiple nodes)
    * Persist jobs to disk (dets)
    * Follow various safety modes ("access contexts").
 
