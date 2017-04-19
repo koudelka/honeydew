@@ -1,10 +1,13 @@
 defmodule Honeydew.Mixfile do
   use Mix.Project
 
+  @version "1.0.0-rc5"
+
   def project do
     [app: :honeydew,
-     version: "1.0.0-rc5",
+     version: @version,
      elixir: "~> 1.4.0",
+     docs: docs(),
      deps: deps(),
      package: package(),
      description: "Pluggable local/remote job queue + worker pool with permanent workers."]
@@ -28,5 +31,13 @@ defmodule Honeydew.Mixfile do
     [maintainers: ["Michael Shapiro"],
      licenses: ["MIT"],
      links: %{"GitHub": "https://github.com/koudelka/elixir-honeydew"}]
+  end
+
+  defp docs do
+    [extras: ["README.md"],
+     source_url: "https://github.com/koudelka/honeydew",
+     source_ref: @version,
+     assets: "assets",
+     main: "readme"]
   end
 end
