@@ -1,0 +1,13 @@
+language: elixir
+elixir:
+  - 1.4.2
+otp_release:
+  - 19.3
+cache:
+  directories:
+    - _build
+    - deps
+before_script:
+  - MIX_ENV=test mix compile --warnings-as-errors
+script:
+  - mix test
