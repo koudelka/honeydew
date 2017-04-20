@@ -1,11 +1,11 @@
-defmodule Honeydew.FailureMode.Requeue do
+defmodule Honeydew.FailureMode.Move do
   require Logger
   alias Honeydew.Job
 
   # @behaviour Honeydew.FailureMode
 
   def handle_failure(%Job{queue: queue, from: from} = job, reason, [queue: to_queue]) do
-    Logger.info "Job failed because #{inspect reason}, requeuing to #{inspect to_queue}: #{inspect job}"
+    Logger.info "Job failed because #{inspect reason}, moving to #{inspect to_queue}: #{inspect job}"
 
     # tell the queue that that job can be removed.
     queue
@@ -18,6 +18,6 @@ defmodule Honeydew.FailureMode.Requeue do
 
     # send the error to the awaiting process, if necessary
     with {owner, _ref} <- from,
-      do: send(owner, %{job | result: {:requeued, reason}})
+      do: send(owner, %{job | result: {:moved, reason}})
   end
 end

@@ -6,7 +6,7 @@ Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a plug
 - Workers are permanent and hold immutable state (a database connection, for example).
 - Workers are issued only one job at a time, a job is only ever removed from the queue when it succeeds.
 - Queues can exist locally, on another node in the cluster, or on a remote queue server (rabbitmq, etc...).
-- If a worker crashes while processing a job, the job is recovered and a "failure mode" (abandon, requeue, etc) is executed.
+- If a worker crashes while processing a job, the job is recovered and a "failure mode" (abandon, move, retry, etc) is executed.
 - Can optionally heal your cluster after a disconnect or downed node.
 - Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](http://elixir-lang.org/docs/stable/elixir/Task.html).
 - Queues, workers, dispatch strategies and failure modes are all plugable with user modules.
@@ -39,7 +39,6 @@ In your mix.exs file:
 ```elixir
 defp deps do
   [{:honeydew, "~> 1.0.0-rc5"}]
-
 end
 ```
 
@@ -213,7 +212,8 @@ There are various options you can pass to `queue_spec/2` and `worker_spec/3`, se
 When a worker crashes, a monitoring process runs the `handle_failure/4` function from the selected module on the queue's node. Honeydew ships with two failure modes, at present:
 
 - `Honeydew.FailureMode.Abandon`: Simply forgets about the job.
-- `Honeydew.FailureMode.Requeue`: Removes the job from the original queue, and places it on another.
+- `Honeydew.FailureMode.Move`: Removes the job from the original queue, and places it on another.
+- `Honeydew.FailureMode.Retry`: Re-attempts the job on its original queue a number of times, then calls another failure mode after the final failure.
 
 See `Honeydew.queue_spec/2` to select a failure mode.
 

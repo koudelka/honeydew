@@ -1,4 +1,4 @@
-defmodule Honeydew.FailureMode.RequeueTest do
+defmodule Honeydew.FailureMode.MoveTest do
   use ExUnit.Case, async: true
   import ExUnit.CaptureLog
 
@@ -6,14 +6,14 @@ defmodule Honeydew.FailureMode.RequeueTest do
     queue = :erlang.unique_integer
     failure_queue = "#{queue}_failed"
 
-    {:ok, _} = Helper.start_queue_link(queue, failure_mode: {Honeydew.FailureMode.Requeue, queue: failure_queue})
+    {:ok, _} = Helper.start_queue_link(queue, failure_mode: {Honeydew.FailureMode.Move, queue: failure_queue})
     {:ok, _} = Helper.start_queue_link(failure_queue)
     {:ok, _} = Helper.start_worker_link(queue, Stateless)
 
     [queue: queue, failure_queue: failure_queue]
   end
 
-  test "should requeue the job on the new queue", %{queue: queue, failure_queue: failure_queue} do
+  test "should move the job on the new queue", %{queue: queue, failure_queue: failure_queue} do
     capture_log(fn ->
       {:crash, [self()]} |> Honeydew.async(queue)
       assert_receive :job_ran
@@ -31,7 +31,7 @@ defmodule Honeydew.FailureMode.RequeueTest do
     capture_log(fn ->
       job = {:crash, [self()]} |> Honeydew.async(queue, reply: true)
 
-      assert {:requeued, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
+      assert {:moved, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
 
       {:ok, _} = Helper.start_worker_link(failure_queue, Stateless)
 

@@ -87,12 +87,13 @@ defmodule Honeydew.Queue.Mnesia do
     state
   end
 
-  def nack(%State{private: %PState{table: table, access_context: access_context}} = state, %Job{private: {_, id}} = job) do
+  def nack(%State{private: %PState{table: table, access_context: access_context}} = state, %Job{private: {_, id},
+                                                                                                failure_private: failure_private} = job) do
     :mnesia.activity(access_context, fn ->
       :ok = :mnesia.delete({table, {true, id}})
 
       :ok =
-        %{job | private: {false, id}}
+        %{job | private: {false, id}, failure_private: failure_private}
         |> Job.to_record(table)
         |> :mnesia.write
     end)
