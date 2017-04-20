@@ -1,4 +1,4 @@
-Honeydew 💪🏻🍈
+Honeydew 💪🏻🍈 [![Build Status](https://travis-ci.org/koudelka/honeydew.svg?branch=master)](https://travis-ci.org/koudelka/honeydew)
 ========
 
 Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a pluggable job queue + worker pool for Elixir.
