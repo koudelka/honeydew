@@ -17,10 +17,6 @@ defmodule Honeydew.Monitor do
   end
 
   def init([job, queue, failure_mode]) do
-    queue
-    |> Honeydew.group(:monitors)
-    |> :pg2.join(self())
-
     Process.send_after(self(), :return_job, @claim_delay)
 
     {:ok, %State{job: job, queue: queue, failure_mode: failure_mode}}

@@ -5,7 +5,8 @@ defmodule Honeydew.Queue do
       private: nil,
       dispatcher: nil,
       suspended: false,
-      failure_mode: nil
+      failure_mode: nil,
+      monitors: MapSet.new
   end
 
   defmacro __using__(_opts) do
@@ -101,11 +102,12 @@ defmodule Honeydew.Queue do
         {:noreply, %{state | suspended: true}}
       end
 
-      def handle_call(:status, _from, %State{private: queue, suspended: suspended} = state) do
+      def handle_call(:status, _from, %State{private: queue, suspended: suspended, monitors: monitors} = state) do
         status =
           queue
           |> status
           |> Map.put(:suspended, suspended)
+          |> Map.put(:monitors, MapSet.to_list(monitors))
 
         {:reply, status, state}
       end
@@ -160,24 +162,26 @@ defmodule Honeydew.Queue do
       end
 
 
-      def handle_info({:DOWN, _ref, :process, worker, _reason}, state) do
-        Logger.debug "[Honeydew] Queue #{inspect self()} saw worker #{inspect worker} crash"
-        {:noreply, remove_worker(state, worker)}
-      end
-
-      def start_monitor(job, %State{queue: queue, failure_mode: failure_mode}) do
-        {:ok, pid} = Monitor.start(job, queue, failure_mode)
-        %{job | monitor: pid}
+      def handle_info({:DOWN, _ref, :process, process, _reason}, %State{monitors: monitors} = state) do
+        state =
+          if MapSet.member?(monitors, process) do
+            %{state | monitors: MapSet.delete(monitors, process)}
+          else
+            Honeydew.debug "[Honeydew] Queue #{inspect self()} saw worker #{inspect process} crash"
+            remove_worker(state, process)
+          end
+        {:noreply, state}
       end
 
       defp subscribe_workers(workers) do
         Enum.each(workers, &GenServer.cast(&1, :subscribe_to_queues))
       end
 
-      defp send_job(worker, job, %State{queue: queue, failure_mode: failure_mode}) do
-        {:ok, pid} = Monitor.start(job, queue, failure_mode)
-        job = %{job | monitor: pid}
-        GenServer.cast(worker, {:run, job})
+      defp send_job(worker, job, %State{queue: queue, failure_mode: failure_mode, monitors: monitors} = state) do
+        {:ok, monitor} = Monitor.start(job, queue, failure_mode)
+        Process.monitor(monitor)
+        GenServer.cast(worker, {:run, %{job | monitor: monitor}})
+        %{state | monitors: MapSet.put(monitors, monitor)}
       end
 
       defp dispatch(state) do
@@ -185,7 +189,7 @@ defmodule Honeydew.Queue do
              {state, job} <- reserve(state),
              {worker, state} when not is_nil(worker) <- check_out_worker(job, state) do
           Logger.debug "[Honeydew] Queue #{inspect self()} dispatching job #{inspect job.private} to #{inspect worker}"
-          send_job(worker, job, state)
+          state = send_job(worker, job, state)
           dispatch(state)
         else _ -> state
         end

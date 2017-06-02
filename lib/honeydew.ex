@@ -56,8 +56,8 @@ defmodule Honeydew do
       |> GenServer.call(:status)
 
     busy_workers =
-      queue
-      |> get_all_members(:monitors)
+      queue_status
+      |> Map.get(:monitors)
       |> Enum.map(fn monitor ->
            try do
              GenServer.call(monitor, :current_job)
@@ -76,7 +76,7 @@ defmodule Honeydew do
       |> Enum.into(%{})
       |> Map.merge(busy_workers)
 
-    %{queue: queue_status, workers: workers}
+    %{queue: Map.delete(queue_status, :monitors), workers: workers}
   end
 
   def filter(queue, function) do
