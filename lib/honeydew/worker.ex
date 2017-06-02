@@ -1,6 +1,7 @@
 defmodule Honeydew.Worker do
   use GenServer
   require Logger
+  require Honeydew
   alias Honeydew.Job
 
   defmodule State do
@@ -80,7 +81,7 @@ defmodule Honeydew.Worker do
   end
 
   def handle_cast(:subscribe_to_queues, %State{queue: queue} = state) do
-    Logger.debug "[Honeydew] Worker #{inspect self()} sending ready"
+    Honeydew.debug "[Honeydew] Worker #{inspect self()} sending ready"
     queue
     |> Honeydew.get_all_members(:queues)
     |> Enum.each(&GenServer.cast(&1, {:worker_ready, self()}))

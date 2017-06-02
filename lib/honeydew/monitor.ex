@@ -1,6 +1,7 @@
 defmodule Honeydew.Monitor do
   use GenServer
   require Logger
+  require Honeydew
 
   # when the queue casts a job to a worker, it spawns a local Monitor with the job as state,
   # the Monitor watches the worker, if the worker dies (or its node is disconnected), the Monitor returns the
@@ -23,7 +24,7 @@ defmodule Honeydew.Monitor do
   end
 
   def handle_call({:claim, job}, {worker, _ref}, state) do
-    Logger.debug "[Honeydew] Monitor #{inspect self()} had job #{inspect job.private} claimed by worker #{inspect worker}"
+    Honeydew.debug "[Honeydew] Monitor #{inspect self()} had job #{inspect job.private} claimed by worker #{inspect worker}"
     Process.monitor(worker)
     {:reply, :ok, %{state | job: job, worker: worker}}
   end

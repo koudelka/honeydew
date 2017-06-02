@@ -1,5 +1,6 @@
 defmodule Honeydew do
   alias Honeydew.Job
+  require Logger
 
   #
   # Parts of this module were lovingly stolen from
@@ -306,6 +307,15 @@ defmodule Honeydew do
 
   defp name(queue, component) do
     ["honeydew", component, queue] |> List.flatten |> Enum.join(".") |> String.to_atom
+  end
+
+  @doc false
+  defmacro debug(ast) do
+    quote do
+      fn ->
+        Logger.debug unquote(ast)
+      end
+    end
   end
 
 end

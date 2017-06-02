@@ -13,6 +13,7 @@ defmodule Honeydew.Queue do
     quote do
       use GenServer
       require Logger
+      require Honeydew
       alias Honeydew.Monitor
 
       # @behaviour Honeydew.Queue
@@ -60,7 +61,7 @@ defmodule Honeydew.Queue do
       end
 
       def handle_cast({:worker_ready, worker}, state) do
-        Logger.debug "[Honeydew] Queue #{inspect self()} ready for worker #{inspect worker}"
+        Honeydew.debug "[Honeydew] Queue #{inspect self()} ready for worker #{inspect worker}"
         Process.monitor(worker)
 
         state =
@@ -75,12 +76,12 @@ defmodule Honeydew.Queue do
       #
 
       def handle_cast({:ack, job}, state) do
-        Logger.debug "[Honeydew] Job #{inspect job.private} acked in #{inspect self()}"
+        Honeydew.debug "[Honeydew] Job #{inspect job.private} acked in #{inspect self()}"
         {:noreply, state |> ack(job)}
       end
 
       def handle_cast({:nack, job}, state) do
-        Logger.debug "[Honeydew] Job #{inspect job.private} nacked by #{inspect self()}"
+        Honeydew.debug "[Honeydew] Job #{inspect job.private} nacked by #{inspect self()}"
         {:noreply, state |> nack(job) |> dispatch}
       end
 
@@ -156,7 +157,7 @@ defmodule Honeydew.Queue do
       # rpc get-workers reply
       def handle_info({_promise_pid, {:promise_reply, {:error, {:no_such_group, _worker_group}}}}, state), do: {:noreply, state}
       def handle_info({_promise_pid, {:promise_reply, workers}}, state) do
-        Logger.debug "[Honeydew] Found #{Enum.count(workers)} workers."
+        Honeydew.debug "[Honeydew] Found #{Enum.count(workers)} workers."
         subscribe_workers(workers)
         {:noreply, state}
       end
@@ -188,7 +189,7 @@ defmodule Honeydew.Queue do
         with true <- worker_available?(state),
              {state, job} <- reserve(state),
              {worker, state} when not is_nil(worker) <- check_out_worker(job, state) do
-          Logger.debug "[Honeydew] Queue #{inspect self()} dispatching job #{inspect job.private} to #{inspect worker}"
+          Honeydew.debug "[Honeydew] Queue #{inspect self()} dispatching job #{inspect job.private} to #{inspect worker}"
           state = send_job(worker, job, state)
           dispatch(state)
         else _ -> state
