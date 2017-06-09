@@ -84,6 +84,10 @@ defmodule Honeydew.Worker do
     Honeydew.debug "[Honeydew] Worker #{inspect self()} sending ready"
     queue
     |> Honeydew.get_all_members(:queues)
+    |> Enum.each(&GenServer.cast(&1, {:monitor_me, self()}))
+
+    queue
+    |> Honeydew.get_all_members(:queues)
     |> Enum.each(&GenServer.cast(&1, {:worker_ready, self()}))
 
     {:noreply, state}

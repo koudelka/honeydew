@@ -60,9 +60,13 @@ defmodule Honeydew.Queue do
         {:reply, {:ok, job}, dispatch(state)}
       end
 
+      def handle_cast({:monitor_me, worker}, state) do
+        Process.monitor(worker)
+        {:noreply, state}
+      end
+
       def handle_cast({:worker_ready, worker}, state) do
         Honeydew.debug "[Honeydew] Queue #{inspect self()} ready for worker #{inspect worker}"
-        Process.monitor(worker)
 
         state =
           state

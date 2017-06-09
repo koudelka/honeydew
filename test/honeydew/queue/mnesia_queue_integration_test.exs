@@ -128,4 +128,18 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
       assert_receive ^i
     end)
   end
+
+  test "should not leak monitors", %{queue: queue} do
+    queue_process = Honeydew.get_queue(queue)
+
+    Enum.each(0..500, fn _ ->
+      me = self()
+      fn -> send(me, :hi) end |> Honeydew.async(queue)
+      assert_receive :hi
+    end)
+
+    {:monitors, monitors} = :erlang.process_info(queue_process, :monitors)
+    assert Enum.count(monitors) < 20
+  end
+
 end
