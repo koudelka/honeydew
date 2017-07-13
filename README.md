@@ -39,7 +39,6 @@ In your mix.exs file:
 ```elixir
 defp deps do
   [{:honeydew, "~> 1.0.0-rc7"}]
-
 end
 ```
 
@@ -210,13 +209,18 @@ To cancel a job that hasn't yet run, use `Honeydew.cancel/2`. If the job was suc
 There are various options you can pass to `queue_spec/2` and `worker_spec/3`, see the [Honeydew](https://github.com/koudelka/honeydew/blob/master/lib/honeydew.ex) module.
 
 ### Failure Modes
-When a worker crashes, a monitoring process runs the `handle_failure/4` function from the selected module on the queue's node. Honeydew ships with two failure modes, at present:
+When a worker crashes, a monitoring process runs the `handle_failure/3` function from the selected module on the queue's node. Honeydew ships with two failure modes, at present:
 
 - `Honeydew.FailureMode.Abandon`: Simply forgets about the job.
 - `Honeydew.FailureMode.Move`: Removes the job from the original queue, and places it on another.
 - `Honeydew.FailureMode.Retry`: Re-attempts the job on its original queue a number of times, then calls another failure mode after the final failure.
 
 See `Honeydew.queue_spec/2` to select a failure mode.
+
+### Success Modes
+When a job completes successfully, the monitoring process runs the `handle_success/2` function from the selected module on the queue's node. You'll likely want to use this callback for monitoring purposes. You can use a job's `:enqueued_at`, `:started_at` and `:completed_at` fields to calculate various time intervals.
+
+See `Honeydew.queue_spec/2` to select a success mode.
 
 ## The Dungeon
 

@@ -2,7 +2,7 @@ defmodule Honeydew.FailureMode.Move do
   require Logger
   alias Honeydew.Job
 
-  # @behaviour Honeydew.FailureMode
+  @behaviour Honeydew.FailureMode
 
   def handle_failure(%Job{queue: queue, from: from} = job, reason, [queue: to_queue]) do
     Logger.info "Job failed because #{inspect reason}, moving to #{inspect to_queue}: #{inspect job}"

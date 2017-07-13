@@ -10,7 +10,9 @@ defmodule Honeydew do
   def async(task, queue, opts \\ [])
   def async(task, queue, reply: true) do
     {:ok, job} =
-      %Job{task: task, from: {self(), make_ref()}, queue: queue}
+      task
+      |> Job.new(queue)
+      |> struct(from: {self(), make_ref()})
       |> enqueue
 
     job
@@ -18,7 +20,8 @@ defmodule Honeydew do
 
   def async(task, queue, _opts) do
     {:ok, job} =
-      %Job{task: task, queue: queue}
+      task
+      |> Job.new(queue)
       |> enqueue
 
     job
@@ -141,6 +144,7 @@ defmodule Honeydew do
   - `queue`: is the module that queue will use, you may also provide init/1 args: {module, args}
   - `dispatcher`: the job dispatching strategy, `{module, init_args}`.
   - `failure_mode`: the way that failed jobs should be handled. You can pass either a module, or {module, args}, the module must implement the `Honeydew.FailureMode` behaviour. `args` defaults to `[]`.
+  - `success_mode`: a callback that runs when a job successfully completes. You can pass either a module, or {module, args}, the module must implement the `Honeydew.SuccessMode` behaviour, `args` defaults to `[]``.
   - `supervisor_opts`: options accepted by `Supervisor.Spec.supervisor/3`.
 
   For example:
@@ -168,8 +172,15 @@ defmodule Honeydew do
     failure_mode =
       case opts[:failure_mode] do
         nil -> {Honeydew.FailureMode.Abandon, []}
-        module when is_atom(module) -> {module, []}
         {module, args} -> {module, args}
+        module when is_atom(module) -> {module, []}
+      end
+
+    success_mode =
+      case opts[:success_mode] do
+        nil -> nil
+        {module, args} -> {module, args}
+        module when is_atom(module) -> {module, []}
       end
 
     supervisor_opts =
@@ -181,7 +192,7 @@ defmodule Honeydew do
 
     Supervisor.Spec.supervisor(
       Honeydew.QueueSupervisor,
-      [name, module, args, num, dispatcher, failure_mode],
+      [name, module, args, num, dispatcher, failure_mode, success_mode],
       supervisor_opts)
   end
 

@@ -45,7 +45,7 @@ defmodule Honeydew.Queue.Mnesia do
   # Enqueue/Reserve
   #
 
-  def enqueue(%State{private: %PState{table: table, access_context: access_context}} = state, job) do
+  def enqueue(job, %State{private: %PState{table: table, access_context: access_context}} = state) do
     job = %{job | private: {false, :erlang.unique_integer([:monotonic])}} # {in_progress, :id}
 
     :mnesia.activity(access_context, fn ->
@@ -81,14 +81,14 @@ defmodule Honeydew.Queue.Mnesia do
   # Ack/Nack
   #
 
-  def ack(%State{private: %PState{table: table}} = state, %Job{private: private}) do
+  def ack(%Job{private: private}, %State{private: %PState{table: table}} = state) do
     :ok = :mnesia.dirty_delete(table, private)
 
     state
   end
 
-  def nack(%State{private: %PState{table: table, access_context: access_context}} = state, %Job{private: {_, id},
-                                                                                                failure_private: failure_private} = job) do
+  def nack(%Job{private: {_, id}, failure_private: failure_private} = job, %State{private: %PState{table: table,
+                                                                                                   access_context: access_context}} = state) do
     :mnesia.activity(access_context, fn ->
       :ok = :mnesia.delete({table, {true, id}})
 
@@ -152,7 +152,7 @@ defmodule Honeydew.Queue.Mnesia do
     end)
   end
 
-  def cancel(%PState{table: table, access_context: access_context} = queue, %Job{private: {_, id}}) do
+  def cancel(%Job{private: {_, id}, }, %PState{table: table, access_context: access_context} = queue) do
     reply =
       :mnesia.activity(access_context, fn ->
         Job.job(private: {:_, id}, _: :_)

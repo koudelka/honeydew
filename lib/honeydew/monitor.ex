@@ -10,22 +10,23 @@ defmodule Honeydew.Monitor do
   @claim_delay 5_000 # ms
 
   defmodule State do
-    defstruct [:queue, :worker, :job, :failure_mode]
+    defstruct [:queue, :worker, :job, :failure_mode, :success_mode]
   end
 
-  def start(job, queue, failure_mode) do
-    GenServer.start(__MODULE__, [job, queue, failure_mode])
+  def start(job, queue, failure_mode, success_mode) do
+    GenServer.start(__MODULE__, [job, queue, failure_mode, success_mode])
   end
 
-  def init([job, queue, failure_mode]) do
+  def init([job, queue, failure_mode, success_mode]) do
     Process.send_after(self(), :return_job, @claim_delay)
 
-    {:ok, %State{job: job, queue: queue, failure_mode: failure_mode}}
+    {:ok, %State{job: job, queue: queue, failure_mode: failure_mode, success_mode: success_mode}}
   end
 
   def handle_call({:claim, job}, {worker, _ref}, state) do
     Honeydew.debug "[Honeydew] Monitor #{inspect self()} had job #{inspect job.private} claimed by worker #{inspect worker}"
     Process.monitor(worker)
+    job = %{job | started_at: :erlang.system_time(:millisecond)}
     {:reply, :ok, %{state | job: job, worker: worker}}
   end
 
@@ -33,10 +34,15 @@ defmodule Honeydew.Monitor do
     {:reply, {worker, job}, state}
   end
 
-  def handle_call(:ack, {worker, _ref}, %State{job: job, queue: queue, worker: worker} = state) do
+  def handle_call(:ack, {worker, _ref}, %State{job: job, queue: queue, worker: worker, success_mode: success_mode} = state) do
+    job = %{job | completed_at: :erlang.system_time(:millisecond)}
+
     queue
     |> Honeydew.get_queue
     |> GenServer.cast({:ack, job})
+
+    with {success_mode_module, success_mode_args} <- success_mode,
+      do: success_mode_module.handle_success(job, success_mode_args)
 
     {:stop, :normal, :ok, %{state | job: nil}}
   end

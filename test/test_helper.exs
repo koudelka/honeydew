@@ -31,6 +31,14 @@ defmodule Stateful do
   end
 end
 
+defmodule TestSuccessMode do
+  @behaviour Honeydew.SuccessMode
+
+  def handle_success(job, [to: to]) do
+    send to, job
+  end
+end
+
 defmodule Helper do
   def start_queue_link(queue, opts \\ []) do
     Supervisor.start_link([Honeydew.queue_spec(queue, opts)], strategy: :one_for_one)

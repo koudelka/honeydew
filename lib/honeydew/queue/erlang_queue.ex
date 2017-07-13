@@ -12,7 +12,7 @@ defmodule Honeydew.Queue.ErlangQueue do
   # Enqueue/Reservee
   #
 
-  def enqueue(%State{private: {pending, in_progress}} = state, job) do
+  def enqueue(job, %State{private: {pending, in_progress}} = state) do
     job = %{job | private: :erlang.unique_integer}
     {%{state | private: {:queue.in(job, pending), in_progress}}, job}
   end
@@ -30,11 +30,11 @@ defmodule Honeydew.Queue.ErlangQueue do
   # Ack/Nack
   #
 
-  def ack(%State{private: {pending, in_progress}} = state, %Job{private: id}) do
+  def ack(%Job{private: id}, %State{private: {pending, in_progress}} = state) do
     %{state | private: {pending, Map.delete(in_progress, id)}}
   end
 
-  def nack(%State{private: {pending, in_progress}} = state, %Job{private: id} = job) do
+  def nack(%Job{private: id} = job, %State{private: {pending, in_progress}} = state) do
     %{state | private: {:queue.in_r(job, pending), Map.delete(in_progress, id)}}
   end
 
@@ -52,7 +52,7 @@ defmodule Honeydew.Queue.ErlangQueue do
       (in_progress |> Map.values |> Enum.filter(function))
   end
 
-  def cancel({pending, in_progress}, %Job{private: private}) do
+  def cancel(%Job{private: private}, {pending, in_progress}) do
     filter = fn
       %Job{private: ^private} -> false;
       _ -> true

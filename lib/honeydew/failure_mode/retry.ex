@@ -3,7 +3,7 @@ defmodule Honeydew.FailureMode.Retry do
   alias Honeydew.Job
   alias Honeydew.FailureMode.Abandon
 
-  # @behaviour Honeydew.FailureMode
+  @behaviour Honeydew.FailureMode
 
   def handle_failure(job, reason, [times: times]), do:
     handle_failure(job, reason, [times: times, finally: {Abandon, []}])

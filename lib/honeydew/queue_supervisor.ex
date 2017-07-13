@@ -1,10 +1,10 @@
 defmodule Honeydew.QueueSupervisor do
 
-  def start_link(queue, module, args, num_queues, dispatcher, failure_mode) do
+  def start_link(queue, module, args, num_queues, dispatcher, failure_mode, success_mode) do
     import Supervisor.Spec
 
     children = [
-      worker(module, [queue, args, dispatcher, failure_mode])
+      worker(module, [queue, args, dispatcher, failure_mode, success_mode])
     ]
 
     opts = [strategy: :simple_one_for_one,

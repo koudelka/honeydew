@@ -6,6 +6,7 @@ defmodule Honeydew.Queue do
       dispatcher: nil,
       suspended: false,
       failure_mode: nil,
+      success_mode: nil,
       monitors: MapSet.new
   end
 
@@ -19,15 +20,15 @@ defmodule Honeydew.Queue do
       # @behaviour Honeydew.Queue
       @before_compile unquote(__MODULE__)
 
-      def start_link(queue, args, dispatcher, failure_mode) do
-        GenServer.start_link(__MODULE__, {queue, args, dispatcher, failure_mode})
+      def start_link(queue, args, dispatcher, failure_mode, success_mode) do
+        GenServer.start_link(__MODULE__, {queue, args, dispatcher, failure_mode, success_mode})
       end
 
       #
       # the queue module also has an init/1 that's called with a list, so we use a tuple
       # to ensure we match this one.
       #
-      def init({queue, args, {dispatcher, dispatcher_args}, failure_mode}) do
+      def init({queue, args, {dispatcher, dispatcher_args}, failure_mode, success_mode}) do
         queue
         |> Honeydew.group(:queues)
         |> :pg2.join(self())
@@ -43,7 +44,11 @@ defmodule Honeydew.Queue do
 
         {:ok, dispatcher_private} = :erlang.apply(dispatcher, :init, dispatcher_args)
 
-        {:ok, %State{queue: queue, private: state, failure_mode: failure_mode, dispatcher: {dispatcher, dispatcher_private}}}
+        {:ok, %State{queue: queue,
+                     private: state,
+                     failure_mode: failure_mode,
+                     success_mode: success_mode,
+                     dispatcher: {dispatcher, dispatcher_private}}}
       end
 
       #
@@ -51,12 +56,12 @@ defmodule Honeydew.Queue do
       #
 
       def handle_call({:enqueue, job}, _from, %State{suspended: true} = state) do
-        {state, job} = enqueue(state, job)
+        {state, job} = do_enqueue(job, state)
         {:reply, {:ok, job}, state}
       end
 
       def handle_call({:enqueue, job}, _from, state) do
-        {state, job} = enqueue(state, job)
+        {state, job} = do_enqueue(job, state)
         {:reply, {:ok, job}, dispatch(state)}
       end
 
@@ -81,12 +86,12 @@ defmodule Honeydew.Queue do
 
       def handle_cast({:ack, job}, state) do
         Honeydew.debug "[Honeydew] Job #{inspect job.private} acked in #{inspect self()}"
-        {:noreply, state |> ack(job)}
+        {:noreply, ack(job, state)}
       end
 
       def handle_cast({:nack, job}, state) do
         Honeydew.debug "[Honeydew] Job #{inspect job.private} nacked by #{inspect self()}"
-        {:noreply, state |> nack(job) |> dispatch}
+        {:noreply, job |> nack(state) |> dispatch}
       end
 
       #
@@ -129,7 +134,7 @@ defmodule Honeydew.Queue do
       end
 
       def handle_call({:cancel, job}, _from, %State{private: queue} = state) do
-        {reply, queue} = cancel(queue, job)
+        {reply, queue} = cancel(job, queue)
         {:reply, reply, %{state | private: queue}}
       end
 
@@ -178,12 +183,18 @@ defmodule Honeydew.Queue do
         {:noreply, state}
       end
 
+      defp do_enqueue(job, state) do
+        job
+        |> struct(enqueued_at: :erlang.system_time(:millisecond))
+        |> enqueue(state)
+      end
+
       defp subscribe_workers(workers) do
         Enum.each(workers, &GenServer.cast(&1, :subscribe_to_queues))
       end
 
-      defp send_job(worker, job, %State{queue: queue, failure_mode: failure_mode, monitors: monitors} = state) do
-        {:ok, monitor} = Monitor.start(job, queue, failure_mode)
+      defp send_job(worker, job, %State{queue: queue, failure_mode: failure_mode, success_mode: success_mode, monitors: monitors} = state) do
+        {:ok, monitor} = Monitor.start(job, queue, failure_mode, success_mode)
         Process.monitor(monitor)
         GenServer.cast(worker, {:run, %{job | monitor: monitor}})
         %{state | monitors: MapSet.put(monitors, monitor)}

@@ -2,7 +2,7 @@ defmodule Honeydew.FailureMode.Abandon do
   require Logger
   alias Honeydew.Job
 
-  # @behaviour Honeydew.FailureMode
+  @behaviour Honeydew.FailureMode
 
   def handle_failure(%Job{queue: queue, from: from} = job, reason, []) do
     Logger.warn "Job failed because #{inspect reason}, abandoning: #{inspect job}"

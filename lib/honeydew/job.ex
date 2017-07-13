@@ -9,7 +9,10 @@ defmodule Honeydew.Job do
            :result,
            :by, # node last processed the job
            :queue,
-           :monitor]
+           :monitor,
+           :enqueued_at,
+           :started_at,
+           :completed_at]
 
   @kv Enum.map(@fields, &{&1, nil})
 
@@ -21,6 +24,10 @@ defmodule Honeydew.Job do
 
   vars = @fields |> Enum.map(&Macro.var(&1, __MODULE__))
   vars_keyword_list = Enum.zip(@fields, vars)
+
+  def new(task, queue) do
+    %__MODULE__{task: task, queue: queue, enqueued_at: :erlang.system_time(:millisecond)}
+  end
 
   def to_record(%{unquote_splicing(vars_keyword_list)}, name) do
     {name, unquote_splicing(vars)}
