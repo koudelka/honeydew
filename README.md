@@ -7,9 +7,9 @@ Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a plug
 - Workers are issued only one job at a time, a job is only ever removed from the queue when it succeeds.
 - Queues can exist locally, on another node in the cluster, or on a remote queue server (rabbitmq, etc...).
 - If a worker crashes while processing a job, the job is recovered and a "failure mode" (abandon, move, retry, etc) is executed.
-- Can optionally heal your cluster after a disconnect or downed node.
 - Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](http://elixir-lang.org/docs/stable/elixir/Task.html).
-- Queues, workers, dispatch strategies and failure modes are all plugable with user modules.
+- Queues, workers, dispatch strategies and failure/success modes are all plugable with user modules.
+- Can optionally heal your cluster after a disconnect or downed node.
 
 Honeydew attempts to provide "at least once" job execution, it's possible that circumstances could conspire to execute a job, and prevent Honeydew from reporting that success back to the queue. I encourage you to write your jobs idempotently.
 
@@ -30,7 +30,7 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 |------------------------|:------:|:------:|:------:|:---------:|:-----------:|
 | ErlangQueue (`:queue`) | ✅*    | ✅     | ✅*    | ✅       | ❌         |
 | Mnesia                 | ✅*    | ✅*    | ✅     | ✅ (ets) | ✅ (dets)   |
-* careful with this, it's slow, O(n)
+* this is "slow", O(num_job)
 
 
 ## Getting Started
@@ -43,7 +43,7 @@ defp deps do
 end
 ```
 
-You can run honeydew on a single node, or with components distributed over a cluster.
+You can run honeydew on a single node, or distributed over a cluster.
 
 ### Local Queue Example
 ![local queue](assets/local.png)
@@ -251,11 +251,12 @@ In general, a job goes through the following stages:
      then watches the worker in case the job crashes.
      ├─ When the job succeeds:
      |  ├─ If the job was enqueued with `reply: true`, the result is sent.
-     |  ├─ The worker sends an acknowledgement message to the monitor. The monitor sends an
-     |  |  acknowledgement to the queue to remove the job.
+     |  ├─ The worker sends an acknowledgement message to the monitor.
+     |  |─ The monitor sends an acknowledgement to the queue to remove the job.
+     |  |─ The monitor executes the selected success mode
      |  └─ The worker informs the queue that it's ready for a new job. The queue checks the worker in with the
      |     dispatcher.
-     └─ If the worker crashes, the monitor executes the selected "Failure Mode" and terminates.
+     └─ If the worker crashes, the monitor executes the selected failure mode and terminates.
 ```
 
 
@@ -290,7 +291,6 @@ Your worker module's `init/1` function must return `{:ok, state}`. If anything e
 - statistics?
 - `yield_many/2` support?
 - benchmark mnesia queue's dual filter implementations, discard one?
-- using a global queue, control which node executes a job on-the-fly with a dispatcher
 - more tests
 
 ### Acknowledgements

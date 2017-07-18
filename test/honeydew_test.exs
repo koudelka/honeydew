@@ -100,8 +100,8 @@ defmodule HoneydewTest do
       queue
       |> Honeydew.status
       |> Map.get(:workers)
-      |> Enum.filter(fn {pid, {job, status}} -> true
-                                          _ -> false end)
+      |> Enum.filter(fn {_pid, {_job, _status}} -> true
+                                              _ -> false end)
 
     assert status == {:running, "doing thing 1/2"}
   end
