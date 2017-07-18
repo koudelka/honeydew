@@ -89,4 +89,21 @@ defmodule HoneydewTest do
     assert_receive %Job{private: ^id}
   end
 
+  test "progress updates" do
+    queue = :erlang.unique_integer
+    {:ok, _} = Helper.start_queue_link(queue)
+    {:ok, _} = Helper.start_worker_link(queue, Stateless)
+
+    {:emit_progress, ["doing thing 1/2"]} |> Honeydew.async(queue)
+
+    [{_worker, {_job, status}}] =
+      queue
+      |> Honeydew.status
+      |> Map.get(:workers)
+      |> Enum.filter(fn {pid, {job, status}} -> true
+                                          _ -> false end)
+
+    assert status == {:running, "doing thing 1/2"}
+  end
+
 end

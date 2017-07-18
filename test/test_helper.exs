@@ -1,4 +1,6 @@
 defmodule Stateless do
+  use Honeydew.Progress
+
   def send_msg(to, msg) do
     send(to, msg)
   end
@@ -14,6 +16,11 @@ defmodule Stateless do
   def crash(pid) do
     send pid, :job_ran
     raise "ignore this crash"
+  end
+
+  def emit_progress(update) do
+    progress(update)
+    Process.sleep(500)
   end
 end
 

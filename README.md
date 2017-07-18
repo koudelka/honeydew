@@ -19,9 +19,10 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 ### tl;dr
 - Check out the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
 - Enqueue and receive responses with `async/3` and `yield/2`.
+- Emit job progress with `progress/1`
+- Queue/Worker status with `Honeydew.status/1`
 - Suspend and resume with `Honeydew.suspend/1` and `Honeydew.resume/1`
 - List jobs with `Honeydew.filter/2`
-- Queue status with `Honeydew.status/1`
 - Cancel jobs with `Honeydew.cancel/2`
 
 ### Queue Feature Support
@@ -192,7 +193,7 @@ iex(clientfacing@dax)1> {:work_really_hard, [5]} |> Honeydew.async({:global, :my
 %Honeydew.Job{by: nil, failure_private: nil, from: nil, monitor: nil,
  private: {false, -576460752303423485}, queue: {:global, :my_queue},
  result: nil, task: {:work_really_hard, [5]}}
-````
+```
 
 The job will run on the worker node, five seconds later it'll print `I worked really hard for 5 secs!`
 
@@ -204,6 +205,12 @@ You can suspend a queue (halt the distribution of new jobs to workers), by calli
 
 ### Cancelling Jobs
 To cancel a job that hasn't yet run, use `Honeydew.cancel/2`. If the job was successfully cancelled before execution, `:ok` will be returned. If the job wasn't present in the queue, `nil`. If the job is currently being executed, `{:error, :in_progress}`.
+
+### Job Progress
+Your jobs can emit their current status, i.e. "downloaded 10/50 items", using the `progress/1` function given to your job module by `use Honeydew.Progress`
+
+Check out the [simple example](https://github.com/koudelka/honeydew/tree/master/examples/simple.exs).
+
 
 ### Queue Options
 There are various options you can pass to `queue_spec/2` and `worker_spec/3`, see the [Honeydew](https://github.com/koudelka/honeydew/blob/master/lib/honeydew.ex) module.

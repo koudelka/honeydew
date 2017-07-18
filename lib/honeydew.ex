@@ -64,7 +64,7 @@ defmodule Honeydew do
       |> Map.get(:monitors)
       |> Enum.map(fn monitor ->
            try do
-             GenServer.call(monitor, :current_job)
+             GenServer.call(monitor, :status)
            catch
              # the monitor may have shut down
              :exit, _ -> nil

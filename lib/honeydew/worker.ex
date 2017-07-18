@@ -52,6 +52,7 @@ defmodule Honeydew.Worker do
     job = %{job | by: node()}
 
     :ok = GenServer.call(monitor, {:claim, job})
+    Process.put(:monitor, monitor)
 
     user_state_args =
       case user_state do
@@ -72,6 +73,7 @@ defmodule Honeydew.Worker do
       do: send(owner, job)
 
     :ok = GenServer.call(monitor, :ack)
+    Process.delete(:monitor)
 
     queue
     |> Honeydew.get_queue
