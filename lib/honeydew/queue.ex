@@ -185,7 +185,7 @@ defmodule Honeydew.Queue do
 
       defp do_enqueue(job, state) do
         job
-        |> struct(enqueued_at: :erlang.system_time(:millisecond))
+        |> struct(enqueued_at: System.system_time(:millisecond))
         |> enqueue(state)
       end
 

@@ -26,7 +26,7 @@ defmodule Honeydew.Job do
   vars_keyword_list = Enum.zip(@fields, vars)
 
   def new(task, queue) do
-    %__MODULE__{task: task, queue: queue, enqueued_at: :erlang.system_time(:millisecond)}
+    %__MODULE__{task: task, queue: queue, enqueued_at: System.system_time(:millisecond)}
   end
 
   def to_record(%{unquote_splicing(vars_keyword_list)}, name) do
