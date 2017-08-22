@@ -144,12 +144,12 @@ defmodule Honeydew do
   - `queue`: is the module that queue will use, you may also provide init/1 args: {module, args}
   - `dispatcher`: the job dispatching strategy, `{module, init_args}`.
   - `failure_mode`: the way that failed jobs should be handled. You can pass either a module, or {module, args}, the module must implement the `Honeydew.FailureMode` behaviour. `args` defaults to `[]`.
-  - `success_mode`: a callback that runs when a job successfully completes. You can pass either a module, or {module, args}, the module must implement the `Honeydew.SuccessMode` behaviour, `args` defaults to `[]``.
+  - `success_mode`: a callback that runs when a job successfully completes. You can pass either a module, or {module, args}, the module must implement the `Honeydew.SuccessMode` behaviour, `args` defaults to `[]`.
   - `supervisor_opts`: options accepted by `Supervisor.Spec.supervisor/3`.
 
   For example:
-    `Honeydew.queue_spec("my_awesome_queue")`
-    `Honeydew.queue_spec("my_awesome_queue", queue: {MyQueueModule, [ip: "localhost"]}, dispatcher: {Honeydew.Dispatcher.MRU, []})`
+  - `Honeydew.queue_spec("my_awesome_queue")`
+  - `Honeydew.queue_spec("my_awesome_queue", queue: {MyQueueModule, [ip: "localhost"]}, dispatcher: {Honeydew.Dispatcher.MRU, []})`
   """
   def queue_spec(name, opts \\ []) do
     {module, args} =
@@ -210,9 +210,9 @@ defmodule Honeydew do
   - `nodes`: for :global queues, you can provide a list of nodes to stay connected to (your queue node and enqueuing nodes)
 
   For example:
-    `Honeydew.worker_spec("my_awesome_queue", MyJobModule)`
-    `Honeydew.worker_spec("my_awesome_queue", {MyJobModule, [key: "secret key"]}, num: 3)`
-    `Honeydew.worker_spec({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
+  - `Honeydew.worker_spec("my_awesome_queue", MyJobModule)`
+  - `Honeydew.worker_spec("my_awesome_queue", {MyJobModule, [key: "secret key"]}, num: 3)`
+  - `Honeydew.worker_spec({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
   """
   def worker_spec(name, module_and_args, opts \\ []) do
     {module, args} =
