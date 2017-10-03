@@ -38,6 +38,9 @@ defmodule Honeydew.Queue.Mnesia do
     end
 
     :ok = :mnesia.wait_for_tables([table], 15_000)
+
+    :ok = reset_after_crash(table, access_context)
+
     {:ok, %PState{table: table, access_context: access_context}}
   end
 
@@ -68,7 +71,7 @@ defmodule Honeydew.Queue.Mnesia do
 
           :ok = :mnesia.delete_object(job)
 
-          job = Job.job(job, private: {true, id})
+          job = Job.job(job, private: {node(), id})
 
           :ok = :mnesia.write(job)
 
@@ -90,12 +93,12 @@ defmodule Honeydew.Queue.Mnesia do
   def nack(%Job{private: {_, id}, failure_private: failure_private} = job, %State{private: %PState{table: table,
                                                                                                    access_context: access_context}} = state) do
     :mnesia.activity(access_context, fn ->
-      :ok = :mnesia.delete({table, {true, id}})
-
       :ok =
         %{job | private: {false, id}, failure_private: failure_private}
         |> Job.to_record(table)
         |> :mnesia.write
+
+      :ok = :mnesia.delete({table, {node(), id}})
     end)
 
     state
@@ -115,7 +118,7 @@ defmodule Honeydew.Queue.Mnesia do
           |> case do
                Job.job(private: {false, _}) ->
                  {pending + 1, in_progress}
-               Job.job(private: {true, _}) ->
+               Job.job(private: {_node, _}) ->
                  {pending, in_progress + 1}
              end
         end, {0, 0}, table)
@@ -163,11 +166,31 @@ defmodule Honeydew.Queue.Mnesia do
              [] -> nil
              [Job.job(private: {false, id})] ->
                :ok = :mnesia.delete({table, {false, id}})
-             [Job.job(private: {true, _id})] ->
+             [Job.job(private: {_node, _id})] ->
                {:error, :in_progress}
            end
       end)
 
     {reply, queue}
+  end
+
+  defp reset_after_crash(table, access_context) do
+    :mnesia.activity(access_context, fn ->
+      table
+      |> :mnesia.select(in_progress_match_spec(), :read)
+      |> Enum.each(fn job ->
+        {_, id} = Job.job(job, :private)
+
+        :ok = :mnesia.delete_object(job)
+
+        job = Job.job(job, private: {false, id})
+
+        :ok = :mnesia.write(job)
+      end)
+    end)
+  end
+
+  defp in_progress_match_spec do
+    [{Job.job(private: {node(), :_}, _: :_) |> Job.to_record(:_), [], [:"$_"]}]
   end
 end

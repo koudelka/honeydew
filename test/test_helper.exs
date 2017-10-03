@@ -48,11 +48,11 @@ end
 
 defmodule Helper do
   def start_queue_link(queue, opts \\ []) do
-    Supervisor.start_link([Honeydew.queue_spec(queue, opts)], strategy: :one_for_one)
+    Supervisor.start_link([Honeydew.queue_spec(queue, opts)], strategy: :one_for_one, restart: :transient)
   end
 
   def start_worker_link(queue, module, opts \\ []) do
-    Supervisor.start_link([Honeydew.worker_spec(queue, module, opts)], strategy: :one_for_one)
+    Supervisor.start_link([Honeydew.worker_spec(queue, module, opts)], strategy: :one_for_one, restart: :transient)
   end
 
   def stop(queue) do

@@ -1,14 +1,17 @@
 defmodule Honeydew.MnesiaQueueIntegrationTest do
   use ExUnit.Case, async: true
+  import ExUnit.CaptureLog
   alias Honeydew.Job
+
+  @num_workers 5
 
   setup do
     queue = "#{:erlang.monotonic_time}_#{:erlang.unique_integer}"
     nodes = [node()]
-    {:ok, _} = Helper.start_queue_link(queue, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
-    {:ok, _} = Helper.start_worker_link(queue, Stateless)
+    {:ok, queue_sup} = Helper.start_queue_link(queue, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
+    {:ok, worker_sup} = Helper.start_worker_link(queue, Stateless, num: @num_workers)
 
-    [queue: queue]
+    [queue: queue, queue_sup: queue_sup, worker_sup: worker_sup]
   end
 
   test "async/3", %{queue: queue} do
@@ -142,4 +145,44 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     assert Enum.count(monitors) < 20
   end
 
+  test "resets in-progress jobs after crashing", %{queue: queue, queue_sup: queue_sup, worker_sup: worker_sup} do
+    Enum.each(1..10, fn _ ->
+      Honeydew.async(fn -> Process.sleep(20_000) end, queue)
+    end)
+
+    %{queue: %{count: total, in_progress: in_progress}, workers: workers} = Honeydew.status(queue)
+
+    assert total == 10
+    assert in_progress == @num_workers
+
+    queue_process = Honeydew.get_queue(queue)
+
+    Process.flag(:trap_exit, true)
+
+    Process.exit(queue_sup, :normal)
+    Process.sleep(500)
+    assert not Process.alive?(queue_process)
+    assert nil == Honeydew.get_queue(queue)
+
+    Process.exit(worker_sup, :kill)
+
+    capture_log(fn ->
+      workers
+      |> Map.keys
+      |> Enum.each(fn worker ->
+        Process.exit(worker, :kill)
+        assert not Process.alive?(worker)
+      end)
+    end)
+
+    Process.flag(:trap_exit, false)
+
+    nodes = [node()]
+    {:ok, _} = Helper.start_queue_link(queue, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
+
+    %{queue: %{count: total, in_progress: in_progress}} = Honeydew.status(queue)
+
+    assert total == 10
+    assert in_progress == 0
+  end
 end
