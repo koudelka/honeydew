@@ -13,5 +13,7 @@ cache:
     - deps
 before_script:
   - MIX_ENV=test mix compile --warnings-as-errors
+  - MIX_ENV=test mix dialyzer --plt
 script:
   - mix test
+  - MIX_ENV=test mix dialyzer --halt-exit-status

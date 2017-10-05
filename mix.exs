@@ -10,7 +10,8 @@ defmodule Honeydew.Mixfile do
      docs: docs(),
      deps: deps(),
      package: package(),
-     description: "Pluggable local/remote job queue + worker pool with permanent workers."]
+     description: "Pluggable local/remote job queue + worker pool with permanent workers.",
+     dialyzer: [plt_add_apps: [:mnesia]]]
   end
 
   # Configuration for the OTP application
@@ -23,7 +24,8 @@ defmodule Honeydew.Mixfile do
   defp deps do
     [
       {:riakc, ">= 2.4.1", only: :dev},
-      {:ex_doc, ">= 0.0.0", only: :dev}
+      {:ex_doc, ">= 0.0.0", only: :dev},
+      {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false}
     ]
   end
 
