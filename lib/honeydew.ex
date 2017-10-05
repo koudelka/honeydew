@@ -2,6 +2,10 @@ defmodule Honeydew do
   alias Honeydew.Job
   require Logger
 
+  @type mod_or_mod_args :: module | {module, list}
+  @type queue_name :: String.t | atom | {:global, String.t | atom}
+  @type supervisor_opts :: Keyword.t
+
   #
   # Parts of this module were lovingly stolen from
   # https://github.com/elixir-lang/elixir/blob/v1.3.2/lib/elixir/lib/task.ex#L320
@@ -135,6 +139,13 @@ defmodule Honeydew do
     "can't enqueue job #{inspect job} because there aren't any queue processes running for `#{inspect queue}`"
   end
 
+  @type queue_spec_opt ::
+    {:queue, mod_or_mod_args} |
+    {:dispatcher, mod_or_mod_args} |
+    {:failure_mode, mod_or_mod_args} |
+    {:success_mode, mod_or_mod_args} |
+    {:supervisor_opts, supervisor_opts}
+
   @doc """
   Creates a supervision spec for a queue.
 
@@ -151,6 +162,7 @@ defmodule Honeydew do
   - `Honeydew.queue_spec("my_awesome_queue")`
   - `Honeydew.queue_spec("my_awesome_queue", queue: {MyQueueModule, [ip: "localhost"]}, dispatcher: {Honeydew.Dispatcher.MRU, []})`
   """
+  @spec queue_spec(queue_name, [queue_spec_opt]) :: Supervisor.Spec.spec
   def queue_spec(name, opts \\ []) do
     {module, args} =
       case opts[:queue] do
@@ -196,6 +208,12 @@ defmodule Honeydew do
       supervisor_opts)
   end
 
+  @type worker_spec_opt ::
+    {:num, non_neg_integer} |
+    {:init_retry, non_neg_integer} |
+    {:supervisor_opts, supervisor_opts} |
+    {:nodes, [node]}
+
   @doc """
   Creates a supervision spec for workers.
 
@@ -214,6 +232,8 @@ defmodule Honeydew do
   - `Honeydew.worker_spec("my_awesome_queue", {MyJobModule, [key: "secret key"]}, num: 3)`
   - `Honeydew.worker_spec({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
   """
+  @spec worker_spec(queue_name, mod_or_mod_args, [worker_spec_opt])
+    :: Supervisor.Spec.spec
   def worker_spec(name, module_and_args, opts \\ []) do
     {module, args} =
       case module_and_args do
