@@ -5,6 +5,8 @@ defmodule Riak do
     `{:riakc, ">= 2.4.1}`
   """
 
+  @behaviour Honeydew.Worker
+
   def init([ip, port]) do
     :riakc_pb_socket.start_link(ip, port) # returns {:ok, riak}
   end

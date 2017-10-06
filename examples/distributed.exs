@@ -1,4 +1,6 @@
 defmodule HeavyTask do
+  @behaviour Honeydew.Worker
+
   def work_really_hard(secs) do
     :timer.sleep(1_000 * secs)
     IO.puts "I worked really hard for #{secs} secs!"

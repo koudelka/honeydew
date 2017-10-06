@@ -4,10 +4,17 @@ defmodule Honeydew.Worker do
   require Honeydew
   alias Honeydew.Job
 
+  @doc """
+  Invoked when the worker starts up for the first time.
+  """
+  @callback init(args :: term) :: {:ok, state :: term}
+  @optional_callbacks init: 1
+
   defmodule State do
     defstruct [:queue, :module, :user_state]
   end
 
+  @doc false
   def start_link(queue, module, args, init_retry_secs) do
     GenServer.start_link(__MODULE__, [queue, module, args, init_retry_secs])
   end
@@ -34,6 +41,7 @@ defmodule Honeydew.Worker do
        end
   end
 
+  @doc false
   def worker_init(true, args, %State{module: module} = state) do
     try do
       case apply(module, :init, [args]) do

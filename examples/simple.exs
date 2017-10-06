@@ -5,6 +5,8 @@
 defmodule HeavyTask do
   use Honeydew.Progress
 
+  @behaviour Honeydew.Worker
+
   def work_really_hard(secs) do
     Enum.each 0..secs, fn i ->
       Process.sleep(1_000)

@@ -62,6 +62,8 @@ defmodule Riak do
     `{:riakc, ">= 2.4.1}`
   """
 
+  @behaviour Honeydew.Worker
+
   def init([ip, port]) do
     :riakc_pb_socket.start_link(ip, port) # returns {:ok, riak}
   end
@@ -161,6 +163,7 @@ iex(queue@dax)1> QueueApp.start
 And we'll run our workers on `background@dax` with:
 ```elixir
 defmodule HeavyTask do
+  @behaviour Honeydew.Worker
 
   # note that in this case, our worker is stateless, so we left out `init/1`
 
