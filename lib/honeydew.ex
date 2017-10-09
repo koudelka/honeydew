@@ -2,7 +2,7 @@ defmodule Honeydew do
   alias Honeydew.Job
   require Logger
 
-  @type mod_or_mod_args :: module | {module, list}
+  @type mod_or_mod_args :: module | {module, args :: term}
   @type queue_name :: String.t | atom | {:global, String.t | atom}
   @type supervisor_opts :: Keyword.t
 
