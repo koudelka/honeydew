@@ -142,8 +142,8 @@ defmodule Honeydew do
   @type queue_spec_opt ::
     {:queue, mod_or_mod_args} |
     {:dispatcher, mod_or_mod_args} |
-    {:failure_mode, mod_or_mod_args} |
-    {:success_mode, mod_or_mod_args} |
+    {:failure_mode, mod_or_mod_args | nil} |
+    {:success_mode, mod_or_mod_args | nil} |
     {:supervisor_opts, supervisor_opts}
 
   @doc """
@@ -152,14 +152,27 @@ defmodule Honeydew do
   `name` is how you'll refer to the queue to add a task.
 
   You can provide any of the following `opts`:
-  - `queue`: is the module that queue will use, you may also provide init/1 args: {module, args}
+
+  - `queue`: is the module that queue will use, you may also provide `init/1`
+    args: `{module, args}`
+
   - `dispatcher`: the job dispatching strategy, `{module, init_args}`.
-  - `failure_mode`: the way that failed jobs should be handled. You can pass either a module, or {module, args}, the module must implement the `Honeydew.FailureMode` behaviour. `args` defaults to `[]`.
-  - `success_mode`: a callback that runs when a job successfully completes. You can pass either a module, or {module, args}, the module must implement the `Honeydew.SuccessMode` behaviour, `args` defaults to `[]`.
+
+  - `failure_mode`: the way that failed jobs should be handled. You can pass
+    either a module, or `{module, args}`. The module must implement the
+    `Honeydew.FailureMode` behaviour. Defaults to
+    `{Honeydew.FailureMode.Abandon, []}`.
+
+  - `success_mode`: a callback that runs when a job successfully completes. You
+     can pass either a module, or `{module, args}`. The module must implement
+     the `Honeydew.SuccessMode` behaviour. Defaults to `nil`.
+
   - `supervisor_opts`: options accepted by `Supervisor.Spec.supervisor/3`.
 
   For example:
+
   - `Honeydew.queue_spec("my_awesome_queue")`
+
   - `Honeydew.queue_spec("my_awesome_queue", queue: {MyQueueModule, [ip: "localhost"]}, dispatcher: {Honeydew.Dispatcher.MRU, []})`
   """
   @spec queue_spec(queue_name, [queue_spec_opt]) :: Supervisor.Spec.spec
@@ -217,19 +230,32 @@ defmodule Honeydew do
   @doc """
   Creates a supervision spec for workers.
 
-  `queue` is the name of the queue that the workers pull jobs from
-  `module` is the module that the workers in your queue will use, you may also provide init/1 args: {module, args}
+  `queue` is the name of the queue that the workers pull jobs from.
+
+  `module` is the module that the workers in your queue will usei. You may also
+  provide `c:Honeydew.Worker.init/1` args with `{module, args}`.
 
   You can provide any of the following `opts`:
-  - `num`: the number of workers to start
-  - `init_retry`: the amount of time, in milliseconds, to wait before respawning a worker who's `init/1` function failed
-  - `shutdown`: if a worker is in the middle of a job, the amount of time, in milliseconds, to wait before brutally killing it.
+
+  - `num`: the number of workers to start. Defaults to `10`.
+
+  - `init_retry`: the amount of time, in seconds, to wait before respawning
+     a worker whose `c:Honeydew.Worker.init/1` function failed. Defaults to `5`.
+
+  - `shutdown`: if a worker is in the middle of a job, the amount of time, in
+     milliseconds, to wait before brutally killing it. Defaults to `10_000`.
+
   - `supervisor_opts` options accepted by `Supervisor.Spec.supervisor/3`.
-  - `nodes`: for :global queues, you can provide a list of nodes to stay connected to (your queue node and enqueuing nodes)
+
+  - `nodes`: for :global queues, you can provide a list of nodes to stay
+     connected to (your queue node and enqueuing nodes). Defaults to `[]`.
 
   For example:
+
   - `Honeydew.worker_spec("my_awesome_queue", MyJobModule)`
+
   - `Honeydew.worker_spec("my_awesome_queue", {MyJobModule, [key: "secret key"]}, num: 3)`
+
   - `Honeydew.worker_spec({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
   """
   @spec worker_spec(queue_name, mod_or_mod_args, [worker_spec_opt])

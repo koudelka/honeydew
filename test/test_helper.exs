@@ -1,4 +1,5 @@
 defmodule Stateless do
+  @behaviour Honeydew.Worker
   use Honeydew.Progress
 
   def send_msg(to, msg) do
@@ -25,6 +26,7 @@ defmodule Stateless do
 end
 
 defmodule Stateful do
+  @behaviour Honeydew.Worker
   def init(state) do
     {:ok, state}
   end
