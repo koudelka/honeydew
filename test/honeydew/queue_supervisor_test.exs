@@ -24,6 +24,6 @@ defmodule Honeydew.QueueSupervisorTest do
   end
 
   test "starts the given queue module", context do
-    assert   {_, _, _, [ErlangQueue]} = context[:supervisor] |> Supervisor.which_children |> List.first
+    assert   {_, _, _, [Honeydew.Queue]} = context[:supervisor] |> Supervisor.which_children |> List.first
   end
 end

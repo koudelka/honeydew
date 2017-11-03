@@ -1,8 +1,9 @@
 defmodule Honeydew.Queue.Mnesia do
-  use Honeydew.Queue
   require Honeydew.Job
+  require Logger
   alias Honeydew.Job
-  alias Honeydew.Queue.State
+
+  @behaviour Honeydew.Queue
 
   # private queue state
   defmodule PState do
@@ -13,6 +14,7 @@ defmodule Honeydew.Queue.Mnesia do
   @pending_match_spec [{Job.job(private: {false, :_}, _: :_) |> Job.to_record(:_), [], [:"$_"]}]
 
 
+  @impl true
   def init(queue_name, [nodes, table_opts, opts]) do
     access_context = Keyword.get(opts, :access_context, :sync_transaction)
 
@@ -48,7 +50,8 @@ defmodule Honeydew.Queue.Mnesia do
   # Enqueue/Reserve
   #
 
-  def enqueue(job, %State{private: %PState{table: table, access_context: access_context}} = state) do
+  @impl true
+  def enqueue(job, %PState{table: table, access_context: access_context} = state) do
     job = %{job | private: {false, :erlang.unique_integer([:monotonic])}} # {in_progress, :id}
 
     :mnesia.activity(access_context, fn ->
@@ -62,7 +65,8 @@ defmodule Honeydew.Queue.Mnesia do
   end
 
   # should the recursion be outside of the transaction?
-  def reserve(%State{private: %PState{table: table, access_context: access_context}} = state) do
+  @impl true
+  def reserve(%PState{table: table, access_context: access_context} = state) do
     :mnesia.activity(access_context, fn ->
       case :mnesia.select(table, @pending_match_spec, 1, :read) do
         :"$end_of_table" -> nil
@@ -84,14 +88,15 @@ defmodule Honeydew.Queue.Mnesia do
   # Ack/Nack
   #
 
-  def ack(%Job{private: private}, %State{private: %PState{table: table}} = state) do
+  @impl true
+  def ack(%Job{private: private}, %PState{table: table} = state) do
     :ok = :mnesia.dirty_delete(table, private)
 
     state
   end
 
-  def nack(%Job{private: {_, id}, failure_private: failure_private} = job, %State{private: %PState{table: table,
-                                                                                                   access_context: access_context}} = state) do
+  @impl true
+  def nack(%Job{private: {_, id}, failure_private: failure_private} = job, %PState{table: table, access_context: access_context} = state) do
     :mnesia.activity(access_context, fn ->
       :ok =
         %{job | private: {false, id}, failure_private: failure_private}
@@ -109,6 +114,7 @@ defmodule Honeydew.Queue.Mnesia do
   #
 
   # foldl might be too heavy...
+  @impl true
   def status(%PState{table: table}) do
     {pending, in_progress} =
       :mnesia.activity(:async_dirty, fn ->
@@ -131,6 +137,7 @@ defmodule Honeydew.Queue.Mnesia do
     }
   end
 
+  @impl true
   def filter(%PState{table: table, access_context: access_context}, map) when is_map(map) do
     :mnesia.activity(access_context, fn ->
       map
@@ -140,6 +147,7 @@ defmodule Honeydew.Queue.Mnesia do
     end)
   end
 
+  @impl true
   def filter(%PState{table: table, access_context: access_context}, function) do
     :mnesia.activity(access_context, fn ->
       :mnesia.foldl(fn job, list ->
@@ -155,7 +163,8 @@ defmodule Honeydew.Queue.Mnesia do
     end)
   end
 
-  def cancel(%Job{private: {_, id}, }, %PState{table: table, access_context: access_context} = queue) do
+  @impl true
+  def cancel(%Job{private: {_, id}, }, %PState{table: table, access_context: access_context} = state) do
     reply =
       :mnesia.activity(access_context, fn ->
         Job.job(private: {:_, id}, _: :_)
@@ -171,7 +180,13 @@ defmodule Honeydew.Queue.Mnesia do
            end
       end)
 
-    {reply, queue}
+    {reply, state}
+  end
+
+  @impl true
+  def handle_info(msg, state) do
+    Logger.warn "[Honeydew] Queue #{inspect self()} received unexpected message #{inspect msg}"
+    {:noreply, state}
   end
 
   defp reset_after_crash(table, access_context) do

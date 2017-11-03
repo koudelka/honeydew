@@ -1,8 +1,8 @@
 %{"dialyxir": {:hex, :dialyxir, "0.5.1", "b331b091720fd93e878137add264bac4f644e1ddae07a70bf7062c7862c4b952", [], [], "hexpm"},
   "earmark": {:hex, :earmark, "1.2.0", "bf1ce17aea43ab62f6943b97bd6e3dc032ce45d4f787504e3adf738e54b42f3a", [:mix], [], "hexpm"},
   "ex_doc": {:hex, :ex_doc, "0.15.1", "d5f9d588fd802152516fccfdb96d6073753f77314fcfee892b15b6724ca0d596", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, repo: "hexpm", optional: false]}], "hexpm"},
-  "hamcrest": {:hex, :hamcrest, "0.1.2", "2f06fad05983ce98a7832c4a7a508aab935b68865fdf607d30a030c129ec1365", [:make, :rebar], [], "hexpm"},
+  "hamcrest": {:hex, :basho_hamcrest, "0.4.1", "fb7b2c92d252a1e9db936750b86089addaebeb8f87967fb4bbdda61e8863338e", [:make, :mix, :rebar3], [], "hexpm"},
   "meck": {:hex, :meck, "0.8.4", "59ca1cd971372aa223138efcf9b29475bde299e1953046a0c727184790ab1520", [:make, :rebar], [], "hexpm"},
   "protobuffs": {:hex, :protobuffs, "0.8.4", "d38ca5f7380d8477c274680273372011890f8d0037c0d7e7db5c0207b89a4e0b", [:make, :rebar], [{:meck, "~> 0.8.4", [hex: :meck, repo: "hexpm", optional: false]}], "hexpm"},
-  "riak_pb": {:hex, :riak_pb, "2.1.4", "0de76c3b44a950dc9ffe50f45f7b55128bacce12170705c5e364af95b96a33cf", [:make, :rebar], [{:hamcrest, "~> 0.1", [hex: :hamcrest, repo: "hexpm", optional: false]}, {:protobuffs, "~> 0.8", [hex: :protobuffs, repo: "hexpm", optional: false]}], "hexpm"},
-  "riakc": {:hex, :riakc, "2.4.1", "5d2e191ac6597e1a4cfb5628bf78219d126c5ffa42dbb904af622136d8426a32", [:make, :rebar], [{:riak_pb, "~> 2.1", [hex: :riak_pb, repo: "hexpm", optional: false]}], "hexpm"}}
+  "riak_pb": {:hex, :riak_pb, "2.3.2", "48ffbf66dbb3f136ab9a7134bac4e496754baa5ef58c4f50a61326736d996390", [:make, :mix, :rebar3], [{:hamcrest, "~> 0.4.1", [hex: :basho_hamcrest, repo: "hexpm", optional: false]}], "hexpm"},
+  "riakc": {:hex, :riakc, "2.5.3", "6132d9e687a0dfd314b2b24c4594302ca8b55568a5d733c491d8fb6cd4004763", [:make, :mix, :rebar3], [{:riak_pb, "~> 2.3", [hex: :riak_pb, repo: "hexpm", optional: false]}], "hexpm"}}

@@ -4,7 +4,7 @@ defmodule Honeydew.QueueSupervisor do
     import Supervisor.Spec
 
     children = [
-      worker(module, [queue, args, dispatcher, failure_mode, success_mode])
+      worker(Honeydew.Queue, [queue, module, args, dispatcher, failure_mode, success_mode])
     ]
 
     opts = [strategy: :simple_one_for_one,

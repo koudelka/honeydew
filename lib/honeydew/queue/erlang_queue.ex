@@ -1,8 +1,10 @@
 defmodule Honeydew.Queue.ErlangQueue do
-  use Honeydew.Queue
+  require Logger
   alias Honeydew.Job
-  alias Honeydew.Queue.State
 
+  @behaviour Honeydew.Queue
+
+  @impl true
   def init(_queue_name, []) do
     # {pending, in_progress}
     {:ok, {:queue.new, Map.new}}
@@ -12,17 +14,19 @@ defmodule Honeydew.Queue.ErlangQueue do
   # Enqueue/Reservee
   #
 
-  def enqueue(job, %State{private: {pending, in_progress}} = state) do
+  @impl true
+  def enqueue(job, {pending, in_progress}) do
     job = %{job | private: :erlang.unique_integer}
-    {%{state | private: {:queue.in(job, pending), in_progress}}, job}
+    {{:queue.in(job, pending), in_progress}, job}
   end
 
-  def reserve(%State{private: {pending, in_progress}} = state) do
+  @impl true
+  def reserve({pending, in_progress}) do
     case :queue.out(pending) do
       {:empty, _pending} ->
         nil
       {{:value, job}, pending} ->
-        {%{state | private: {pending, Map.put(in_progress, job.private, job)}}, job}
+        {{pending, Map.put(in_progress, job.private, job)}, job}
     end
   end
 
@@ -30,28 +34,33 @@ defmodule Honeydew.Queue.ErlangQueue do
   # Ack/Nack
   #
 
-  def ack(%Job{private: id}, %State{private: {pending, in_progress}} = state) do
-    %{state | private: {pending, Map.delete(in_progress, id)}}
+  @impl true
+  def ack(%Job{private: id}, {pending, in_progress}) do
+    {pending, Map.delete(in_progress, id)}
   end
 
-  def nack(%Job{private: id} = job, %State{private: {pending, in_progress}} = state) do
-    %{state | private: {:queue.in_r(job, pending), Map.delete(in_progress, id)}}
+  @impl true
+  def nack(%Job{private: id} = job, {pending, in_progress}) do
+    {:queue.in_r(job, pending), Map.delete(in_progress, id)}
   end
 
   #
   # Helpers
   #
 
+  @impl true
   def status({pending, in_progress}) do
     %{count: :queue.len(pending) + map_size(in_progress),
       in_progress: map_size(in_progress)}
   end
 
+  @impl true
   def filter({pending, in_progress}, function) do
     (function |> :queue.filter(pending) |> :queue.to_list) ++
       (in_progress |> Map.values |> Enum.filter(function))
   end
 
+  @impl true
   def cancel(%Job{private: private}, {pending, in_progress}) do
     filter = fn
       %Job{private: ^private} -> false;
@@ -67,5 +76,11 @@ defmodule Honeydew.Queue.ErlangQueue do
     end
 
     {reply, {new_pending, in_progress}}
+  end
+
+  @impl true
+  def handle_info(msg, state) do
+    Logger.warn "[Honeydew] Queue #{inspect self()} received unexpected message #{inspect msg}"
+    {:noreply, state}
   end
 end
