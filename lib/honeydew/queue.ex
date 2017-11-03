@@ -4,6 +4,7 @@ defmodule Honeydew.Queue do
   require Honeydew
   alias Honeydew.Job
   alias Honeydew.Monitor
+  alias Honeydew.Job
 
   defmodule State do
     defstruct queue: nil,
@@ -23,11 +24,14 @@ defmodule Honeydew.Queue do
   @callback init(name, arg :: term) :: {:ok, private}
   @callback enqueue(job, private) :: {private, job}
   @callback reserve(private) :: {job, private}
+  @callback enqueue_id(term, private) :: private
+  @callback unenqueue_id(term, private) :: private
   @callback ack(job, private) :: private
   @callback nack(job, private) :: private
   @callback status(private) :: %{:count => number, :in_progress => number, optional(atom) => any}
   @callback filter(private, function) :: [job]
   @callback cancel(job, private) :: {:ok | {:error, :in_progress | :not_found}, private}
+  @callback reload(private) :: private
 
   # stolen from GenServer, with a slight change
   @callback handle_call(request :: term, GenServer.from, state :: private) ::
@@ -51,7 +55,17 @@ defmodule Honeydew.Queue do
               | {:stop, reason :: term, new_state}
             when new_state: private
 
-  @optional_callbacks handle_call: 3, handle_cast: 2, handle_info: 2
+  @optional_callbacks [handle_call: 3,
+                       handle_cast: 2,
+                       handle_info: 2,
+                       enqueue_id: 2,
+                       unenqueue_id: 2,
+                       reload: 1]
+
+  # these are used for partitioned queues, only Disorder at this point
+  def reload(state), do: state
+  def enqueue_id(_id, state), do: state
+  defoverridable [reload: 1, enqueue_id: 2]
 
   def start_link(queue, module, args, dispatcher, failure_mode, success_mode, suspended) do
     GenServer.start_link(__MODULE__, [queue, module, args, dispatcher, failure_mode, success_mode, suspended])
@@ -78,6 +92,15 @@ defmodule Honeydew.Queue do
                   success_mode: success_mode,
                   suspended: suspended,
                   dispatcher: {dispatcher, dispatcher_private}}}
+  end
+
+  def handle_cast({:enqueue_id, id}, %State{module: module, private: private} = state) do
+    state = %{state | private: module.enqueue_id(id, private)} |> dispatch
+    {:noreply, state}
+  end
+
+  def handle_cast({:unenqueue_id, id}, %State{module: module, private: private} = state) do
+    {:noreply, %{state | private: module.unenqueue_id(id, private)}}
   end
 
   def handle_cast({:monitor_me, worker}, state) do
@@ -129,6 +152,10 @@ defmodule Honeydew.Queue do
     {:noreply, %{state | suspended: true}}
   end
 
+  def handle_cast(:reload, %State{module: module, private: private} = state) do
+    {:noreply, %{state | private: module.reload(private)}}
+  end
+
   def handle_cast(msg, %State{module: module} = state) do
     module.handle_cast(msg, state)
   end
@@ -144,7 +171,6 @@ defmodule Honeydew.Queue do
   end
 
   def handle_call(:status, _from, %State{module: module, private: private, suspended: suspended, monitors: monitors} = state) do
-
     status =
       private
       |> module.status
@@ -234,9 +260,9 @@ defmodule Honeydew.Queue do
   defp dispatch(%State{suspended: true} = state), do: state
   defp dispatch(%State{module: module, private: private} = state) do
     with true <- worker_available?(state),
-          {%Job{} = job, private} <- module.reserve(private),
-          state <- %{state | private: private},
-          {worker, state} when not is_nil(worker) <- check_out_worker(job, state) do
+         {%Job{} = job, private} <- module.reserve(private),
+         {worker, state} when not is_nil(worker) <- check_out_worker(job, %{state | private: private}) do
+
       Honeydew.debug "[Honeydew] Queue #{inspect self()} dispatching job #{inspect job.private} to #{inspect worker}"
       worker
       |> send_job(job, state)

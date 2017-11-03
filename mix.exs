@@ -12,6 +12,7 @@ defmodule Honeydew.Mixfile do
      package: package(),
      elixirc_paths: elixirc_paths(Mix.env),
      description: "Pluggable local/remote job queue + worker pool with permanent workers.",
+     elixirc_paths: elixirc_paths(Mix.env),
      dialyzer: [plt_add_apps: [:mnesia]]]
   end
 
@@ -29,7 +30,8 @@ defmodule Honeydew.Mixfile do
     [
       {:riakc, ">= 2.4.1", only: :dev},
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
+      {:disorder, path: "/Users/mikes/Projects/disorder", only: :dev},
     ]
   end
 

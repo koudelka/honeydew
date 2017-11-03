@@ -3,6 +3,7 @@ defmodule Honeydew.Job do
   A Honeydew job.
   """
   require Record
+  alias __MODULE__
 
   # :private needs to be first, the mnesia queue's ordering depends on it
   @fields [:private, # queue's private state
@@ -24,7 +25,7 @@ defmodule Honeydew.Job do
   Record.defrecord :job, @kv
   @match_spec @fields |> Enum.map(&{&1, :_}) |> Enum.into(%{})
 
-  @type t :: %__MODULE__{
+  @type t :: %Job{
     task: Honeydew.task,
     queue: Honeydew.queue_name,
   }
@@ -37,7 +38,7 @@ defmodule Honeydew.Job do
 
   @doc false
   def new(task, queue) do
-    %__MODULE__{task: task, queue: queue, enqueued_at: System.system_time(:millisecond)}
+    %Job{task: task, queue: queue, enqueued_at: System.system_time(:millisecond)}
   end
 
   @doc false
@@ -57,7 +58,7 @@ defmodule Honeydew.Job do
 
   @doc false
   def from_record({_name, unquote_splicing(vars)}) do
-    %__MODULE__{unquote_splicing(vars_keyword_list)}
+    %Job{unquote_splicing(vars_keyword_list)}
   end
 
   @doc false
