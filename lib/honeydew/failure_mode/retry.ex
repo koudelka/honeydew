@@ -1,10 +1,31 @@
 defmodule Honeydew.FailureMode.Retry do
-  require Logger
-  alias Honeydew.Job
+  alias Honeydew.FailureMode.Move
+  @moduledoc """
+  Instructs Honeydew to retry a job `x` times on failure.
+
+  ## Examples
+
+  Retry jobs in this queue 3 times:
+
+      Honeydew.queue_spec(:my_queue, failure_mode: {#{inspect __MODULE__}, [times: 3]})
+
+  Retry jobs in this queue 3 times and then move to another queue:
+
+      Honeydew.queue_spec(:my_queue,
+        failure_mode: {
+          #{inspect __MODULE__},
+          [times: 3, finally: {#{inspect Move}, [queue: :another_queue]}]
+        }
+      )
+  """
   alias Honeydew.FailureMode.Abandon
+  alias Honeydew.Job
+
+  require Logger
 
   @behaviour Honeydew.FailureMode
 
+  @impl true
   def handle_failure(job, reason, [times: times]), do:
     handle_failure(job, reason, [times: times, finally: {Abandon, []}])
 
