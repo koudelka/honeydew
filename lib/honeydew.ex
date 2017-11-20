@@ -153,9 +153,10 @@ defmodule Honeydew do
 
   You can provide any of the following `opts`:
 
-  - `queue`: is the module that queue will use, you may also provide `init/1`
-    args: `{module, args}`
-
+  - `queue`: is the module that queue will use. Defaults to
+    `Honeydew.Queue.ErlangQueue`. You may also provide args to the queue's
+    `c:Honeydew.Queue.init/2` callback using the following format:
+    `{module, args}`.
   - `dispatcher`: the job dispatching strategy, `{module, init_args}`.
 
   - `failure_mode`: the way that failed jobs should be handled. You can pass
@@ -232,7 +233,7 @@ defmodule Honeydew do
 
   `queue` is the name of the queue that the workers pull jobs from.
 
-  `module` is the module that the workers in your queue will usei. You may also
+  `module` is the module that the workers in your queue will use. You may also
   provide `c:Honeydew.Worker.init/1` args with `{module, args}`.
 
   You can provide any of the following `opts`:
