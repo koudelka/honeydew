@@ -19,7 +19,7 @@ defmodule Honeydew.Queue do
   @type name :: term | {:global, term} # tighten this to a string or atom?
   @type job :: %Honeydew.Job{}
 
-  @callback init(name, term) :: {:ok, private}
+  @callback init(name, arg :: term) :: {:ok, private}
   @callback enqueue(job, private) :: {private, job}
   @callback reserve(private) :: {private, job}
   @callback ack(job, private) :: private

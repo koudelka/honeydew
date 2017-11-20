@@ -1,4 +1,11 @@
 defmodule Honeydew.Queue.ErlangQueue do
+  @moduledoc """
+  An in-memory queue implementation.
+
+  This is a simple FIFO queue implemented with the `:queue` and `Map` modules.
+
+  Started with `Honeydew.queue_spec/2`.
+  """
   require Logger
   alias Honeydew.Job
 

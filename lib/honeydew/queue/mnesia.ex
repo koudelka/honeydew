@@ -1,4 +1,15 @@
 defmodule Honeydew.Queue.Mnesia do
+  @moduledoc """
+  A mnesia-based queue implementation.
+
+  This queue is configurable in all the ways mnesia is. For example, you can:
+
+  * Run with replication (with queues running on multiple nodes)
+  * Persist jobs to disk (dets)
+  * Follow various safety modes ("access contexts")
+
+  Started with `Honeydew.queue_spec/2`.
+  """
   require Honeydew.Job
   require Logger
   alias Honeydew.Job
@@ -7,6 +18,7 @@ defmodule Honeydew.Queue.Mnesia do
 
   # private queue state
   defmodule PState do
+    @moduledoc false
     defstruct [:table, :access_context]
   end
 
