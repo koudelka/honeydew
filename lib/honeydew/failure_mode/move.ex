@@ -1,9 +1,21 @@
 defmodule Honeydew.FailureMode.Move do
-  require Logger
+  @moduledoc """
+  Instructs Honeydew to move a job to another queue on failure.
+
+  ## Example
+
+  Move this job to the `:failed` queue, on failure.
+
+      Honeydew.queue_spec(:my_queue, failure_mode: {#{inspect __MODULE__}, [queue: :failed]})
+  """
+
   alias Honeydew.Job
+
+  require Logger
 
   @behaviour Honeydew.FailureMode
 
+  @impl true
   def handle_failure(%Job{queue: queue, from: from} = job, reason, [queue: to_queue]) do
     Logger.info "Job failed because #{inspect reason}, moving to #{inspect to_queue}: #{inspect job}"
 
