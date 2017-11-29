@@ -80,21 +80,6 @@ defmodule Honeydew.Queue do
                   dispatcher: {dispatcher, dispatcher_private}}}
   end
 
-  #
-  # Enqueue/Reserve
-  #
-
-  def handle_call({:enqueue, job}, _from, %State{suspended: true} = state) do
-    {private, job} = do_enqueue(job, state)
-    {:reply, {:ok, job}, %{state | private: private}}
-  end
-
-  def handle_call({:enqueue, job}, _from, state) do
-    {private, job} = do_enqueue(job, state)
-    state = %{state | private: private} |> dispatch
-    {:reply, {:ok, job}, state}
-  end
-
   def handle_cast({:monitor_me, worker}, state) do
     Process.monitor(worker)
     {:noreply, state}
@@ -146,6 +131,21 @@ defmodule Honeydew.Queue do
 
   def handle_cast(msg, %State{module: module} = state) do
     module.handle_cast(msg, state)
+  end
+
+  #
+  # Enqueue
+  #
+
+  def handle_call({:enqueue, job}, _from, %State{suspended: true} = state) do
+    {private, job} = do_enqueue(job, state)
+    {:reply, {:ok, job}, %{state | private: private}}
+  end
+
+  def handle_call({:enqueue, job}, _from, state) do
+    {private, job} = do_enqueue(job, state)
+    state = %{state | private: private} |> dispatch
+    {:reply, {:ok, job}, state}
   end
 
   def handle_call(:status, _from, %State{module: module, private: private, suspended: suspended, monitors: monitors} = state) do
