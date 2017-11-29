@@ -24,9 +24,9 @@ defmodule Honeydew.Queue do
   @callback reserve(private) :: {private, job}
   @callback ack(job, private) :: private
   @callback nack(job, private) :: private
-  @callback status(private) :: %{count: integer, in_progress: integer}
+  @callback status(private) :: %{:count => number, :in_progress => number, optional(atom) => any}
   @callback filter(private, function) :: [job, ...]
-  @callback cancel(job, private) :: :ok | {:error, :in_progress} | nil
+  @callback cancel(job, private) :: {:ok | {:error, :in_progress} | nil, private}
 
   # stolen from GenServer, with a slight change
   @callback handle_call(request :: term, GenServer.from, state :: private) ::
