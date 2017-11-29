@@ -9,6 +9,16 @@ defmodule Honeydew.FailureMode.AbandonTest do
     [queue: queue]
   end
 
+  test "validate_args!/1" do
+    import Honeydew.FailureMode.Abandon, only: [validate_args!: 1]
+
+    assert :ok = validate_args!([])
+
+    assert_raise ArgumentError, fn ->
+      validate_args!(:abc)
+    end
+  end
+
   test "should remove job from the queue", %{queue: queue} do
     {:crash, [self()]} |> Honeydew.async(queue)
     assert_receive :job_ran

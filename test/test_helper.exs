@@ -43,6 +43,10 @@ end
 defmodule TestSuccessMode do
   @behaviour Honeydew.SuccessMode
 
+  @impl true
+  def validate_args!(to: to) when is_pid(to), do: :ok
+
+  @impl true
   def handle_success(job, [to: to]) do
     send to, job
   end

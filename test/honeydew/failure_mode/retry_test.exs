@@ -14,6 +14,25 @@ defmodule Honeydew.FailureMode.RetryTest do
     [queue: queue, failure_queue: failure_queue]
   end
 
+  test "validate_args!/1" do
+    import Honeydew.FailureMode.Retry, only: [validate_args!: 1]
+
+    assert :ok = validate_args!([times: 2])
+    assert :ok = validate_args!([times: 2, finally: {Honeydew.FailureMode.Move, [queue: :abc]}])
+
+    assert_raise ArgumentError, fn ->
+      validate_args!(:abc)
+    end
+
+    assert_raise ArgumentError, fn ->
+      validate_args!([times: -1])
+    end
+
+    assert_raise ArgumentError, fn ->
+      validate_args!([times: 2, finally: {Honeydew.FailureMode.Move, [bad: :args]}])
+    end
+  end
+
   test "should retry the job", %{queue: queue, failure_queue: failure_queue} do
     capture_log(fn ->
       {:crash, [self()]} |> Honeydew.async(queue)

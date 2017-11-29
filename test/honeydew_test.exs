@@ -1,6 +1,8 @@
 defmodule HoneydewTest do
   use ExUnit.Case
   alias Honeydew.Job
+  alias Honeydew.FailureMode.Abandon
+  alias Honeydew.SuccessMode.Log
 
   test "queue_spec/2" do
     queue = :erlang.unique_integer
@@ -10,15 +12,27 @@ defmodule HoneydewTest do
         queue,
         queue: {:abc, [1,2,3]},
         dispatcher: {Dis.Patcher, [:a, :b]},
-        failure_mode: {Fail.Ure, [:a, :b]},
-        success_mode: {Succ.Ess, [:a, :b]},
+        failure_mode: {Abandon, []},
+        success_mode: {Log, []},
         supervisor_opts: [id: :my_queue_supervisor])
 
     assert spec == {:my_queue_supervisor,
                     {Honeydew.QueueSupervisor, :start_link,
                      [queue, :abc, [1, 2, 3], 1, {Dis.Patcher, [:a, :b]},
-                      {Fail.Ure, [:a, :b]}, {Succ.Ess, [:a, :b]}]}, :permanent, :infinity, :supervisor,
+                      {Abandon, []}, {Log, []}]}, :permanent, :infinity, :supervisor,
                     [Honeydew.QueueSupervisor]}
+  end
+
+  test "queue_spec/2 should raise when failure/success mode args are invalid" do
+    queue = :erlang.unique_integer
+
+    assert_raise ArgumentError, fn ->
+      Honeydew.queue_spec(queue, failure_mode: {Abandon, [:abc]})
+    end
+
+    assert_raise ArgumentError, fn ->
+      Honeydew.queue_spec(queue, success_mode: {Log, [:abc]})
+    end
   end
 
   test "queue_spec/2 defaults" do

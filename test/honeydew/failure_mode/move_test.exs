@@ -13,6 +13,17 @@ defmodule Honeydew.FailureMode.MoveTest do
     [queue: queue, failure_queue: failure_queue]
   end
 
+  test "validate_args!/1" do
+    import Honeydew.FailureMode.Move, only: [validate_args!: 1]
+
+    assert :ok = validate_args!(queue: :abc)
+    assert :ok = validate_args!(queue: {:global, :abc})
+
+    assert_raise ArgumentError, fn ->
+      validate_args!(:abc)
+    end
+  end
+
   test "should move the job on the new queue", %{queue: queue, failure_queue: failure_queue} do
     capture_log(fn ->
       {:crash, [self()]} |> Honeydew.async(queue)

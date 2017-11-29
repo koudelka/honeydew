@@ -202,12 +202,20 @@ defmodule Honeydew do
         module when is_atom(module) -> {module, []}
       end
 
+    {failure_module, failure_args} = failure_mode
+    :ok = failure_module.validate_args!(failure_args) # will raise on failure
+
+
     success_mode =
       case opts[:success_mode] do
         nil -> nil
         {module, args} -> {module, args}
         module when is_atom(module) -> {module, []}
       end
+
+    with {success_module, success_args} <- success_mode do
+      :ok = success_module.validate_args!(success_args) # will raise on failure
+    end
 
     supervisor_opts =
       opts

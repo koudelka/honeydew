@@ -26,6 +26,18 @@ defmodule Honeydew.FailureMode.Retry do
   @behaviour Honeydew.FailureMode
 
   @impl true
+  # if everything looks right, validate the 'finally' mode args, too
+  def validate_args!([times: times, finally: {module, args}]) when is_integer(times)
+                                                               and times > 0
+                                                               and is_atom(module)
+                                                               and is_list(args) do
+    module.validate_args!(args)
+  end
+
+  def validate_args!([times: times]) when is_integer(times) and times > 0, do: :ok
+  def validate_args!(args), do: raise ArgumentError, "You provided arguments (#{inspect args}) to the Retry failure mode, it's expecting either [times: times] or [times: times, finally: {module, args}]"
+
+  @impl true
   def handle_failure(job, reason, [times: times]), do:
     handle_failure(job, reason, [times: times, finally: {Abandon, []}])
 

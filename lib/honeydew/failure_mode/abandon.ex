@@ -13,6 +13,10 @@ defmodule Honeydew.FailureMode.Abandon do
   @behaviour Honeydew.FailureMode
 
   @impl true
+  def validate_args!([]), do: :ok
+  def validate_args!(args), do: raise ArgumentError, "You provided arguments (#{inspect args}) to the Abandon failure mode, it only accepts an empty list"
+
+  @impl true
   def handle_failure(%Job{queue: queue, from: from} = job, reason, []) do
     Logger.warn "Job failed because #{inspect reason}, abandoning: #{inspect job}"
 
