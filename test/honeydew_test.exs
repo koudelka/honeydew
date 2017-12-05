@@ -81,6 +81,16 @@ defmodule HoneydewTest do
                     :supervisor, [Honeydew.WorkerGroupSupervisor]}
   end
 
+  test "worker_spec/2 with a module that doesn't exist" do
+    queue = :erlang.unique_integer
+    Process.flag(:trap_exit, true)
+
+    assert {:error, {:shutdown, {:failed_to_start_child, _, _}}} =
+      Supervisor.start_link([
+        Honeydew.worker_spec(queue, DoesNotExist)
+      ], strategy: :one_for_one)
+  end
+
   test "group/1" do
     assert Honeydew.group(:my_queue, :workers) == :"honeydew.workers.my_queue"
   end
