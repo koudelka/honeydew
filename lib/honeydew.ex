@@ -1,4 +1,8 @@
 defmodule Honeydew do
+  @moduledoc """
+  A pluggable job queue + worker pool for Elixir.
+  """
+
   alias Honeydew.Job
   require Logger
 
@@ -45,12 +49,20 @@ defmodule Honeydew do
     end
   end
 
+  @doc """
+  Suspends job processing for a queue.
+  """
+  @spec suspend(queue_name) :: :ok
   def suspend(queue) do
     queue
     |> get_all_members(:queues)
     |> Enum.each(&GenServer.cast(&1, :suspend))
   end
 
+  @doc """
+  Resumes job processing for a queue.
+  """
+  @spec resume(queue_name) :: :ok
   def resume(queue) do
     queue
     |> get_all_members(:queues)
