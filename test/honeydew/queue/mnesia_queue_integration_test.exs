@@ -5,14 +5,7 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
 
   @num_workers 5
 
-  setup do
-    queue = "#{:erlang.monotonic_time}_#{:erlang.unique_integer}"
-    nodes = [node()]
-    {:ok, queue_sup} = Helper.start_queue_link(queue, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
-    {:ok, worker_sup} = Helper.start_worker_link(queue, Stateless, num: @num_workers)
-
-    [queue: queue, queue_sup: queue_sup, worker_sup: worker_sup]
-  end
+  setup [:generate_queue_name, :start_queue, :start_worker_pool]
 
   test "async/3", %{queue: queue} do
     %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
@@ -184,5 +177,55 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
 
     assert total == 10
     assert in_progress == 0
+  end
+
+  @tag :skip_worker_pool
+  test "when workers join a queue with existing jobs", %{queue: queue} do
+    %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+
+    start_worker_pool(%{queue: queue})
+
+    assert_receive :hi
+  end
+
+  @tag :skip_worker_pool
+  test "when workers join a suspended queue with existing jobs", %{queue: queue} do
+    %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+    Honeydew.suspend(queue)
+
+    start_worker_pool(%{queue: queue})
+
+    refute_receive :hi
+  end
+
+  @tag :skip_worker_pool
+  test "when workers join a suspended queue with existing jobs and queue is resumed", %{queue: queue} do
+    %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+    Honeydew.suspend(queue)
+
+    start_worker_pool(%{queue: queue})
+    refute_receive :hi
+
+    Honeydew.resume(queue)
+
+    assert_receive :hi
+  end
+
+  defp generate_queue_name(%{queue: queue}), do: {:ok, [queue: queue]}
+  defp generate_queue_name(_) do
+    queue = "#{:erlang.monotonic_time}_#{:erlang.unique_integer}"
+    {:ok, [queue: queue]}
+  end
+
+  defp start_queue(%{queue: queue}) do
+    nodes = [node()]
+    {:ok, queue_sup} = Helper.start_queue_link(queue, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
+    {:ok, [queue_sup: queue_sup]}
+  end
+
+  defp start_worker_pool(%{skip_worker_pool: true}), do: :ok
+  defp start_worker_pool(%{queue: queue}) do
+    {:ok, worker_sup} = Helper.start_worker_link(queue, Stateless, num: @num_workers)
+    {:ok, [worker_sup: worker_sup]}
   end
 end

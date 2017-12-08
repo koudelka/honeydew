@@ -137,11 +137,6 @@ defmodule Honeydew.Queue do
   # Enqueue
   #
 
-  def handle_call({:enqueue, job}, _from, %State{suspended: true} = state) do
-    {private, job} = do_enqueue(job, state)
-    {:reply, {:ok, job}, %{state | private: private}}
-  end
-
   def handle_call({:enqueue, job}, _from, state) do
     {private, job} = do_enqueue(job, state)
     state = %{state | private: private} |> dispatch
@@ -245,6 +240,7 @@ defmodule Honeydew.Queue do
     %{state | monitors: MapSet.put(monitors, monitor)}
   end
 
+  defp dispatch(%State{suspended: true} = state), do: state
   defp dispatch(%State{module: module, private: private} = state) do
     with true <- worker_available?(state),
           {private, job} <- module.reserve(private),
