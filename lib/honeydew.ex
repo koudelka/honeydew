@@ -9,12 +9,41 @@ defmodule Honeydew do
   @type mod_or_mod_args :: module | {module, args :: term}
   @type queue_name :: String.t | atom | {:global, String.t | atom}
   @type supervisor_opts :: Keyword.t
+  @type async_opt :: [{:reply, true}]
+  @type task :: {atom, [arg :: term]}
+
+  @typedoc """
+  Result of a `Honeydew.Job`
+  """
+  @type result :: term
 
   #
   # Parts of this module were lovingly stolen from
   # https://github.com/elixir-lang/elixir/blob/v1.3.2/lib/elixir/lib/task.ex#L320
   #
 
+  @doc """
+  Runs a task asynchronously.
+
+  ## Examples
+
+  To run a task asynchronously.
+
+      Honeydew.async({:ping, ["127.0.0.1"]}, :my_queue)
+
+  To run a task asynchronously and wait for result.
+
+      # Without pipes
+      job = Honeydew.async({:ping, ["127.0.0.1"]}, :my_queue, reply: true)
+      Honeydew.yield(job)
+
+      # With pipes
+      result =
+        {:ping, ["127.0.0.1"]}
+        |> Honeydew.async(:my_queue, reply: true)
+        |> Honeydew.yield()
+  """
+  @spec async(task, queue_name, [async_opt]) :: Job.t | no_return
   def async(task, queue, opts \\ [])
   def async(task, queue, reply: true) do
     {:ok, job} =
@@ -35,6 +64,12 @@ defmodule Honeydew do
     job
   end
 
+  @doc """
+  Wait for a job to complete and return result.
+
+  Returns the result of a job, or `nil` on timeout.
+  """
+  @spec yield(Job.t, timeout) :: result | nil
   def yield(job, timeout \\ 5000)
   def yield(%Job{from: nil} = job, _), do: raise ArgumentError, reply_not_requested_error(job)
   def yield(%Job{from: {owner, _}} = job, _) when owner != self(), do: raise ArgumentError, invalid_owner_error(job)
@@ -99,6 +134,20 @@ defmodule Honeydew do
     %{queue: Map.delete(queue_status, :monitors), workers: workers}
   end
 
+  @doc """
+  Filters the jobs currently on the queue.
+
+  ## Examples
+
+  Filter jobs with a specific task.
+
+      Honeydew.filter(:my_queue, &match?(%Honeydew.Job{task: {:ping, _}}, &1))
+
+  Return all jobs.
+
+      Honeydew.filter(:my_queue, fn _ -> true end)
+  """
+  @spec filter(queue_name, (Job.t -> boolean)) :: [Job.t]
   def filter(queue, function) do
     {:ok, jobs} =
       queue
