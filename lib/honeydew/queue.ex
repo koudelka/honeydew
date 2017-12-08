@@ -53,11 +53,11 @@ defmodule Honeydew.Queue do
 
   @optional_callbacks handle_call: 3, handle_cast: 2, handle_info: 2
 
-  def start_link(queue, module, args, dispatcher, failure_mode, success_mode) do
-    GenServer.start_link(__MODULE__, [queue, module, args, dispatcher, failure_mode, success_mode])
+  def start_link(queue, module, args, dispatcher, failure_mode, success_mode, suspended) do
+    GenServer.start_link(__MODULE__, [queue, module, args, dispatcher, failure_mode, success_mode, suspended])
   end
 
-  def init([queue, module, args, {dispatcher, dispatcher_args}, failure_mode, success_mode]) do
+  def init([queue, module, args, {dispatcher, dispatcher_args}, failure_mode, success_mode, suspended]) do
     queue
     |> Honeydew.group(:queues)
     |> :pg2.join(self())
@@ -78,6 +78,7 @@ defmodule Honeydew.Queue do
                   private: state,
                   failure_mode: failure_mode,
                   success_mode: success_mode,
+                  suspended: suspended,
                   dispatcher: {dispatcher, dispatcher_private}}}
   end
 

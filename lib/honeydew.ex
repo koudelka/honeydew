@@ -238,7 +238,8 @@ defmodule Honeydew do
     {:dispatcher, mod_or_mod_args} |
     {:failure_mode, mod_or_mod_args | nil} |
     {:success_mode, mod_or_mod_args | nil} |
-    {:supervisor_opts, supervisor_opts}
+    {:supervisor_opts, supervisor_opts} |
+    {:suspended, boolean}
 
   @doc """
   Creates a supervision spec for a queue.
@@ -263,6 +264,8 @@ defmodule Honeydew do
      the `Honeydew.SuccessMode` behaviour. Defaults to `nil`.
 
   - `supervisor_opts`: options accepted by `Supervisor.Spec.supervisor/3`.
+
+  - `suspended`: Start queue in suspended state. Defaults to `false`.
 
   For example:
 
@@ -307,6 +310,8 @@ defmodule Honeydew do
         module when is_atom(module) -> {module, []}
       end
 
+    suspended = Keyword.get(opts, :suspended, false)
+
     with {success_module, success_args} <- success_mode do
       :ok = success_module.validate_args!(success_args) # will raise on failure
     end
@@ -320,7 +325,7 @@ defmodule Honeydew do
 
     Supervisor.Spec.supervisor(
       Honeydew.QueueSupervisor,
-      [name, module, args, num, dispatcher, failure_mode, success_mode],
+      [name, module, args, num, dispatcher, failure_mode, success_mode, suspended],
       supervisor_opts)
   end
 
