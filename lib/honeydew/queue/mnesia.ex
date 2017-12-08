@@ -13,6 +13,7 @@ defmodule Honeydew.Queue.Mnesia do
   require Honeydew.Job
   require Logger
   alias Honeydew.Job
+  alias Honeydew.Queue
 
   @behaviour Honeydew.Queue
 
@@ -176,6 +177,7 @@ defmodule Honeydew.Queue.Mnesia do
   end
 
   @impl true
+  @spec cancel(Job.t, Queue.private) :: {:ok | {:error, :in_progress} | nil, Queue.private}
   def cancel(%Job{private: {_, id}, }, %PState{table: table, access_context: access_context} = state) do
     reply =
       :mnesia.activity(access_context, fn ->
