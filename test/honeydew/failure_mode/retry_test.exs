@@ -1,6 +1,7 @@
 defmodule Honeydew.FailureMode.RetryTest do
   use ExUnit.Case, async: true
-  import ExUnit.CaptureLog
+
+  @moduletag :capture_log
 
   setup do
     queue = :erlang.unique_integer
@@ -34,33 +35,29 @@ defmodule Honeydew.FailureMode.RetryTest do
   end
 
   test "should retry the job", %{queue: queue, failure_queue: failure_queue} do
-    capture_log(fn ->
-      {:crash, [self()]} |> Honeydew.async(queue)
-      assert_receive :job_ran
-      assert_receive :job_ran
-      assert_receive :job_ran
+    {:crash, [self()]} |> Honeydew.async(queue)
+    assert_receive :job_ran
+    assert_receive :job_ran
+    assert_receive :job_ran
 
-      Process.sleep(500) # let the Move failure mode do its thing
+    Process.sleep(500) # let the Move failure mode do its thing
 
-      assert Honeydew.status(queue) |> get_in([:queue, :count]) == 0
-      refute_receive :job_ran
+    assert Honeydew.status(queue) |> get_in([:queue, :count]) == 0
+    refute_receive :job_ran
 
-      assert Honeydew.status(failure_queue) |> get_in([:queue, :count]) == 1
-    end)
+    assert Honeydew.status(failure_queue) |> get_in([:queue, :count]) == 1
   end
 
   test "should inform the awaiting process of the error", %{queue: queue, failure_queue: failure_queue} do
-    capture_log(fn ->
-      job = {:crash, [self()]} |> Honeydew.async(queue, reply: true)
+    job = {:crash, [self()]} |> Honeydew.async(queue, reply: true)
 
-      assert {:retrying, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
-      assert {:retrying, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
-      assert {:moved, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
+    assert {:retrying, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
+    assert {:retrying, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
+    assert {:moved, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
 
-      {:ok, _} = Helper.start_worker_link(failure_queue, Stateless)
+    {:ok, _} = Helper.start_worker_link(failure_queue, Stateless)
 
-      # # job ran in the failure queue
-      assert {:error, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
-    end)
+    # # job ran in the failure queue
+    assert {:error, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
   end
 end

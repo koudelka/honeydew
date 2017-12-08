@@ -1,7 +1,8 @@
 defmodule Honeydew.MnesiaQueueIntegrationTest do
   use ExUnit.Case, async: true
-  import ExUnit.CaptureLog
   alias Honeydew.Job
+
+  @moduletag :capture_log
 
   @num_workers 5
 
@@ -166,13 +167,11 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
 
     Process.exit(worker_sup, :kill)
 
-    capture_log(fn ->
-      workers
-      |> Map.keys
-      |> Enum.each(fn worker ->
-        Process.exit(worker, :kill)
-        assert not Process.alive?(worker)
-      end)
+    workers
+    |> Map.keys
+    |> Enum.each(fn worker ->
+      Process.exit(worker, :kill)
+      assert not Process.alive?(worker)
     end)
 
     Process.flag(:trap_exit, false)
