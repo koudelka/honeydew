@@ -196,6 +196,30 @@ defmodule Honeydew do
     |> GenServer.call({:cancel, job})
   end
 
+  @doc """
+  Moves a job to another queue.
+
+  Raises a `RuntimeError` if `to_queue` is not available.
+
+  This function first enqueues the job on `to_queue`, and then tries to
+  cancel it on its current queue. This means there's a possiblity a job could
+  be processed on both queues. This behavior is consistent with Honeydew's
+  at-least-once execution goal.
+
+  This function is most helpful on a queue where there a no workers
+  (like a dead letter queue), because the job won't be processed out from under
+  the queue.
+  """
+  @spec move(Job.t, to_queue :: queue_name) :: Job.t | no_return
+  def move(%Job{task: task} = job, queue) do
+    new_job = async(task, queue)
+
+    # Try to cancel it. Don't worry about return types.
+    cancel(job)
+
+    new_job
+  end
+
   # FIXME: remove
   def state(queue) do
     queue

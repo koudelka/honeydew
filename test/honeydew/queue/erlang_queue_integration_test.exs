@@ -2,7 +2,10 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
   use ExUnit.Case, async: true
   alias Honeydew.Job
 
-  setup [:generate_queue_name, :start_queue, :start_worker_pool]
+  setup [
+    :setup_queue_name,
+    :setup_queue,
+    :setup_worker_pool]
 
   test "async/3", %{queue: queue} do
     %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
@@ -149,7 +152,7 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
   test "when workers join a queue with existing jobs", %{queue: queue} do
     %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
 
-    start_worker_pool(%{queue: queue})
+    start_worker_pool(queue)
 
     assert_receive :hi
   end
@@ -159,7 +162,7 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
     %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
     Honeydew.suspend(queue)
 
-    start_worker_pool(%{queue: queue})
+    start_worker_pool(queue)
 
     refute_receive :hi
   end
@@ -169,7 +172,7 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
     %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
     Honeydew.suspend(queue)
 
-    start_worker_pool(%{queue: queue})
+    start_worker_pool(queue)
     refute_receive :hi
 
     Honeydew.resume(queue)
@@ -177,23 +180,102 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
     assert_receive :hi
   end
 
-  defp generate_queue_name(%{queue: queue}), do: {:ok, [queue: queue]}
-  defp generate_queue_name(_) do
-    queue = "#{:erlang.monotonic_time}_#{:erlang.unique_integer}"
-    {:ok, [queue: queue]}
+  @tag :skip_worker_pool
+  test "moving a job that has not been processed", %{queue: queue} do
+    job = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+
+    other_queue = generate_queue_name()
+    {:ok, _} = start_queue(other_queue)
+    {:ok, _} = start_worker_pool(other_queue)
+
+    assert %Job{queue: ^other_queue} =
+      Honeydew.move(job, other_queue)
+
+    assert 0 = queue |> Honeydew.status |> get_in([:queue, :count])
+    assert_receive :hi
   end
 
-  defp start_queue(%{queue: queue} = context) do
-    suspended = Map.get(context, :start_suspended, false)
-    {:ok, queue_sup} = Helper.start_queue_link(
-      queue, queue: Honeydew.Queue.ErlangQueue, suspended: suspended)
+  test "moving a job that has been processed", %{queue: queue} do
+    job = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
 
+    other_queue = generate_queue_name()
+    {:ok, _} = start_queue(other_queue)
+    {:ok, _} = start_worker_pool(other_queue)
+
+    assert %Job{queue: ^other_queue} =
+      Honeydew.move(job, other_queue)
+
+    assert 0 = queue |> Honeydew.status |> get_in([:queue, :count])
+
+    # It should receive a response from the original queue and new queue
+    assert_receive :hi
+    assert_receive :hi
+  end
+
+  @tag :skip_worker_pool
+  test "moving a job with reply: true that has not been processed", %{queue: queue} do
+    job = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+
+    other_queue = generate_queue_name()
+    {:ok, _} = start_queue(other_queue)
+    {:ok, _} = start_worker_pool(other_queue)
+
+    assert %Job{queue: ^other_queue} =
+      Honeydew.move(job, other_queue)
+    assert 0 = queue |> Honeydew.status |> get_in([:queue, :count])
+
+    # It should receive a response from the new queue, but not the old queue
+    assert_receive :hi
+    refute_receive :hi
+  end
+
+  test "moving a job with reply: true that has been processed", %{queue: queue} do
+    job = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+
+    other_queue = generate_queue_name()
+    {:ok, _} = start_queue(other_queue)
+    {:ok, _} = start_worker_pool(other_queue)
+
+    assert %Job{queue: ^other_queue} =
+      Honeydew.move(job, other_queue)
+
+    # It should receive a response from the old queue and the new queue
+    assert_receive :hi
+    assert_receive :hi
+  end
+
+  @tag :skip_worker_pool
+  test "moving a job to a queue that doesn't exist" do
+    assert_raise RuntimeError, fn ->
+      Honeydew.async({:send_msg, [self(), :hi]}, :nonexistent_queue)
+    end
+  end
+
+  defp setup_queue_name(%{queue: queue}), do: {:ok, [queue: queue]}
+  defp setup_queue_name(_), do: {:ok, [queue: generate_queue_name()]}
+
+  defp setup_queue(%{queue: queue} = context) do
+    suspended = Map.get(context, :start_suspended, false)
+    {:ok, queue_sup} = start_queue(queue, suspended: suspended)
     {:ok, [queue_sup: queue_sup]}
   end
 
-  defp start_worker_pool(%{skip_worker_pool: true}), do: :ok
-  defp start_worker_pool(%{queue: queue}) do
-    {:ok, worker_sup} = Helper.start_worker_link(queue, Stateless)
+  defp setup_worker_pool(%{skip_worker_pool: true}), do: :ok
+  defp setup_worker_pool(%{queue: queue}) do
+    {:ok, worker_sup} = start_worker_pool(queue)
     {:ok, [worker_sup: worker_sup]}
+  end
+
+  defp generate_queue_name do
+    "#{:erlang.monotonic_time}_#{:erlang.unique_integer}"
+  end
+
+  defp start_queue(queue, opts \\ []) do
+    queue_opts = Keyword.merge([queue: Honeydew.Queue.ErlangQueue], opts)
+    Helper.start_queue_link(queue, queue_opts)
+  end
+
+  defp start_worker_pool(queue) do
+    Helper.start_worker_link(queue, Stateless)
   end
 end
