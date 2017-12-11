@@ -25,6 +25,8 @@ defmodule Honeydew do
   @doc """
   Runs a task asynchronously.
 
+  Raises an `ArgumentError` if the queue process is not available.
+
   ## Examples
 
   To run a task asynchronously.
@@ -67,7 +69,24 @@ defmodule Honeydew do
   @doc """
   Wait for a job to complete and return result.
 
-  Returns the result of a job, or `nil` on timeout.
+  Returns the result of a job, or `nil` on timeout. This function must be
+  called from the same process that called `async/3`.
+
+  ## Example
+
+  Calling `yield/2` with different timeouts.
+
+      iex> job = Honeydew.async({:ping, ["127.0.0.1"], :my_queue, reply: true)
+      iex> Honeydew.yield(job, 2000)
+      nil
+      # Result comes in at 3 seconds
+      iex> Honeydew.yield(job, 5000)
+      :pong
+      iex> Honeydew.yield(job, 10_000)
+      nil # <- because the message has already arrived and been handled
+
+  The only time `yield/2` would ever return the result more than once is if
+  the job executes more than once (as Honeydew aims for at-least-once execution).
   """
   @spec yield(Job.t, timeout) :: result | nil
   def yield(job, timeout \\ 5000)
@@ -136,6 +155,9 @@ defmodule Honeydew do
 
   @doc """
   Filters the jobs currently on the queue.
+
+  Please Note -- This function returns a `List`, not a `Stream`, so calling it
+  can be memory intensive when invoked on a large queue.
 
   ## Examples
 
