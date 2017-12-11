@@ -7,7 +7,7 @@ defmodule Honeydew.QueueSupervisorTest do
 
     Honeydew.create_groups(pool)
 
-    {:ok, supervisor} = Honeydew.QueueSupervisor.start_link(pool, ErlangQueue, [], 3, {Honeydew.Dispatcher.LRU, []}, {Honeydew.FailureMode.Abandon, []}, nil)
+    {:ok, supervisor} = Honeydew.QueueSupervisor.start_link(pool, ErlangQueue, [], 3, {Honeydew.Dispatcher.LRU, []}, {Honeydew.FailureMode.Abandon, []}, nil, false)
 
     # on_exit fn ->
     #   Supervisor.stop(supervisor)

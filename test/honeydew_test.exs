@@ -14,12 +14,13 @@ defmodule HoneydewTest do
         dispatcher: {Dis.Patcher, [:a, :b]},
         failure_mode: {Abandon, []},
         success_mode: {Log, []},
-        supervisor_opts: [id: :my_queue_supervisor])
+        supervisor_opts: [id: :my_queue_supervisor],
+        suspended: true)
 
     assert spec == {:my_queue_supervisor,
                     {Honeydew.QueueSupervisor, :start_link,
                      [queue, :abc, [1, 2, 3], 1, {Dis.Patcher, [:a, :b]},
-                      {Abandon, []}, {Log, []}]}, :permanent, :infinity, :supervisor,
+                      {Abandon, []}, {Log, []}, true]}, :permanent, :infinity, :supervisor,
                     [Honeydew.QueueSupervisor]}
   end
 
@@ -42,7 +43,7 @@ defmodule HoneydewTest do
     assert spec == {{:queue, queue},
                     {Honeydew.QueueSupervisor, :start_link,
                      [queue, Honeydew.Queue.ErlangQueue, [], 1,
-                      {Honeydew.Dispatcher.LRU, []}, {Honeydew.FailureMode.Abandon, []}, nil]},
+                      {Honeydew.Dispatcher.LRU, []}, {Honeydew.FailureMode.Abandon, []}, nil, false]},
                     :permanent, :infinity, :supervisor, [Honeydew.QueueSupervisor]}
 
     queue = {:global, :erlang.unique_integer}
@@ -51,7 +52,7 @@ defmodule HoneydewTest do
     assert spec == {{:queue, queue},
                     {Honeydew.QueueSupervisor, :start_link,
                      [queue, Honeydew.Queue.ErlangQueue, [], 1,
-                      {Honeydew.Dispatcher.LRUNode, []}, {Honeydew.FailureMode.Abandon, []}, nil]},
+                      {Honeydew.Dispatcher.LRUNode, []}, {Honeydew.FailureMode.Abandon, []}, nil, false]},
                     :permanent, :infinity, :supervisor, [Honeydew.QueueSupervisor]}
   end
 

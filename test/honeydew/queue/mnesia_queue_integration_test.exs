@@ -36,6 +36,14 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     refute_receive :hi
   end
 
+  @tag :start_suspended
+  test "starting a queue suspended", %{queue: queue} do
+    {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+    assert Honeydew.status(queue) |> get_in([:queue, :count]) == 1
+    assert Honeydew.status(queue) |> get_in([:queue, :suspended]) == true
+    refute_receive :hi
+  end
+
   test "resume/1", %{queue: queue} do
     Honeydew.suspend(queue)
     {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
@@ -233,9 +241,10 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     {:ok, [queue: queue]}
   end
 
-  defp start_queue(%{queue: queue}) do
+  defp start_queue(%{queue: queue} = context) do
+    suspended = Map.get(context, :start_suspended, false)
     nodes = [node()]
-    {:ok, queue_sup} = Helper.start_queue_link(queue, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
+    {:ok, queue_sup} = Helper.start_queue_link(queue, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]}, suspended: suspended)
     {:ok, [queue_sup: queue_sup]}
   end
 
