@@ -25,7 +25,7 @@ defmodule Honeydew do
   @doc """
   Runs a task asynchronously.
 
-  Raises an `ArgumentError` if the queue process is not available.
+  Raises a `RuntimeError` if `queue` process is not available.
 
   ## Examples
 

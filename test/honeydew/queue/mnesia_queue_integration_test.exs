@@ -13,6 +13,13 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     assert_receive :hi
   end
 
+  @tag :skip_worker_pool
+  test "async/3 when queue doesn't exist" do
+    assert_raise RuntimeError, fn ->
+      Honeydew.async({:send_msg, [self(), :hi]}, :nonexistent_queue)
+    end
+  end
+
   test "yield/2", %{queue: queue} do
     first_job  = {:return, [:hi]} |> Honeydew.async(queue, reply: true)
     second_job = {:return, [:there]} |> Honeydew.async(queue, reply: true)
