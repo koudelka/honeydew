@@ -2,6 +2,7 @@ defmodule Honeydew.Queue do
   use GenServer
   require Logger
   require Honeydew
+  alias Honeydew.Job
   alias Honeydew.Monitor
 
   defmodule State do
@@ -15,9 +16,9 @@ defmodule Honeydew.Queue do
       monitors: MapSet.new
   end
 
+  @type job :: Job.t
   @type private :: term
-  @type name :: term | {:global, term} # tighten this to a string or atom?
-  @type job :: %Honeydew.Job{}
+  @type name :: Honeydew.queue_name
 
   @callback init(name, arg :: term) :: {:ok, private}
   @callback enqueue(job, private) :: {private, job}
@@ -25,7 +26,7 @@ defmodule Honeydew.Queue do
   @callback ack(job, private) :: private
   @callback nack(job, private) :: private
   @callback status(private) :: %{:count => number, :in_progress => number, optional(atom) => any}
-  @callback filter(private, function) :: [job, ...]
+  @callback filter(private, function) :: [job]
   @callback cancel(job, private) :: {:ok | {:error, :in_progress} | nil, private}
 
   # stolen from GenServer, with a slight change

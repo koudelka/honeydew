@@ -9,12 +9,43 @@ defmodule Honeydew do
   @type mod_or_mod_args :: module | {module, args :: term}
   @type queue_name :: String.t | atom | {:global, String.t | atom}
   @type supervisor_opts :: Keyword.t
+  @type async_opt :: [{:reply, true}]
+  @type task :: {atom, [arg :: term]}
+
+  @typedoc """
+  Result of a `Honeydew.Job`
+  """
+  @type result :: term
 
   #
   # Parts of this module were lovingly stolen from
   # https://github.com/elixir-lang/elixir/blob/v1.3.2/lib/elixir/lib/task.ex#L320
   #
 
+  @doc """
+  Runs a task asynchronously.
+
+  Raises a `RuntimeError` if `queue` process is not available.
+
+  ## Examples
+
+  To run a task asynchronously.
+
+      Honeydew.async({:ping, ["127.0.0.1"]}, :my_queue)
+
+  To run a task asynchronously and wait for result.
+
+      # Without pipes
+      job = Honeydew.async({:ping, ["127.0.0.1"]}, :my_queue, reply: true)
+      Honeydew.yield(job)
+
+      # With pipes
+      result =
+        {:ping, ["127.0.0.1"]}
+        |> Honeydew.async(:my_queue, reply: true)
+        |> Honeydew.yield()
+  """
+  @spec async(task, queue_name, [async_opt]) :: Job.t | no_return
   def async(task, queue, opts \\ [])
   def async(task, queue, reply: true) do
     {:ok, job} =
@@ -35,6 +66,29 @@ defmodule Honeydew do
     job
   end
 
+  @doc """
+  Wait for a job to complete and return result.
+
+  Returns the result of a job, or `nil` on timeout. This function must be
+  called from the same process that called `async/3`.
+
+  ## Example
+
+  Calling `yield/2` with different timeouts.
+
+      iex> job = Honeydew.async({:ping, ["127.0.0.1"], :my_queue, reply: true)
+      iex> Honeydew.yield(job, 2000)
+      nil
+      # Result comes in at 3 seconds
+      iex> Honeydew.yield(job, 5000)
+      :pong
+      iex> Honeydew.yield(job, 10_000)
+      nil # <- because the message has already arrived and been handled
+
+  The only time `yield/2` would ever return the result more than once is if
+  the job executes more than once (as Honeydew aims for at-least-once execution).
+  """
+  @spec yield(Job.t, timeout) :: result | nil
   def yield(job, timeout \\ 5000)
   def yield(%Job{from: nil} = job, _), do: raise ArgumentError, reply_not_requested_error(job)
   def yield(%Job{from: {owner, _}} = job, _) when owner != self(), do: raise ArgumentError, invalid_owner_error(job)
@@ -99,6 +153,23 @@ defmodule Honeydew do
     %{queue: Map.delete(queue_status, :monitors), workers: workers}
   end
 
+  @doc """
+  Filters the jobs currently on the queue.
+
+  Please Note -- This function returns a `List`, not a `Stream`, so calling it
+  can be memory intensive when invoked on a large queue.
+
+  ## Examples
+
+  Filter jobs with a specific task.
+
+      Honeydew.filter(:my_queue, &match?(%Honeydew.Job{task: {:ping, _}}, &1))
+
+  Return all jobs.
+
+      Honeydew.filter(:my_queue, fn _ -> true end)
+  """
+  @spec filter(queue_name, (Job.t -> boolean)) :: [Job.t]
   def filter(queue, function) do
     {:ok, jobs} =
       queue
