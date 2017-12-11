@@ -272,23 +272,22 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
 
   @tag :skip_worker_pool
   test "moving a job with reply: true that has not been processed", %{queue: queue} do
-    job = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+    job = Honeydew.async({:return, [:pong]}, queue, reply: true)
 
     other_queue = generate_queue_name()
     {:ok, _} = start_queue(other_queue)
     {:ok, _} = start_worker_pool(other_queue)
 
-    assert %Job{queue: ^other_queue} =
-      Honeydew.move(job, other_queue)
+    assert %Job{queue: ^other_queue} = Honeydew.move(job, other_queue)
     assert 0 = queue |> Honeydew.status |> get_in([:queue, :count])
 
-    # It should receive a response from the new queue, but not the old queue
-    assert_receive :hi
-    refute_receive :hi
+    # It should only receive the response once
+    assert {:ok, :pong} = Honeydew.yield(job)
+    assert is_nil Honeydew.yield(job, 100)
   end
 
   test "moving a job with reply: true that has been processed", %{queue: queue} do
-    job = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+    job = Honeydew.async({:return, [:pong]}, queue, reply: true)
 
     other_queue = generate_queue_name()
     {:ok, _} = start_queue(other_queue)
@@ -297,9 +296,11 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     assert %Job{queue: ^other_queue} =
       Honeydew.move(job, other_queue)
 
-    # It should receive a response from the old queue and the new queue
-    assert_receive :hi
-    assert_receive :hi
+    # It should receive a response from the old queue and the new queue, but no
+    # more
+    assert {:ok, :pong} = Honeydew.yield(job)
+    assert {:ok, :pong} = Honeydew.yield(job)
+    assert is_nil Honeydew.yield(job, 100)
   end
 
   @tag :skip_worker_pool

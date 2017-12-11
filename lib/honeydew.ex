@@ -211,10 +211,10 @@ defmodule Honeydew do
   the queue.
   """
   @spec move(Job.t, to_queue :: queue_name) :: Job.t | no_return
-  def move(%Job{task: task} = job, queue) do
-    new_job = async(task, queue)
+  def move(%Job{} = job, queue) do
+    {:ok, new_job} = enqueue(%Job{job | queue: queue})
 
-    # Try to cancel it. Don't worry about return types.
+    # Don't worry if it fails to cancel.
     cancel(job)
 
     new_job
