@@ -8,6 +8,7 @@ defmodule Honeydew.Queue.ErlangQueue do
   """
   require Logger
   alias Honeydew.Job
+  alias Honeydew.Queue
 
   @behaviour Honeydew.Queue
 
@@ -68,6 +69,7 @@ defmodule Honeydew.Queue.ErlangQueue do
   end
 
   @impl true
+  @spec cancel(Job.t, Queue.private) :: {:ok | {:error, :in_progress | :not_found}, Queue.private}
   def cancel(%Job{private: private}, {pending, in_progress}) do
     filter = fn
       %Job{private: ^private} -> false;
@@ -79,7 +81,7 @@ defmodule Honeydew.Queue.ErlangQueue do
     reply = cond do
       :queue.len(pending) > :queue.len(new_pending) -> :ok
       in_progress |> Map.values |> Enum.filter(&(!filter.(&1))) |> Enum.count > 0 -> {:error, :in_progress}
-      true -> nil
+      true -> {:error, :not_found}
     end
 
     {reply, {new_pending, in_progress}}
