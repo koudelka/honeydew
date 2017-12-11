@@ -1,5 +1,6 @@
 defmodule Honeydew.MnesiaQueueIntegrationTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
+
   alias Honeydew.Job
 
   @moduletag :capture_log
@@ -10,6 +11,12 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     :setup_queue_name,
     :setup_queue,
     :setup_worker_pool]
+
+  describe "doctests" do
+    setup [:start_doctest_env]
+
+    doctest Honeydew
+  end
 
   test "async/3", %{queue: queue} do
     %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
@@ -29,6 +36,27 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
 
     assert {:ok, :hi}    = Honeydew.yield(first_job)
     assert {:ok, :there} = Honeydew.yield(second_job)
+  end
+
+  test "yield/2 when job isn't started properly", %{queue: queue} do
+    job = Honeydew.async({:return, [:hi]}, queue)
+
+    assert_raise ArgumentError, ~r/set `:reply` to `true`/i,  fn ->
+      Honeydew.yield(job)
+    end
+  end
+
+  test "when yield/2 is called from a separate process", %{queue: queue} do
+    job =
+      fn ->
+        Honeydew.async({:return, [:hi]}, queue, reply: true)
+      end
+      |> Task.async
+      |> Task.await
+
+    assert_raise ArgumentError, ~r/the owner/i, fn ->
+      Honeydew.yield(job)
+    end
   end
 
   test "suspend/1", %{queue: queue} do
@@ -343,5 +371,13 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
 
   defp start_worker_pool(queue) do
     Helper.start_worker_link(queue, Stateless, num: @num_workers)
+  end
+
+  defp start_doctest_env(_) do
+    queue = :my_queue
+    start_queue(queue)
+    Helper.start_worker_link(queue, DocTestWorker, num: @num_workers)
+
+    :ok
   end
 end

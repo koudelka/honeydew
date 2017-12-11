@@ -69,26 +69,27 @@ defmodule Honeydew do
   @doc """
   Wait for a job to complete and return result.
 
-  Returns the result of a job, or `nil` on timeout. This function must be
-  called from the same process that called `async/3`.
+  Returns the result of a job, or `nil` on timeout. Raises an `ArgumentError` if
+  the job was not created with `reply: true` and in the current process.
 
   ## Example
 
   Calling `yield/2` with different timeouts.
 
-      iex> job = Honeydew.async({:ping, ["127.0.0.1"], :my_queue, reply: true)
+      iex> job = Honeydew.async({:ping, ["127.0.0.1"]}, :my_queue, reply: true)
       iex> Honeydew.yield(job, 2000)
       nil
       # Result comes in at 3 seconds
-      iex> Honeydew.yield(job, 5000)
-      :pong
-      iex> Honeydew.yield(job, 10_000)
+      iex> Honeydew.yield(job, 2000) # Wait another 2 seconds
+      {:ok, :pong}
+      iex> Honeydew.yield(job, 1000) # Wait another econd
       nil # <- because the message has already arrived and been handled
 
   The only time `yield/2` would ever return the result more than once is if
-  the job executes more than once (as Honeydew aims for at-least-once execution).
+  the job executes more than once (as Honeydew aims for at-least-once
+  execution).
   """
-  @spec yield(Job.t, timeout) :: result | nil
+  @spec yield(Job.t, timeout) :: {:ok, result} | nil | no_return
   def yield(job, timeout \\ 5000)
   def yield(%Job{from: nil} = job, _), do: raise ArgumentError, reply_not_requested_error(job)
   def yield(%Job{from: {owner, _}} = job, _) when owner != self(), do: raise ArgumentError, invalid_owner_error(job)
