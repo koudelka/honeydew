@@ -92,6 +92,16 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
     assert_receive :hi
   end
 
+  test "cancel/1 when has been processed", %{queue: queue} do
+    job = Honeydew.async({:send_msg, [self(), :hi]}, queue)
+    receive do
+      :hi -> :ok
+    end
+    Process.sleep(100) # Wait for job to be acked
+
+    assert {:error, :not_found} = Honeydew.cancel(job)
+  end
+
   test "pause queue, enqueue many, filter and cancel some, resume queue", %{queue: queue} do
     Honeydew.suspend(queue)
 

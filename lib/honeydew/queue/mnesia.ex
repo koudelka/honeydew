@@ -177,7 +177,7 @@ defmodule Honeydew.Queue.Mnesia do
   end
 
   @impl true
-  @spec cancel(Job.t, Queue.private) :: {:ok | {:error, :in_progress} | nil, Queue.private}
+  @spec cancel(Job.t, Queue.private) :: {:ok | {:error, :in_progress | :not_found}, Queue.private}
   def cancel(%Job{private: {_, id}, }, %PState{table: table, access_context: access_context} = state) do
     reply =
       :mnesia.activity(access_context, fn ->
@@ -186,7 +186,7 @@ defmodule Honeydew.Queue.Mnesia do
         |> :mnesia.match_object
         |> Enum.map(&Job.to_record/1)
         |> case do
-             [] -> nil
+             [] -> {:error, :not_found}
              [Job.job(private: {false, id})] ->
                :ok = :mnesia.delete({table, {false, id}})
              [Job.job(private: {_node, _id})] ->

@@ -186,10 +186,10 @@ defmodule Honeydew do
 
   * `:ok` - Job had not been started and was able to be cancelled.
   * `{:error, :in_progress}` - Job was in progress and unable to be cancelled.
-  * `nil` - Job was not found on the queue (or already processed) and was unable
-    to be cancelled.
+  * `{:error, :not_found}` - Job was not found on the queue (or already
+      processed) and was unable to be cancelled.
   """
-  @spec cancel(Job.t) :: :ok | {:error, :in_progress} | nil
+  @spec cancel(Job.t) :: :ok | {:error, :in_progress} | {:error, :not_found}
   def cancel(%Job{queue: queue} = job) do
     queue
     |> get_queue
