@@ -3,12 +3,13 @@ defmodule Honeydew.FailureMode.RetryTest do
 
   @moduletag :capture_log
 
-  setup do
+  setup context do
     queue = :erlang.unique_integer
     failure_queue = "#{queue}_failed"
+    retry_count = Map.get(context, :retry_count, 3)
 
     {:ok, _} = Helper.start_queue_link(queue, failure_mode: {Honeydew.FailureMode.Retry,
-                                                             times: 3, finally: {Honeydew.FailureMode.Move, queue: failure_queue}})
+                                                             times: retry_count, finally: {Honeydew.FailureMode.Move, queue: failure_queue}})
     {:ok, _} = Helper.start_queue_link(failure_queue)
     {:ok, _} = Helper.start_worker_link(queue, Stateless)
 
@@ -34,10 +35,24 @@ defmodule Honeydew.FailureMode.RetryTest do
     end
   end
 
+  @tag retry_count: 3
   test "should retry the job", %{queue: queue, failure_queue: failure_queue} do
     {:crash, [self()]} |> Honeydew.async(queue)
     assert_receive :job_ran
     assert_receive :job_ran
+    assert_receive :job_ran
+
+    Process.sleep(500) # let the Move failure mode do its thing
+
+    assert Honeydew.status(queue) |> get_in([:queue, :count]) == 0
+    refute_receive :job_ran
+
+    assert Honeydew.status(failure_queue) |> get_in([:queue, :count]) == 1
+  end
+
+  @tag retry_count: 1
+  test "when retry_count is 1", %{queue: queue, failure_queue: failure_queue} do
+    {:crash, [self()]} |> Honeydew.async(queue)
     assert_receive :job_ran
 
     Process.sleep(500) # let the Move failure mode do its thing
