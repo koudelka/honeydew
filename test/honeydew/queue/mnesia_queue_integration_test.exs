@@ -194,6 +194,7 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
       Process.exit(worker, :kill)
       assert not Process.alive?(worker)
     end)
+    Process.sleep(500) # let monitors die
 
     Process.flag(:trap_exit, false)
 

@@ -95,6 +95,7 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
     me = self()
     assert {:error, :in_progress} =
       fn ->
+        Process.sleep(50)
         send(me, :hi)
       end
       |> Honeydew.async(queue)

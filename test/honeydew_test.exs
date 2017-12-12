@@ -111,6 +111,8 @@ defmodule HoneydewTest do
 
     {:emit_progress, ["doing thing 1/2"]} |> Honeydew.async(queue)
 
+    Process.sleep(100)
+
     [{_worker, {_job, status}}] =
       queue
       |> Honeydew.status

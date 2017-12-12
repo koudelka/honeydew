@@ -1,6 +1,8 @@
 defmodule Honeydew.FailureMode.AbandonTest do
   use ExUnit.Case, async: true
 
+  @moduletag :capture_log
+
   setup do
     queue = :erlang.unique_integer
     {:ok, _} = Helper.start_queue_link(queue, failure_mode: Honeydew.FailureMode.Abandon)
