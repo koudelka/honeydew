@@ -211,8 +211,8 @@ defmodule Honeydew do
   the queue.
   """
   @spec move(Job.t, to_queue :: queue_name) :: Job.t | no_return
-  def move(%Job{} = job, queue) do
-    {:ok, new_job} = enqueue(%Job{job | queue: queue})
+  def move(%Job{} = job, to_queue) do
+    {:ok, new_job} = enqueue(%Job{job | queue: to_queue})
 
     # Don't worry if it fails to cancel.
     cancel(job)
