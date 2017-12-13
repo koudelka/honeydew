@@ -25,6 +25,13 @@ defmodule Stateless do
   end
 end
 
+defmodule DocTestWorker do
+  def ping(_ip) do
+    Process.sleep(3000)
+    :pong
+  end
+end
+
 defmodule Stateful do
   @behaviour Honeydew.Worker
   def init(state) do
