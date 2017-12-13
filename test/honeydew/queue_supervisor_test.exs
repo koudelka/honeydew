@@ -1,5 +1,5 @@
 defmodule Honeydew.QueueSupervisorTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   alias Honeydew.Queue.ErlangQueue
 
   setup do

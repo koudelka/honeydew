@@ -1,5 +1,5 @@
 defmodule Honeydew.WorkerSupervisorTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   setup do
     pool = :erlang.unique_integer

@@ -1,5 +1,5 @@
 defmodule Honeydew.ErlangQueueIntegrationTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: false # shares doctest queue name with mnesia queue test
   alias Honeydew.Job
 
   setup [

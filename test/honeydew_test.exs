@@ -1,5 +1,5 @@
 defmodule HoneydewTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   alias Honeydew.Job
   alias Honeydew.FailureMode.Abandon
   alias Honeydew.SuccessMode.Log

@@ -77,12 +77,12 @@ defmodule Honeydew do
   Calling `yield/2` with different timeouts.
 
       iex> job = Honeydew.async({:ping, ["127.0.0.1"]}, :my_queue, reply: true)
-      iex> Honeydew.yield(job, 2000)
+      iex> Honeydew.yield(job, 500) # Wait half a second
       nil
-      # Result comes in at 3 seconds
-      iex> Honeydew.yield(job, 2000) # Wait another 2 seconds
+      # Result comes in at 1 second
+      iex> Honeydew.yield(job, 1000) # Wait up to a second
       {:ok, :pong}
-      iex> Honeydew.yield(job, 1000) # Wait another econd
+      iex> Honeydew.yield(job, 0)
       nil # <- because the message has already arrived and been handled
 
   The only time `yield/2` would ever return the result more than once is if

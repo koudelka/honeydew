@@ -1,5 +1,5 @@
 defmodule Honeydew.MnesiaQueueIntegrationTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Honeydew.Job
 
@@ -210,7 +210,7 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     Process.flag(:trap_exit, true)
 
     Process.exit(queue_sup, :normal)
-    Process.sleep(500)
+    Process.sleep(100)
     assert not Process.alive?(queue_process)
     assert nil == Honeydew.get_queue(queue)
 
@@ -222,7 +222,7 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
       Process.exit(worker, :kill)
       assert not Process.alive?(worker)
     end)
-    Process.sleep(500) # let monitors die
+    Process.sleep(100) # let monitors die
 
     Process.flag(:trap_exit, false)
 
