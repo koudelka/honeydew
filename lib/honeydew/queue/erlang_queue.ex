@@ -29,12 +29,12 @@ defmodule Honeydew.Queue.ErlangQueue do
   end
 
   @impl true
-  def reserve({pending, in_progress}) do
+  def reserve({pending, in_progress} = state) do
     case :queue.out(pending) do
       {:empty, _pending} ->
-        nil
+        {:empty, state}
       {{:value, job}, pending} ->
-        {{pending, Map.put(in_progress, job.private, job)}, job}
+        {job, {pending, Map.put(in_progress, job.private, job)}}
     end
   end
 

@@ -22,7 +22,7 @@ defmodule Honeydew.Queue do
 
   @callback init(name, arg :: term) :: {:ok, private}
   @callback enqueue(job, private) :: {private, job}
-  @callback reserve(private) :: {private, job}
+  @callback reserve(private) :: {job, private}
   @callback ack(job, private) :: private
   @callback nack(job, private) :: private
   @callback status(private) :: %{:count => number, :in_progress => number, optional(atom) => any}
@@ -245,13 +245,21 @@ defmodule Honeydew.Queue do
   defp dispatch(%State{suspended: true} = state), do: state
   defp dispatch(%State{module: module, private: private} = state) do
     with true <- worker_available?(state),
-          {private, job} <- module.reserve(private),
+          {%Job{} = job, private} <- module.reserve(private),
           state <- %{state | private: private},
           {worker, state} when not is_nil(worker) <- check_out_worker(job, state) do
       Honeydew.debug "[Honeydew] Queue #{inspect self()} dispatching job #{inspect job.private} to #{inspect worker}"
-      state = send_job(worker, job, state)
-      dispatch(state)
-    else _ -> state
+      worker
+      |> send_job(job, state)
+      |> dispatch
+    else
+      # no worker available
+      false -> state
+      # empty queue, we update the private state as the queue may have had an id enqueued,
+      # but decided that the job was invalid (or missing, see Disorder queue's reserve/1)
+      {:empty, private} -> %{state | private: private}
+      # dispatcher didn't provide a worker
+      {nil, state} -> state
     end
   end
 

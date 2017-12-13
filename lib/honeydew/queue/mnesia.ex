@@ -82,7 +82,7 @@ defmodule Honeydew.Queue.Mnesia do
   def reserve(%PState{table: table, access_context: access_context} = state) do
     :mnesia.activity(access_context, fn ->
       case :mnesia.select(table, @pending_match_spec, 1, :read) do
-        :"$end_of_table" -> nil
+        :"$end_of_table" -> {:empty, state}
         {[job], _cont} ->
           {_, id} = Job.job(job, :private)
 
@@ -92,7 +92,7 @@ defmodule Honeydew.Queue.Mnesia do
 
           :ok = :mnesia.write(job)
 
-          {state, Job.from_record(job)}
+          {Job.from_record(job), state}
       end
     end)
   end
