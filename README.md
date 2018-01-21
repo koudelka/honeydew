@@ -292,7 +292,7 @@ Worker state is immutable, the only way to change it is to cause the worker to c
 Your worker module's `init/1` function must return `{:ok, state}`. If anything else is returned or the function raises an error, the worker will die and restart after a given time interval (by default, five seconds).
 
 ### TODO:
-- failover/takeover for global queues
+- let the user decide if they want to `:ignore` during their init/1, to allow errors to bubble up the supervision tree.
 - statistics?
 - `yield_many/2` support?
 - benchmark mnesia queue's dual filter implementations, discard one?
