@@ -65,9 +65,7 @@ defmodule Honeydew.Queue do
     with {:global, _name} <- queue,
       do: :ok = :net_kernel.monitor_nodes(true)
 
-    queue
-    |> Honeydew.get_all_members(:workers)
-    |> subscribe_workers
+    start_workers(queue)
 
     {:ok, state} = module.init(queue, args)
 
@@ -182,30 +180,19 @@ defmodule Honeydew.Queue do
   end
 
   #
-  # Worker Discovery
+  # Worker Booting
   #
 
-  # when a node connects, ask it if it has any honeydew workers for this queue
-  # we do it like this as there's a race condition between receiving this message
-  # and :pg2 synchronizing groups
   def handle_info({:nodeup, node}, %State{queue: {:global, _} = queue} = state) do
-    Logger.info "[Honeydew] Connection to #{node} established, looking for workers..."
+    Logger.info "[Honeydew] Connection to #{node} established, asking it to start workers..."
 
-    :rpc.async_call(node, :pg2, :get_local_members, [Honeydew.group(queue, :workers)])
+    start_workers(queue)
 
     {:noreply, state}
   end
 
   def handle_info({:nodedown, node}, %State{queue: {:global, _}} = state) do
     Logger.warn "[Honeydew] Lost connection to #{node}."
-    {:noreply, state}
-  end
-
-  # rpc get-workers reply
-  def handle_info({_promise_pid, {:promise_reply, {:error, {:no_such_group, _worker_group}}}}, state), do: {:noreply, state}
-  def handle_info({_promise_pid, {:promise_reply, workers}}, state) do
-    Honeydew.debug "[Honeydew] Found #{Enum.count(workers)} workers."
-    subscribe_workers(workers)
     {:noreply, state}
   end
 
@@ -231,8 +218,10 @@ defmodule Honeydew.Queue do
     |> module.enqueue(private)
   end
 
-  defp subscribe_workers(workers) do
-    Enum.each(workers, &GenServer.cast(&1, :subscribe_to_queues))
+  defp start_workers(queue) do
+    :known # start workers on this node too, if need be
+    |> :erlang.nodes
+    |> Enum.each(&GenServer.cast({Honeydew.process(queue, :worker_starter), &1}, {:queue_available, self()}))
   end
 
   defp send_job(worker, job, %State{queue: queue, failure_mode: failure_mode, success_mode: success_mode, monitors: monitors} = state) do

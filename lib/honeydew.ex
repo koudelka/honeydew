@@ -233,9 +233,10 @@ defmodule Honeydew do
     queue
     |> get_queue
     |> case do
-         {:error, {:no_such_group, _queue}} -> raise RuntimeError, no_queues_running_error(job)
-         queue -> GenServer.call(queue, {:enqueue, job})
+         nil -> raise RuntimeError, no_queues_running_error(job)
+         queue -> queue
        end
+    |> GenServer.call({:enqueue, job})
   end
 
   @doc false
@@ -393,28 +394,31 @@ defmodule Honeydew do
   """
   @spec worker_spec(queue_name, mod_or_mod_args, [worker_spec_opt])
     :: Supervisor.Spec.spec
-  def worker_spec(name, module_and_args, opts \\ []) do
+  def worker_spec(queue, module_and_args, opts \\ []) do
     {module, args} =
       case module_and_args do
         module when is_atom(module) -> {module, []}
         {module, args} -> {module, args}
       end
 
-    num = opts[:num] || 10
-    init_retry = opts[:init_retry] || 5
-    shutdown = opts[:shutdown] || 10_000
-    nodes = opts[:nodes] || []
-
     supervisor_opts =
       opts
       |> Keyword.get(:supervisor_opts, [])
-      |> Keyword.put_new(:id, {:worker, name})
+      |> Keyword.put_new(:id, {:worker, queue})
 
-    Honeydew.create_groups(name)
+    Honeydew.create_groups(queue)
+
+    opts = %{
+      ma: {module, args},
+      num: opts[:num] || 10,
+      init_retry: opts[:init_retry] || 5,
+      shutdown: opts[:shutdown] || 10_000,
+      nodes: opts[:nodes] || []
+    }
 
     Supervisor.Spec.supervisor(
-      Honeydew.WorkerGroupSupervisor,
-      [name, module, args, num, init_retry, shutdown, nodes],
+      Honeydew.WorkerRootSupervisor,
+      [queue, opts],
       supervisor_opts)
   end
 
@@ -429,8 +433,10 @@ defmodule Honeydew do
     end
   end)
 
-  @supervisors [:worker,
+  @supervisors [:worker_root,
+                :worker_groups,
                 :worker_group,
+                :worker,
                 :node_monitor,
                 :queue]
 
@@ -438,6 +444,15 @@ defmodule Honeydew do
     @doc false
     def supervisor(queue, unquote(supervisor)) do
       name(queue, "#{unquote(supervisor)}_supervisor")
+    end
+  end)
+
+  @processes [:worker_starter]
+
+  Enum.each(@processes, fn process ->
+    @doc false
+    def process(queue, unquote(process)) do
+      name(queue, "#{unquote(process)}_process")
     end
   end)
 
@@ -474,20 +489,28 @@ defmodule Honeydew do
 
 
   @doc false
-  def get_queue({:global, _name} = queue) do
-    queue |> group(:queues) |> :pg2.get_closest_pid
+  def get_queue(queue) do
+    queue
+    |> get_all_queues
+    |> case do
+         {:error, {:no_such_group, _queue}} -> []
+         queues -> queues
+       end
+    |> List.first
   end
 
   @doc false
-  def get_queue(queue) do
+  def get_all_queues({:global, _name} = queue) do
+    queue
+    |> group(:queues)
+    |> :pg2.get_members
+  end
+
+  @doc false
+  def get_all_queues(queue) do
     queue
     |> group(:queues)
     |> :pg2.get_local_members
-    |> case do
-         [] -> nil
-         members when is_list(members) -> Enum.random(members)
-         error -> error
-       end
   end
 
 

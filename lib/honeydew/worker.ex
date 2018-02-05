@@ -11,17 +11,17 @@ defmodule Honeydew.Worker do
   @optional_callbacks init: 1
 
   defmodule State do
-    defstruct [:queue, :module, :user_state]
+    defstruct [:queue, :queue_pid, :module, :user_state]
   end
 
   @doc false
-  def start_link(queue, module, args, init_retry_secs) do
-    GenServer.start_link(__MODULE__, [queue, module, args, init_retry_secs])
+  def start_link(queue, %{ma: {module, args}, init_retry: init_retry_secs}, queue_pid) do
+    GenServer.start_link(__MODULE__, [queue, queue_pid, module, args, init_retry_secs])
   end
 
-  def init([queue, module, args, init_retry_secs]) do
+  def init([queue, queue_pid, module, args, init_retry_secs]) do
     Process.flag(:trap_exit, true)
-    state = %State{queue: queue, module: module}
+    state = %State{queue: queue, queue_pid: queue_pid, module: module}
 
     module.__info__(:functions)
     |> Enum.member?({:init, 1})

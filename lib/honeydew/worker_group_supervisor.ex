@@ -1,19 +1,15 @@
 defmodule Honeydew.WorkerGroupSupervisor do
-  alias Honeydew.{WorkerSupervisor, NodeMonitorSupervisor}
+  alias Honeydew.{QueueMonitor, WorkerSupervisor}
 
-  def start_link(queue, module, args, num_workers, init_retry_secs, shutdown, nodes) do
+  def start_link(queue, opts, queue_pid) do
     import Supervisor.Spec
 
-    children = [supervisor(WorkerSupervisor, [queue, module, args, num_workers, init_retry_secs, shutdown])]
+    children = [worker(QueueMonitor, [self(), queue_pid]),
+                supervisor(WorkerSupervisor, [queue, opts, queue_pid])]
 
-    opts = [strategy: :one_for_one,
-            name: Honeydew.supervisor(queue, :worker_group)]
+    supervisor_opts = [strategy: :one_for_one,
+                       name: Honeydew.supervisor(queue, :worker_group)]
 
-    queue
-    |> case do
-         {:global, _} -> children ++ [supervisor(NodeMonitorSupervisor, [queue, nodes])]
-         _ -> children
-       end
-    |> Supervisor.start_link(opts)
+    Supervisor.start_link(children, supervisor_opts)
   end
 end
