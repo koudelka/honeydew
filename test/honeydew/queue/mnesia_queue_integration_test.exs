@@ -23,6 +23,13 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     assert_receive :hi
   end
 
+  test "hammer async/3", %{queue: queue} do
+    Enum.each(0..10_000, fn i ->
+      %Job{} = {:send_msg, [self(), i]} |> Honeydew.async(queue)
+      assert_receive ^i
+    end)
+  end
+
   @tag :skip_worker_pool
   test "async/3 when queue doesn't exist" do
     assert_raise RuntimeError, fn ->
