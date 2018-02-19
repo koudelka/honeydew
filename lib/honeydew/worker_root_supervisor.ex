@@ -4,6 +4,8 @@ defmodule Honeydew.WorkerRootSupervisor do
   def start_link(queue, %{nodes: nodes} = opts) do
     import Supervisor.Spec
 
+    Honeydew.create_groups(queue)
+
     children = [supervisor(WorkerGroupsSupervisor, [queue, opts]),
                 worker(WorkerStarter, [queue])]
 

@@ -347,8 +347,6 @@ defmodule Honeydew do
       |> Keyword.get(:supervisor_opts, [])
       |> Keyword.put_new(:id, {:queue, name})
 
-    Honeydew.create_groups(name)
-
     Supervisor.Spec.supervisor(
       Honeydew.QueueSupervisor,
       [name, module, args, num, dispatcher, failure_mode, success_mode, suspended],
@@ -405,8 +403,6 @@ defmodule Honeydew do
       opts
       |> Keyword.get(:supervisor_opts, [])
       |> Keyword.put_new(:id, {:worker, queue})
-
-    Honeydew.create_groups(queue)
 
     opts = %{
       ma: {module, args},
