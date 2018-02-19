@@ -10,9 +10,13 @@ defmodule Honeydew.Mixfile do
      docs: docs(),
      deps: deps(),
      package: package(),
+     elixirc_paths: elixirc_paths(Mix.env),
      description: "Pluggable local/remote job queue + worker pool with permanent workers.",
      dialyzer: [plt_add_apps: [:mnesia]]]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_),     do: ["lib"]
 
   # Configuration for the OTP application
   #

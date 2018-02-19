@@ -1,52 +1,3 @@
-defmodule Stateless do
-  @behaviour Honeydew.Worker
-  use Honeydew.Progress
-
-  def send_msg(to, msg) do
-    send(to, msg)
-  end
-
-  def return(term) do
-    term
-  end
-
-  def sleep(time) do
-    Process.sleep(time)
-  end
-
-  def crash(pid) do
-    send pid, :job_ran
-    raise "ignore this crash"
-  end
-
-  def emit_progress(update) do
-    progress(update)
-    Process.sleep(500)
-  end
-end
-
-defmodule DocTestWorker do
-  def ping(_ip) do
-    Process.sleep(1000)
-    :pong
-  end
-end
-
-defmodule Stateful do
-  @behaviour Honeydew.Worker
-  def init(state) do
-    {:ok, state}
-  end
-
-  def send_msg(to, msg, state) do
-    send(to, {msg, state})
-  end
-
-  def return(term, state) do
-    {term, state}
-  end
-end
-
 defmodule TestSuccessMode do
   @behaviour Honeydew.SuccessMode
 
@@ -75,6 +26,28 @@ defmodule Helper do
   end
 end
 
+defmodule Tree do
+  def tree(supervisor) do
+    supervisor
+    |> do_tree(0)
+    |> List.flatten
+    |> Enum.join("\n")
+    |> IO.puts
+  end
+
+  defp do_tree(supervisor, depth) do
+    supervisor
+    |> Supervisor.which_children
+    |> Enum.map(fn
+      {id, pid, :supervisor, module} ->
+        str = String.duplicate(" ", depth) <> "|-" <> "#{inspect pid} #{inspect module} #{inspect id}"
+      [str | do_tree(pid, depth+1)]
+    {id, pid, :worker, module} ->
+        String.duplicate(" ", depth) <> "|-" <> "#{inspect pid} #{inspect module} #{inspect id}"
+    end)
+  end
+end
+
 # defmodule BadInit do
 #   def init(_) do
 #     :bad
@@ -92,5 +65,6 @@ end
 #     spawn_link fn -> :born_to_die end
 #   end
 # end
+Honeydew.Support.Cluster.init()
 
 ExUnit.start()
