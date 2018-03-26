@@ -7,7 +7,8 @@ defmodule Honeydew do
   require Logger
 
   @type mod_or_mod_args :: module | {module, args :: term}
-  @type queue_name :: String.t | atom | {:global, String.t | atom}
+  @type global_queue_name :: {:global, String.t | atom}
+  @type queue_name :: String.t | atom | global_queue_name
   @type supervisor_opts :: Keyword.t
   @type async_opt :: [{:reply, true}]
   @type task :: {atom, [arg :: term]}
@@ -510,11 +511,13 @@ defmodule Honeydew do
   end
 
 
-  defp name({:global, queue}, component) do
+  @doc false
+  def name({:global, queue}, component) do
     name([:global, queue], component)
   end
 
-  defp name(queue, component) do
+  @doc false
+  def name(queue, component) do
     ["honeydew", component, queue] |> List.flatten |> Enum.join(".") |> String.to_atom
   end
 

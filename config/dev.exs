@@ -10,4 +10,5 @@ config :riak_core,
   web_port: 8198,
   handoff_port: 8199,
   ring_state_dir: 'var/ring_data_dir_dev',
-  platform_data_dir: 'var/data_dev'
+  platform_data_dir: 'var/data_dev',
+  queue: Honeydew.Disorder

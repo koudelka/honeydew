@@ -23,15 +23,12 @@ defmodule Honeydew.Queue do
 
   @callback init(name, arg :: term) :: {:ok, private}
   @callback enqueue(job, private) :: {private, job}
-  @callback reserve(private) :: {job, private}
-  @callback enqueue_id(term, private) :: private
-  @callback unenqueue_id(term, private) :: private
+  @callback reserve(private) :: {job, private} | {:empty, private}
   @callback ack(job, private) :: private
   @callback nack(job, private) :: private
   @callback status(private) :: %{:count => number, :in_progress => number, optional(atom) => any}
   @callback filter(private, function) :: [job]
   @callback cancel(job, private) :: {:ok | {:error, :in_progress | :not_found}, private}
-  @callback reload(private) :: private
 
   # stolen from GenServer, with a slight change
   @callback handle_call(request :: term, GenServer.from, state :: private) ::
@@ -57,15 +54,7 @@ defmodule Honeydew.Queue do
 
   @optional_callbacks [handle_call: 3,
                        handle_cast: 2,
-                       handle_info: 2,
-                       enqueue_id: 2,
-                       unenqueue_id: 2,
-                       reload: 1]
-
-  # these are used for partitioned queues, only Disorder at this point
-  def reload(state), do: state
-  def enqueue_id(_id, state), do: state
-  defoverridable [reload: 1, enqueue_id: 2]
+                       handle_info: 2]
 
   def start_link(queue, module, args, dispatcher, failure_mode, success_mode, suspended) do
     GenServer.start_link(__MODULE__, [queue, module, args, dispatcher, failure_mode, success_mode, suspended])
@@ -92,15 +81,6 @@ defmodule Honeydew.Queue do
                   success_mode: success_mode,
                   suspended: suspended,
                   dispatcher: {dispatcher, dispatcher_private}}}
-  end
-
-  def handle_cast({:enqueue_id, id}, %State{module: module, private: private} = state) do
-    state = %{state | private: module.enqueue_id(id, private)} |> dispatch
-    {:noreply, state}
-  end
-
-  def handle_cast({:unenqueue_id, id}, %State{module: module, private: private} = state) do
-    {:noreply, %{state | private: module.unenqueue_id(id, private)}}
   end
 
   def handle_cast({:monitor_me, worker}, state) do
@@ -150,10 +130,6 @@ defmodule Honeydew.Queue do
     # suspend(state)
 
     {:noreply, %{state | suspended: true}}
-  end
-
-  def handle_cast(:reload, %State{module: module, private: private} = state) do
-    {:noreply, %{state | private: module.reload(private)}}
   end
 
   def handle_cast(msg, %State{module: module} = state) do
@@ -238,27 +214,8 @@ defmodule Honeydew.Queue do
     module.handle_info(msg, state)
   end
 
-  defp do_enqueue(job, %State{module: module, private: private}) do
-    job
-    |> struct(enqueued_at: System.system_time(:millisecond))
-    |> module.enqueue(private)
-  end
-
-  defp start_workers(queue) do
-    :known # start workers on this node too, if need be
-    |> :erlang.nodes
-    |> Enum.each(&GenServer.cast({Honeydew.process(queue, :worker_starter), &1}, {:queue_available, self()}))
-  end
-
-  defp send_job(worker, job, %State{queue: queue, failure_mode: failure_mode, success_mode: success_mode, monitors: monitors} = state) do
-    {:ok, monitor} = Monitor.start(job, queue, failure_mode, success_mode)
-    Process.monitor(monitor)
-    GenServer.cast(worker, {:run, %{job | monitor: monitor}})
-    %{state | monitors: MapSet.put(monitors, monitor)}
-  end
-
-  defp dispatch(%State{suspended: true} = state), do: state
-  defp dispatch(%State{module: module, private: private} = state) do
+  def dispatch(%State{suspended: true} = state), do: state
+  def dispatch(%State{module: module, private: private} = state) do
     with true <- worker_available?(state),
          {%Job{} = job, private} <- module.reserve(private),
          {worker, state} when not is_nil(worker) <- check_out_worker(job, %{state | private: private}) do
@@ -276,6 +233,25 @@ defmodule Honeydew.Queue do
       # dispatcher didn't provide a worker
       {nil, state} -> state
     end
+  end
+
+  defp do_enqueue(job, %State{module: module, private: private}) do
+    job
+    |> struct(enqueued_at: System.system_time(:millisecond))
+    |> module.enqueue(private)
+  end
+
+  defp start_workers(queue) do
+    :known # start workers on this node too, if need be
+    |> :erlang.nodes
+    |> Enum.each(&GenServer.cast({Honeydew.process(queue, :worker_starter), &1}, {:queue_available, self()}))
+  end
+
+  defp send_job(worker, job, %State{queue: queue, failure_mode: failure_mode, success_mode: success_mode, monitors: monitors} = state) do
+    {:ok, monitor} = Monitor.start(job, queue, failure_mode, success_mode)
+    Process.monitor(monitor)
+    GenServer.cast(worker, {:run, %{job | monitor: monitor}})
+    %{state | monitors: MapSet.put(monitors, monitor)}
   end
 
   defp worker_available?(%State{dispatcher: {dispatcher, dispatcher_private}}) do
