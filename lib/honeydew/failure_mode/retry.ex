@@ -44,7 +44,7 @@ defmodule Honeydew.FailureMode.Retry do
   def handle_failure(%Job{failure_private: nil} = job, reason, [times: times, finally: finally]), do:
     handle_failure(%{job | failure_private: times}, reason, finally)
 
-  def handle_failure(%Job{failure_private: 1} = job, reason, [times: _times, finally: {final_mode, final_args}]), do:
+  def handle_failure(%Job{failure_private: 0} = job, reason, [times: _times, finally: {final_mode, final_args}]), do:
     final_mode.handle_failure(%{job | failure_private: nil}, reason, final_args)
 
   def handle_failure(%Job{queue: queue, from: from, failure_private: tries_left} = job, reason, _args) do

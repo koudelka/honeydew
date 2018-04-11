@@ -39,6 +39,7 @@ defmodule Honeydew.FailureMode.RetryTest do
     assert_receive :job_ran
     assert_receive :job_ran
     assert_receive :job_ran
+    assert_receive :job_ran
 
     Process.sleep(500) # let the Move failure mode do its thing
 
@@ -51,6 +52,7 @@ defmodule Honeydew.FailureMode.RetryTest do
   test "should inform the awaiting process of the error", %{queue: queue, failure_queue: failure_queue} do
     job = {:crash, [self()]} |> Honeydew.async(queue, reply: true)
 
+    assert {:retrying, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
     assert {:retrying, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
     assert {:retrying, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
     assert {:moved, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
