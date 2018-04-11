@@ -9,7 +9,11 @@ defmodule Honeydew.WorkerRootSupervisor do
     children = [supervisor(WorkerGroupsSupervisor, [queue, opts]),
                 worker(WorkerStarter, [queue])]
 
-    supervisor_opts = [strategy: :one_for_one,
+    # if the worker groups supervisor shuts down due to too many groups
+    # restarting (hits max intensity), we also want the WorkerStarter to die
+    # so that it may restart the necessary worker groups when the groups
+    # supervisor comes back up
+    supervisor_opts = [strategy: :rest_for_one,
                        name: Honeydew.supervisor(queue, :worker_root)]
 
     queue
