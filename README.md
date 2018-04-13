@@ -300,4 +300,4 @@ Your worker module's `init/1` function must return `{:ok, state}`. If anything e
 
 ### Acknowledgements
 
-Thanks to @marcelog, for his [failing worker restart strategy](http://inaka.net/blog/2012/11/29/every-day-erlang/).
+Thanks to Marcelo Gornstein (@marcelo), for his [failing worker restart strategy](https://web.archive.org/web/20170929101642/http://inaka.net/blog/2012/11/29/every-day-erlang/).
