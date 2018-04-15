@@ -1,20 +1,29 @@
 language: elixir
 elixir:
-  - 1.4.5
   - 1.5.1
   - 1.6.1
 otp_release:
   - 19.1
   - 19.3
   - 20.0
+
 cache:
   directories:
     - _build
     - deps
+
+before_install:
+  - wget -q https://binaries.cockroachdb.com/cockroach-v2.0.0.linux-amd64.tgz
+  - tar xvf cockroach-v2.0.0.linux-amd64.tgz
+  - cd cockroach-v2.0.0.linux-amd64 && nohup ./cockroach start --insecure --host=localhost &
+
 before_script:
   - epmd -daemon
   - MIX_ENV=test mix compile --warnings-as-errors
   - MIX_ENV=test mix dialyzer --plt
+  - cd cockroach-v2.0.0.linux-amd64 && ./cockroach sql --insecure --host=localhost --execute "create database postgres" && cd -
+
 script:
   - mix test
+  - cd examples/ecto_poll_queue && MIX_ENV=test mix dialyzer --halt-exit-status
   - MIX_ENV=test mix dialyzer --halt-exit-status

@@ -231,8 +231,8 @@ defmodule Honeydew.Queue do
     %{state | monitors: MapSet.put(monitors, monitor)}
   end
 
-  defp dispatch(%State{suspended: true} = state), do: state
-  defp dispatch(%State{module: module, private: private} = state) do
+  def dispatch(%State{suspended: true} = state), do: state
+  def dispatch(%State{module: module, private: private} = state) do
     with true <- worker_available?(state),
           {%Job{} = job, private} <- module.reserve(private),
           state <- %{state | private: private},

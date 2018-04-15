@@ -94,6 +94,11 @@ defmodule HoneydewTest do
     assert Honeydew.supervisor({:global, :my_queue}, :worker) == :"honeydew.worker_supervisor.global.my_queue"
   end
 
+  test "table_name/1" do
+    assert Honeydew.table_name({:global, :my_queue}) == "global_my_queue"
+    assert Honeydew.table_name(:my_queue) == "my_queue"
+  end
+
   test "success mode smoke test" do
     queue = :erlang.unique_integer
     {:ok, _} = Helper.start_queue_link(queue, success_mode: {TestSuccessMode, [to: self()]})

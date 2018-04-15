@@ -509,6 +509,15 @@ defmodule Honeydew do
     |> :pg2.get_local_members
   end
 
+  @doc false
+  def table_name({:global, queue}) do
+    "global_#{queue}"
+  end
+
+  @doc false
+  def table_name(queue) do
+    to_string(queue)
+  end
 
   defp name({:global, queue}, component) do
     name([:global, queue], component)
