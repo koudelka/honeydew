@@ -27,13 +27,41 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 - List jobs with `Honeydew.filter/2`
 - Cancel jobs with `Honeydew.cancel/2`
 
-### Queue Feature Support
-|                        | filter | status | cancel | in-memory | disk-backed |
-|------------------------|:------:|:------:|:------:|:---------:|:-----------:|
-| ErlangQueue (`:queue`) | ✅*    | ✅     | ✅*    | ✅       | ❌         |
-| Mnesia                 | ✅*    | ✅*    | ✅     | ✅ (ets) | ✅ (dets)   |
-* this is "slow", O(num_job)
+### Queue API Support
+|                        | async/2 + yield/2 |       filter/2     |    status/1    |     cancel/2   | suspend/1 + resume/1 |
+|------------------------|:-----------------:|:------------------:|:--------------:|:--------------:|:--------------------:|
+| ErlangQueue (`:queue`) | ✅               | ✅<sup>1</sup>      | ✅             | ✅<sup>1</sup>|  ✅                  |
+| Mnesia                 | ✅               | ✅<sup>1</sup>      | ✅<sup>1</sup> | ✅            |  ✅                  |
+| Ecto Poll Queue        | ❌               | ❌                  | ✅             | ❌            |  ✅                  |
 
+[1] this is "slow", O(num_job)
+
+### Queue Comparison
+|                        | disk-backed<sup>1</sup> | replicated<sup>2</sup> | datastore-coordinated | auto-enqueue |
+|------------------------|:-----------------------:|:----------------------:|----------------------:|-------------:|
+| ErlangQueue (`:queue`) | ❌                      | ❌                     |❌                     |❌           |
+| Mnesia                 | ✅ (dets)               | ❌                     |❌                     |❌           |
+| Ecto Poll Queue        | ✅                      | ✅                     |✅                     |✅           |
+
+[1] survives node crashes 
+
+[2] assuming you chose a replicated database to back ecto (tested with cockroachdb). 
+    Mnesia replication may require manual intevention after a significant netsplit
+
+### Ecto Poll Queue
+
+The Ecto Poll Queue is an experimental queue designed to painlessly turn an already-existing Ecto schema into a queue, using your repo as the backing store.
+
+The Ecto queue is designed for jobs that need to be run every time a new row is inserted, and removes the risk that the user's processes crashes before they can enqueue a job themselves. You don't need to use `enqueue/2` and `yield/2`, in fact, they're unsupported. For example, if a user uploads a song file, and you want to transcode it into a number of different formats.
+
+With this queue type, your database is the sole point of coordination, so any availability and replication guarantees are now shared by Honeydew. As such, all your nodes are independent, and don't need to be connected via distributed erlang. If you choose to use distributed erlang, and make this a global queue, you'll be able to use dispatchers to send jobs to specific nodes for processing.
+
+To use this queue, you just need to do a couple of things:
+1. Add honeydew's fields to your schema.
+2. Add honeydew's columns and indexes to your migration.
+3. Specify your schema and repo modules in the queue spec.
+
+Check out the included [example project](https://github.com/koudelka/honeydew/tree/master/examples/ecto_poll_queue).
 
 ## Getting Started
 
@@ -47,163 +75,8 @@ end
 
 You can run honeydew on a single node, or distributed over a cluster.
 
-### Local Queue Example
-![local queue](assets/local.png)
+Please see the README files included with the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
 
-There's an uncaring firehose of data pointed at us, we need to store it all in our database, Riak. The requester isn't expecting a response, and we can't drop a write due to overloaded workers.
-
-Let's create a worker module. Honeydew will call our worker's `init/1` and keep the `state` from an `{:ok, state}` return.
-
-Our workers are going to call functions from our module, the last argument will be the worker's state, `riak` in this case.
-
-```elixir
-defmodule Riak do
-  @moduledoc """
-    This is an example Worker to interface with Riak.
-    You'll need to add the erlang riak driver to your mix.exs:
-    `{:riakc, ">= 2.4.1}`
-  """
-
-  @behaviour Honeydew.Worker
-
-  def init([ip, port]) do
-    :riakc_pb_socket.start_link(ip, port) # returns {:ok, riak}
-  end
-
-  def up?(riak) do
-    :riakc_pb_socket.ping(riak) == :pong
-  end
-
-  def put(bucket, key, obj, content_type, riak) do
-    :ok = :riakc_pb_socket.put(riak, :riakc_obj.new(bucket, key, obj, content_type))
-  end
-
-  def get(bucket, key, riak) do
-    case :riakc_pb_socket.get(riak, bucket, key) do
-      {:ok, obj} -> :riakc_obj.get_value(obj)
-      {:error, :notfound} -> nil
-      error -> error
-    end
-  end
-end
-```
-
-Then we'll start the both a queue and workers in our supervision tree.
-
-```elixir
-defmodule App do
-  def start do
-    children = [
-      Honeydew.queue_spec(:riak),
-      Honeydew.worker_spec(:riak, {Riak, ['127.0.0.1', 8087]}, num: 5, init_retry_secs: 10)
-    ]
-
-    Supervisor.start_link(children, strategy: :one_for_one)
-  end
-end
-```
-
-A task is simply a tuple with the name of a function and arguments, or a `fn`.
-
-We'll add tasks to the queue using `async/3` and wait for responses with `yield/2`. To tell Honeydew that we expect a response from the job, we'll specify `reply: true`, like so:
-
-```elixir
-iex(1)> :up? |> Honeydew.async(:riak, reply: true) |> Honeydew.yield
-{:ok, true}
-
-iex(2)> {:put, ["bucket", "key", "value", "text/plain"]} |> Honeydew.async(:riak)
-%Honeydew.Job{by: nil, failure_private: nil, from: nil, monitor: nil,
- private: -576460752303422557, queue: :riak, result: nil,
- task: {:put, ["bucket", "key", "value", "text/plain"]}}
-
-iex(3)> {:get, ["bucket", "key"]} |> Honeydew.async(:riak, reply: true) |> Honeydew.yield
-{:ok, "value"}
-
-# our worker is holding a riak connection (a pid) as its state, let's ask that pid what its state is.
-iex(4)> fn riak -> {riak, :sys.get_state(riak)} end |> Honeydew.async(:riak, reply: true) |> Honeydew.yield
-{:ok,
- {#PID<0.256.0>,
-  {:state, '127.0.0.1', 8087, false, false, #Port<0.8365>, false, :gen_tcp,
-   :undefined, {[], []}, 1, [], :infinity, :undefined, :undefined, :undefined,
-   :undefined, [], 100}}}
-```
-
-If you pass `reply: true`, and you never call `yield/2` to read the result, your process' mailbox may fill up after multiple calls. Don't do that.
-
-(Ignoring the response of the `:put` above is just used as an exmaple, you probably want to check the return value of a database insert unless you have good reason to ignore it)
-
-The `Honeydew.Job` struct above is used to track the status of a job, you can send it to `cancel/1`, if you want to try to kill the job.
-
-### Distributed Queue Example
-![distributed queue](assets/distributed.png)
-
-Say we've got some pretty heavy tasks that we want to distribute over a farm of background job processing nodes, they're too heavy to process on our client-facing nodes. In a distributed Erlang scenario, you have the option of distributing Honeydew's various components around different nodes in your cluster. Honeydew is basically a simple collection of queue processes and worker processes. Honeydew detects when nodes go up and down, and reconnects workers.
-
-To start a global queue, pass a `{:global, name}` tuple when you start Honeydew's components
-
-In this example, we'll use the Mnesa queue with stateless workers.
-
-We'll start the queue on node `queue@dax` with:
-
-```elixir
-defmodule QueueApp do
-  def start do
-    nodes = [node()]
-
-    children = [
-      Honeydew.queue_spec({:global, :my_queue}, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
-    ]
-
-    Supervisor.start_link(children, strategy: :one_for_one)
-  end
-end
-
-iex(queue@dax)1> QueueApp.start
-{:ok, #PID<0.209.0>}
-```
-
-And we'll run our workers on `background@dax` with:
-```elixir
-defmodule HeavyTask do
-  @behaviour Honeydew.Worker
-
-  # note that in this case, our worker is stateless, so we left out `init/1`
-
-  def work_really_hard(secs) do
-    :timer.sleep(1_000 * secs)
-    IO.puts "I worked really hard for #{secs} secs!"
-  end
-end
-
-defmodule WorkerApp do
-  def start do
-    children = [
-      Honeydew.worker_spec({:global, :my_queue}, HeavyTask, num: 10, nodes: [:clientfacing@dax, :queue@dax])
-    ]
-
-    Supervisor.start_link(children, strategy: :one_for_one)
-  end
-end
-
-iex(background@dax)1> WorkerApp.start
-{:ok, #PID<0.205.0>}
-```
-
-Note that we've provided a list of nodes to the worker spec, Honeydew will attempt to heal the cluster if any of these nodes go down.
-
-Then on any node in the cluster, we can enqueue a job:
-
-```elixir
-iex(clientfacing@dax)1> {:work_really_hard, [5]} |> Honeydew.async({:global, :my_queue})
-%Honeydew.Job{by: nil, failure_private: nil, from: nil, monitor: nil,
- private: {false, -576460752303423485}, queue: {:global, :my_queue},
- result: nil, task: {:work_really_hard, [5]}}
-```
-
-The job will run on the worker node, five seconds later it'll print `I worked really hard for 5 secs!`
-
-
-There's one important caveat that you should note, Honeydew doesn't yet support OTP failover/takeover, so please be careful in production. I'll send you three emoji of your choice if you submit a PR. :)
 
 ### Suspend and Resume
 You can suspend a queue (halt the distribution of new jobs to workers), by calling `Honeydew.suspend(:my_queue)`, then resume with `Honeydew.resume(:my_queue)`.
@@ -214,7 +87,7 @@ To cancel a job that hasn't yet run, use `Honeydew.cancel/2`. If the job was suc
 ### Job Progress
 Your jobs can emit their current status, i.e. "downloaded 10/50 items", using the `progress/1` function given to your job module by `use Honeydew.Progress`
 
-Check out the [simple example](https://github.com/koudelka/honeydew/tree/master/examples/simple.exs).
+Check out the [simple example](https://github.com/koudelka/honeydew/tree/master/examples/local/simple.exs).
 
 
 ### Queue Options
@@ -274,6 +147,7 @@ Honeydew includes a few basic queue modules:
    * Run with replication (with queues running on multiple nodes)
    * Persist jobs to disk (dets)
    * Follow various safety modes ("access contexts").
+ - An Ecto-backed queue that automatically enqueues jobs when a new row is inserted.
 
 If you want to implement your own queue, check out the included queues as a guide. Try to keep in mind where exactly your queue state lives, is your queue process(es) where jobs live, or is it a completely stateless connector for some external broker? Or a hybrid? I'm excited to see what you come up with, please open a PR! <3
 
@@ -296,7 +170,6 @@ Your worker module's `init/1` function must return `{:ok, state}`. If anything e
 - statistics?
 - `yield_many/2` support?
 - benchmark mnesia queue's dual filter implementations, discard one?
-- more tests
 
 ### Acknowledgements
 
