@@ -6,8 +6,9 @@ defmodule Honeydew.EctoSource.State do
     :key_field,
     :lock_field,
     :private_field,
+    :task_fn,
+    :queue,
     :stale_timeout,
-    :queue
   ]
 
   @type stale_timeout :: pos_integer
@@ -19,5 +20,6 @@ defmodule Honeydew.EctoSource.State do
                          lock_field: String.t(),
                          private_field: String.t(),
                          stale_timeout: stale_timeout,
+                         task_fn: function(),
                          queue: Honeydew.queue_name()}
 end
