@@ -54,16 +54,7 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 
 The Ecto Poll Queue is an experimental queue designed to painlessly turn an already-existing Ecto schema into a queue, using your repo as the backing store.
 
-The Ecto queue is designed for jobs that need to be run every time a new row is inserted, and removes the risk that the user's processes crashes before they can enqueue a job themselves. You don't need to use `enqueue/2` and `yield/2`, in fact, they're unsupported. For example, if a user uploads a song file, and you want to transcode it into a number of different formats.
-
-With this queue type, your database is the sole point of coordination, so any availability and replication guarantees are now shared by Honeydew. As such, all your nodes are independent, and don't need to be connected via distributed erlang. If you choose to use distributed erlang, and make this a global queue, you'll be able to use dispatchers to send jobs to specific nodes for processing.
-
-To use this queue, you just need to do a couple of things:
-1. Add honeydew's fields to your schema.
-2. Add honeydew's columns and indexes to your migration.
-3. Specify your schema and repo modules in the queue spec.
-
-Check out the included [example project](https://github.com/koudelka/honeydew/tree/master/examples/ecto_poll_queue).
+Check out the included [example project](https://github.com/koudelka/honeydew/tree/master/examples/ecto_poll_queue), and its README.
 
 ## Getting Started
 
@@ -75,9 +66,7 @@ defp deps do
 end
 ```
 
-You can run honeydew on a single node, or distributed over a cluster.
-
-Please see the README files included with the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
+You can run honeydew on a single node, or distributed over a cluster. Please see the README files included with the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
 
 
 ### Suspend and Resume
