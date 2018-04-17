@@ -57,4 +57,15 @@ defmodule Honeydew.EctoSource.SQL do
     LIMIT 1
     RETURNING #{state.key_field}, #{state.private_field}"
   end
+
+  @spec cancel_sql(State.t()) :: String.t()
+  def cancel_sql(state) do
+    "UPDATE #{state.table}
+    SET #{state.lock_field} = NULL
+    WHERE
+      id = $1
+      AND #{state.lock_field} BETWEEN 0 AND #{msecs_ago_sql(state.stale_timeout)}
+    LIMIT 1
+    RETURNING #{state.lock_field}"
+  end
 end

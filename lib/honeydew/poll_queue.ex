@@ -15,6 +15,7 @@ defmodule Honeydew.PollQueue do
   @callback ack(job, private) :: private
   @callback nack(job, private) :: private
   @callback status(private) :: %{:count => number, :in_progress => number, optional(atom) => any}
+  @callback cancel(job, private) :: {:ok | {:error, :in_progress | :not_found}, private}
 
   @callback handle_info(msg :: :timeout | term, state :: private) ::
               {:noreply, new_state}
@@ -76,8 +77,9 @@ defmodule Honeydew.PollQueue do
   end
 
   @impl true
-  def cancel(_job, _state) do
-    raise "cancel/2 is unsupported for poll queues"
+  def cancel(job, %State{source: {source, source_state}} = state) do
+    {response, source_state} = source.cancel(job, source_state)
+    {response, %{state | source: {source, source_state}}}
   end
 
   @impl true

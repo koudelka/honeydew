@@ -4,6 +4,8 @@ defmodule Honeydew.Job do
   """
   require Record
 
+  @type private :: term()
+
   # :private needs to be first, the mnesia queue's ordering depends on it
   @fields [:private, # queue's private state
            :failure_private, # failure mode's private state
@@ -25,8 +27,9 @@ defmodule Honeydew.Job do
   @match_spec @fields |> Enum.map(&{&1, :_}) |> Enum.into(%{})
 
   @type t :: %__MODULE__{
-    task: Honeydew.task,
+    task: Honeydew.task | nil,
     queue: Honeydew.queue_name,
+    private: private
   }
 
   @doc false

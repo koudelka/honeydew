@@ -198,6 +198,23 @@ defmodule Honeydew do
   end
 
   @doc """
+  Cancels the job associated with the first argument.
+
+  For example, for the Ecto Poll Queue, the first argument is the value of an ID from your schema.
+
+  The return value depends on the status of the job.
+
+  * `:ok` - Job had not been started and was able to be cancelled.
+  * `{:error, :in_progress}` - Job was in progress and unable to be cancelled, the Ecto Poll Queue does not support this return.
+  * `{:error, :not_found}` - Job was not found on the queue (or already
+  processed) and was unable to be cancelled.
+  """
+  @spec cancel(Job.private(), queue_name) :: :ok | {:error, :in_progress} | {:error, :not_found}
+  def cancel(private, queue) do
+    %Job{private: private, queue: queue} |> cancel
+  end
+
+  @doc """
   Moves a job to another queue.
 
   Raises a `RuntimeError` if `to_queue` is not available.

@@ -154,6 +154,7 @@ if Code.ensure_loaded?(Ecto) do
       finalize(id, @abandoned, nil, state)
     end
 
+    @impl true
     def ack(%Job{private: id}, state) do
       finalize(id, nil, nil, state)
     end
@@ -161,6 +162,21 @@ if Code.ensure_loaded?(Ecto) do
     @impl true
     def nack(%Job{private: id, failure_private: private}, state) do
       finalize(id, 1, private, state)
+    end
+
+    @impl true
+    def cancel(%Job{private: id}, %State{schema: schema, repo: repo, key_field: key_field} = state) do
+      {:ok, id} = dump_field(schema, repo, key_field, id)
+
+      state
+      |> cancel_sql
+      |> repo.query([id])
+      |> case do
+           {:ok, %{num_rows: 1}} ->
+             {:ok, state}
+           {:ok, %{num_rows: 0}} ->
+             {{:error, :not_found}, state}
+         end
     end
 
     @impl true
@@ -189,9 +205,7 @@ if Code.ensure_loaded?(Ecto) do
 
     @impl true
     def handle_info(msg, queue_state) do
-      Logger.warn(
-        "[Honeydew] Queue #{inspect(self())} received unexpected message #{inspect(msg)}"
-      )
+      Logger.warn("[Honeydew] Queue #{inspect(self())} received unexpected message #{inspect(msg)}")
 
       {:noreply, queue_state}
     end
@@ -210,6 +224,11 @@ if Code.ensure_loaded?(Ecto) do
 
       state
     end
-  end
 
+    defp dump_field(schema, repo, field, value) do
+      type = schema.__schema__(:type, field)
+      Ecto.Type.adapter_dump(repo.__adapter__(), type, value)
+    end
+
+  end
 end

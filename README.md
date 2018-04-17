@@ -32,9 +32,11 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 |------------------------|:-----------------:|:------------------:|:--------------:|:--------------:|:--------------------:|
 | ErlangQueue (`:queue`) | ✅               | ✅<sup>1</sup>      | ✅             | ✅<sup>1</sup>|  ✅                  |
 | Mnesia                 | ✅               | ✅<sup>1</sup>      | ✅<sup>1</sup> | ✅            |  ✅                  |
-| Ecto Poll Queue        | ❌               | ❌                  | ✅             | ❌            |  ✅                  |
+| Ecto Poll Queue        | ❌               | ❌                  | ✅             | ✅<sup>2</sup>|  ✅                  |
 
 [1] this is "slow", O(num_job)
+
+[2] can't return `{:error, :in_progress}`, only `:ok` or `{:error, :not_found}`
 
 ### Queue Comparison
 |                        | disk-backed<sup>1</sup> | replicated<sup>2</sup> | datastore-coordinated | auto-enqueue |

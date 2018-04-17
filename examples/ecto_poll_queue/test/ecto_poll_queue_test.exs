@@ -46,6 +46,18 @@ defmodule EctoPollQueueTest do
     Honeydew.resume(User.notify_queue())
   end
 
+  test "cancel/2" do
+    Honeydew.suspend(User.notify_queue())
+    {:ok, %User{id: id}} = %User{from: self()} |> Repo.insert()
+    {:ok, %User{id: cancel_id}} = %User{from: self()} |> Repo.insert()
+
+    Honeydew.cancel(cancel_id, User.notify_queue())
+
+    Honeydew.resume(User.notify_queue())
+    assert_receive {:notify_job_ran, ^id}
+    refute_receive {:notify_job_ran, ^cancel_id, 500}
+  end
+
   test "support inter-job persistent state (retry count, etc)" do
     {:ok, %Photo{id: id}} = %Photo{from: self(), should_fail: true} |> Repo.insert()
 
