@@ -113,19 +113,29 @@ if Code.ensure_loaded?(Ecto) do
       table = schema.__schema__(:source)
       key_field = schema.__schema__(:primary_key) |> List.first()
 
+      task_fn =
+        schema.__info__(:functions)
+        |> Enum.member?({:honeydew_task, 2})
+        |> if do
+             &schema.honeydew_task/2
+           else
+             fn(id, _queue) -> {:run, [id]} end
+           end
+
       {:ok, %State{schema: schema,
+                   repo: repo,
                    table: table,
                    key_field: key_field,
                    lock_field: field_name(queue, :lock),
                    private_field: field_name(queue, :private),
-                   repo: repo,
+                   task_fn: task_fn,
                    queue: queue,
                    stale_timeout: stale_timeout}}
     end
 
     # lock a row for processing
     @impl true
-    def reserve(%State{queue: queue, schema: schema, repo: repo, key_field: key_field, private_field: private_field} = state) do
+    def reserve(%State{queue: queue, schema: schema, repo: repo, key_field: key_field, private_field: private_field, task_fn: task_fn} = state) do
       state
       |> reserve_sql
       |> repo.query([])
@@ -137,7 +147,7 @@ if Code.ensure_loaded?(Ecto) do
 
           job =
             id
-            |> schema.honeydew_task(queue)
+            |> task_fn.(queue)
             |> Job.new(queue)
             |> struct(failure_private: private)
 

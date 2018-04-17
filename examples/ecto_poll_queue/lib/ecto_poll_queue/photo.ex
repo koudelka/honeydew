@@ -19,9 +19,5 @@ defmodule EctoPollQueue.Photo do
     timestamps()
   end
 
-  def honeydew_task(id, _queue) do
-    {:run, [id]}
-  end
-
   def classify_queue, do: @classify_queue
 end
