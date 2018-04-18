@@ -1,9 +1,9 @@
-defmodule EctoPollQueue.MixProject do
+defmodule EctoPollQueueExample.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :ecto_poll_queue,
+      app: :ecto_poll_queue_example,
       version: "0.1.0",
       elixir: "~> 1.5",
       start_permanent: Mix.env() == :prod,
@@ -24,7 +24,7 @@ defmodule EctoPollQueue.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {EctoPollQueue.Application, []}
+      mod: {EctoPollQueueExample.Application, []}
     ]
   end
 

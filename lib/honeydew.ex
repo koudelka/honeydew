@@ -314,7 +314,8 @@ defmodule Honeydew do
 
   - `Honeydew.queue_spec("my_awesome_queue")`
 
-  - `Honeydew.queue_spec("my_awesome_queue", queue: {MyQueueModule, [ip: "localhost"]}, dispatcher: {Honeydew.Dispatcher.MRU, []})`
+  - `Honeydew.queue_spec("my_awesome_queue", queue: {MyQueueModule, [ip: "localhost"]},
+                                             dispatcher: {Honeydew.Dispatcher.MRU, []})`
   """
   @spec queue_spec(queue_name, [queue_spec_opt]) :: Supervisor.Spec.spec
   def queue_spec(name, opts \\ []) do
@@ -376,63 +377,11 @@ defmodule Honeydew do
     {:supervisor_opts, supervisor_opts} |
     {:nodes, [node]}
 
-  @doc """
-  Creates a supervision spec for workers.
-
-  `queue` is the name of the queue that the workers pull jobs from.
-
-  `module` is the module that the workers in your queue will use. You may also
-  provide `c:Honeydew.Worker.init/1` args with `{module, args}`.
-
-  You can provide any of the following `opts`:
-
-  - `num`: the number of workers to start. Defaults to `10`.
-
-  - `init_retry`: the amount of time, in seconds, to wait before respawning
-     a worker whose `c:Honeydew.Worker.init/1` function failed. Defaults to `5`.
-
-  - `shutdown`: if a worker is in the middle of a job, the amount of time, in
-     milliseconds, to wait before brutally killing it. Defaults to `10_000`.
-
-  - `supervisor_opts` options accepted by `Supervisor.Spec.supervisor/3`.
-
-  - `nodes`: for :global queues, you can provide a list of nodes to stay
-     connected to (your queue node and enqueuing nodes). Defaults to `[]`.
-
-  For example:
-
-  - `Honeydew.worker_spec("my_awesome_queue", MyJobModule)`
-
-  - `Honeydew.worker_spec("my_awesome_queue", {MyJobModule, [key: "secret key"]}, num: 3)`
-
-  - `Honeydew.worker_spec({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
-  """
-  @spec worker_spec(queue_name, mod_or_mod_args, [worker_spec_opt])
-    :: Supervisor.Spec.spec
+  # @deprecated "Use module based child specs with Honeydew.Workers instead"
+  # @since "1.1.1"
+  @spec worker_spec(queue_name, mod_or_mod_args, [worker_spec_opt]) :: Supervisor.Spec.spec
   def worker_spec(queue, module_and_args, opts \\ []) do
-    {module, args} =
-      case module_and_args do
-        module when is_atom(module) -> {module, []}
-        {module, args} -> {module, args}
-      end
-
-    supervisor_opts =
-      opts
-      |> Keyword.get(:supervisor_opts, [])
-      |> Keyword.put_new(:id, {:worker, queue})
-
-    opts = %{
-      ma: {module, args},
-      num: opts[:num] || 10,
-      init_retry: opts[:init_retry] || 5,
-      shutdown: opts[:shutdown] || 10_000,
-      nodes: opts[:nodes] || []
-    }
-
-    Supervisor.Spec.supervisor(
-      Honeydew.WorkerRootSupervisor,
-      [queue, opts],
-      supervisor_opts)
+    Honeydew.Workers.child_spec([queue, module_and_args | opts])
   end
 
   @groups [:workers,
