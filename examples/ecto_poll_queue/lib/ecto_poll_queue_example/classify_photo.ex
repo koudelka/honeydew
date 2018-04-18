@@ -1,6 +1,6 @@
-defmodule EctoPollQueue.ClassifyPhoto do
-  alias EctoPollQueue.Photo
-  alias EctoPollQueue.Repo
+defmodule EctoPollQueueExample.ClassifyPhoto do
+  alias EctoPollQueueExample.Photo
+  alias EctoPollQueueExample.Repo
 
   def run(id) do
     photo = Repo.get(Photo, id)

@@ -7,7 +7,7 @@ Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a plug
 
 - Workers are permanent and hold immutable state (a database connection, for example).
 - Workers are issued only one job at a time, a job is only ever removed from the queue when it succeeds.
-- Queues can exist locally, on another node in the cluster, or on a remote queue server (rabbitmq, etc...).
+- Queues can exist locally, on another node in the cluster, in your Ecto database, or on a remote queue server (rabbitmq, etc...).
 - If a worker crashes while processing a job, the job is recovered and a "failure mode" (abandon, move, retry, etc) is executed.
 - Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](http://elixir-lang.org/docs/stable/elixir/Task.html).
 - Queues, workers, dispatch strategies and failure/success modes are all plugable with user modules.
@@ -52,7 +52,7 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 
 ### Ecto Poll Queue
 
-The Ecto Poll Queue is an experimental queue designed to painlessly turn an already-existing Ecto schema into a queue, using your repo as the backing store.
+The Ecto Poll Queue is an experimental queue designed to painlessly turn an already-existing Ecto schema into a queue, using your repo as the backing store. This eliminates the possiblity of your database and work queue becoming out of sync, as well as eliminating the need to run a separate queue node.
 
 Check out the included [example project](https://github.com/koudelka/honeydew/tree/master/examples/ecto_poll_queue), and its README.
 

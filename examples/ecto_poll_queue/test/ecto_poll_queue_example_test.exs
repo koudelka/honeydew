@@ -1,8 +1,8 @@
-defmodule EctoPollQueueTest do
+defmodule EctoPollQueueExampleTest do
   use ExUnit.Case, async: true
-  alias EctoPollQueue.Repo
-  alias EctoPollQueue.Photo
-  alias EctoPollQueue.User
+  alias EctoPollQueueExample.Repo
+  alias EctoPollQueueExample.Photo
+  alias EctoPollQueueExample.User
   alias Honeydew.EctoSource
 
   @moduletag :capture_log

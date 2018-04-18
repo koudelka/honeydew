@@ -67,9 +67,9 @@ defmodule HoneydewTest do
       supervisor_opts: [id: :my_worker_supervisor])
 
     assert spec == {:my_worker_supervisor,
-                    {Honeydew.WorkerRootSupervisor, :start_link,
+                    {Honeydew.Workers, :start_link,
                      [queue, %{init_retry: 5, ma: {Worker, [1,2,3]}, nodes: [], num: 123, shutdown: 10000}]}, :permanent,
-                    :infinity, :supervisor, [Honeydew.WorkerRootSupervisor]}
+                    :infinity, :supervisor, [Honeydew.Workers]}
   end
 
   test "worker_spec/2 defaults" do
@@ -77,9 +77,9 @@ defmodule HoneydewTest do
 
     spec =  Honeydew.worker_spec(queue, Worker)
     assert spec == {{:worker, queue},
-                    {Honeydew.WorkerRootSupervisor, :start_link,
+                    {Honeydew.Workers, :start_link,
                     [queue, %{init_retry: 5, ma: {Worker, []}, nodes: [], num: 10, shutdown: 10000}]}, :permanent,
-                    :infinity, :supervisor, [Honeydew.WorkerRootSupervisor]}
+                    :infinity, :supervisor, [Honeydew.Workers]}
   end
 
   test "group/1" do

@@ -1,6 +1,6 @@
-defmodule EctoPollQueue.Notify do
-  alias EctoPollQueue.User
-  alias EctoPollQueue.Repo
+defmodule EctoPollQueueExample.Notify do
+  alias EctoPollQueueExample.User
+  alias EctoPollQueueExample.Repo
 
   def run(id) do
     user = Repo.get(User, id)

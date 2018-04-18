@@ -24,19 +24,19 @@ defmodule Honeydew.PollQueue do
             when new_state: private
 
   defmodule State do
-    defstruct [:queue, :source, :interval]
+    defstruct [:queue, :source, :poll_interval]
   end
 
   @impl true
   def init(queue, [source, args]) do
-    interval = Keyword.get(args, :interval, 1_000)
+    poll_interval = args[:poll_interval] * 1_000 |> trunc
 
     {:ok, source_state} = source.init(queue, args)
     source = {source, source_state}
 
-    poll(interval)
+    poll(poll_interval)
 
-    {:ok, %State{queue: queue, source: source, interval: interval}}
+    {:ok, %State{queue: queue, source: source, poll_interval: poll_interval}}
   end
 
   @impl true
@@ -83,8 +83,8 @@ defmodule Honeydew.PollQueue do
   end
 
   @impl true
-  def handle_info(:__poll__, %QueueState{private: %State{interval: interval}} = queue_state) do
-    poll(interval)
+  def handle_info(:__poll__, %QueueState{private: %State{poll_interval: poll_interval}} = queue_state) do
+    poll(poll_interval)
     {:noreply, Queue.dispatch(queue_state)}
   end
 
@@ -93,7 +93,7 @@ defmodule Honeydew.PollQueue do
     source.handle_info(msg, queue_state)
   end
 
-  defp poll(interval) do
-    {:ok, _} = :timer.send_after(interval, :__poll__)
+  defp poll(poll_interval) do
+    {:ok, _} = :timer.send_after(poll_interval, :__poll__)
   end
 end

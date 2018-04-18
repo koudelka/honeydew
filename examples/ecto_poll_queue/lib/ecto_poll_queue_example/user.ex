@@ -1,6 +1,6 @@
-defmodule EctoPollQueue.User do
+defmodule EctoPollQueueExample.User do
   use Ecto.Schema
-  use Honeydew.EctoSource
+  import Honeydew.EctoPollQueue.Schema
   alias Honeydew.EctoSource.ErlangTerm
 
   @primary_key {:id, :binary_id, autogenerate: false, read_after_writes: true}

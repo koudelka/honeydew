@@ -1,8 +1,8 @@
 use Mix.Config
 
-config :ecto_poll_queue, ecto_repos: [EctoPollQueue.Repo]
+config :ecto_poll_queue_example, ecto_repos: [EctoPollQueueExample.Repo]
 
-config :ecto_poll_queue, EctoPollQueue.Repo,
+config :ecto_poll_queue_example, EctoPollQueueExample.Repo,
   adapter: Ecto.Adapters.Postgres,
   database: "honeydew_#{Mix.env()}",
   username: "root",

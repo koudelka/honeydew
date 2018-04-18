@@ -1,2 +1,0 @@
-defmodule EctoPollQueue do
-end

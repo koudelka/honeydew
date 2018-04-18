@@ -1,6 +1,6 @@
-defmodule EctoPollQueue.Photo do
+defmodule EctoPollQueueExample.Photo do
   use Ecto.Schema
-  use Honeydew.EctoSource
+  import Honeydew.EctoPollQueue.Schema
   alias Honeydew.EctoSource.ErlangTerm
 
   @primary_key {:id, :binary_id, autogenerate: false, read_after_writes: true}
