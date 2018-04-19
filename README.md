@@ -62,11 +62,12 @@ In your mix.exs file:
 
 ```elixir
 defp deps do
-  [{:honeydew, "~> 1.1.0"}]
+  [{:honeydew, "~> 1.1.1"}]
 end
 ```
 
 You can run honeydew on a single node, or distributed over a cluster. Please see the README files included with the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
+
 
 
 ### Suspend and Resume
