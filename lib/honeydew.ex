@@ -9,7 +9,7 @@ defmodule Honeydew do
   @type mod_or_mod_args :: module | {module, args :: term}
   @type queue_name :: String.t | atom | {:global, String.t | atom}
   @type supervisor_opts :: Keyword.t
-  @type async_opt :: [{:reply, true}]
+  @type async_opt :: {:reply, true}
   @type task :: {atom, [arg :: term]}
 
   @typedoc """
