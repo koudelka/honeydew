@@ -83,9 +83,13 @@ if Code.ensure_loaded?(Ecto) do
     # lock a row for processing
     @impl true
     def reserve(%State{queue: queue, schema: schema, repo: repo, key_field: key_field, private_field: private_field, task_fn: task_fn} = state) do
-      state
-      |> reserve_sql
-      |> repo.query([])
+      try do
+        state
+        |> reserve_sql
+        |> repo.query([])
+      rescue e in DBConnection.ConnectionError ->
+        {:error, e}
+      end
       |> case do
         {:ok, %{num_rows: 1, rows: [[id, private]]}} ->
           # convert key and private_field from db representation to schema's type
@@ -101,6 +105,10 @@ if Code.ensure_loaded?(Ecto) do
           {{:value, {id, job}}, state}
 
         {:ok, %{num_rows: 0}} ->
+          {:empty, state}
+
+        {:error, error} ->
+          Logger.warn("[Honeydew] Ecto queue '#{inspect queue}' couldn't poll for jobs because #{inspect error}")
           {:empty, state}
       end
     end
@@ -186,6 +194,5 @@ if Code.ensure_loaded?(Ecto) do
       type = schema.__schema__(:type, field)
       Ecto.Type.adapter_dump(repo.__adapter__(), type, value)
     end
-
   end
 end
