@@ -31,18 +31,8 @@ defmodule Honeydew.EctoSource.SQL do
     end
   end
 
-  # "I left in love, in laughter, and in truth. And wherever truth, love and laughter abide, I am there in spirit."
-  @spec far_in_the_past() :: NaiveDateTime.t()
-  def far_in_the_past do
-    ~N[1994-03-26 04:20:00]
-  end
-
   defmacro ready_fragment do
-    sql =
-      "CAST('#{far_in_the_past()}' AS TIMESTAMP)"
-      |> time_in_msecs_sql
-      |> msecs_ago_sql
-
+    sql = now_msecs_sql()
     quote do
       fragment(unquote(sql))
     end
