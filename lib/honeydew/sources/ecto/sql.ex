@@ -10,7 +10,7 @@ defmodule Honeydew.EctoSource.SQL do
 
   @spec time_in_msecs_sql(sql_fragment) :: sql_fragment
   def time_in_msecs_sql(time) do
-    "CAST(EXTRACT(epoch from (#{time})) * 1000 AS INT)"
+    "CAST(EXTRACT(epoch from (#{time})) * 1000 AS BIGINT)"
   end
 
   @spec now_msecs_sql() :: sql_fragment
