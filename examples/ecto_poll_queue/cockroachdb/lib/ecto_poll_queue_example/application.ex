@@ -23,10 +23,15 @@ defmodule EctoPollQueueExample.Application do
     children = [
       Repo,
 
-      {EctoPollQueue, [notify_queue(), schema: User, repo: Repo, poll_interval: poll_interval]},
+      {EctoPollQueue, [notify_queue(), schema: User, repo: Repo, database: :cockroachdb, poll_interval: poll_interval]},
       {Workers, [notify_queue(), Notify]},
 
-      {EctoPollQueue, [classify_queue(), schema: Photo, repo: Repo, poll_interval: poll_interval, failure_mode: {Retry, [times: 1]}]},
+      {EctoPollQueue, [classify_queue(),
+                       schema: Photo,
+                       repo: Repo,
+                       database: :cockroachdb,
+                       poll_interval: poll_interval,
+                       failure_mode: {Retry, [times: 1]}]},
       {Workers, [classify_queue(), ClassifyPhoto, num: 20]},
     ]
 

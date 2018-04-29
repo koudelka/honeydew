@@ -36,6 +36,7 @@ defmodule Honeydew.EctoPollQueue do
   def child_spec([queue_name | opts]) do
     {poll_interval, opts} = Keyword.pop(opts, :poll_interval)
     {stale_timeout, opts} = Keyword.pop(opts, :stale_timeout)
+    {database_override, opts} = Keyword.pop(opts, :database)
 
     if opts[:queue] do
       raise ArgumentError, cant_specify_queue_type_error(opts[:queue])
@@ -43,10 +44,12 @@ defmodule Honeydew.EctoPollQueue do
 
     schema = Keyword.fetch!(opts, :schema)
     repo = Keyword.fetch!(opts, :repo)
+    sql = EctoSource.SQL.module(repo, database_override)
 
     ecto_source_args =
       [schema: schema,
        repo: repo,
+       sql: sql,
        poll_interval: poll_interval || 10,
        stale_timeout: stale_timeout || 300]
 
@@ -81,16 +84,23 @@ defmodule Honeydew.EctoPollQueue do
   end
 
   defmodule Migration do
-    defmacro honeydew_fields(queue) do
+    defmacro honeydew_fields(queue, opts \\ []) do
       quote do
         require unquote(__MODULE__)
         alias Honeydew.EctoSource.SQL
         alias Honeydew.EctoSource.ErlangTerm
         require SQL
 
+        database = Keyword.get(unquote(opts), :database, nil)
+
+        sql_module =
+          :repo
+          |> Ecto.Migration.Runner.repo_config(nil)
+          |> SQL.module(database)
+
         unquote(queue)
         |> Honeydew.EctoSource.field_name(:lock)
-        |> Ecto.Migration.add(:integer, default: SQL.ready_fragment())
+        |> Ecto.Migration.add(sql_module.integer_type(), default: SQL.ready_fragment(sql_module))
 
         unquote(queue)
         |> Honeydew.EctoSource.field_name(:private)

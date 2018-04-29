@@ -47,7 +47,7 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 
 [1] survives node crashes 
 
-[2] assuming you chose a replicated database to back ecto (tested with cockroachdb). 
+[2] assuming you chose a replicated database to back ecto (tested with cockroachdb and postgres).
     Mnesia replication may require manual intevention after a significant netsplit
 
 ### Ecto Poll Queue

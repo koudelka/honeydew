@@ -44,7 +44,6 @@ if Code.ensure_loaded?(Ecto) do
     alias Honeydew.Job
     alias Honeydew.PollQueue
     alias Honeydew.EctoSource.State
-    import Honeydew.EctoSource.SQL
 
     @behaviour PollQueue
 
@@ -55,6 +54,7 @@ if Code.ensure_loaded?(Ecto) do
     def init(queue, args) do
       schema = Keyword.fetch!(args, :schema)
       repo = Keyword.fetch!(args, :repo)
+      sql = Keyword.fetch!(args, :sql)
       stale_timeout = args[:stale_timeout] * 1_000
 
       table = schema.__schema__(:source)
@@ -71,6 +71,7 @@ if Code.ensure_loaded?(Ecto) do
 
       {:ok, %State{schema: schema,
                    repo: repo,
+                   sql: sql,
                    table: table,
                    key_field: key_field,
                    lock_field: field_name(queue, :lock),
@@ -82,10 +83,10 @@ if Code.ensure_loaded?(Ecto) do
 
     # lock a row for processing
     @impl true
-    def reserve(%State{queue: queue, schema: schema, repo: repo, key_field: key_field, private_field: private_field, task_fn: task_fn} = state) do
+    def reserve(%State{queue: queue, schema: schema, repo: repo, sql: sql, key_field: key_field, private_field: private_field, task_fn: task_fn} = state) do
       try do
         state
-        |> reserve_sql
+        |> sql.reserve
         |> repo.query([])
       rescue e in DBConnection.ConnectionError ->
         {:error, e}
@@ -130,11 +131,11 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     @impl true
-    def cancel(%Job{private: id}, %State{schema: schema, repo: repo, key_field: key_field} = state) do
+    def cancel(%Job{private: id}, %State{schema: schema, repo: repo, sql: sql, key_field: key_field} = state) do
       {:ok, id} = dump_field(schema, repo, key_field, id)
 
       state
-      |> cancel_sql
+      |> sql.cancel
       |> repo.query([id])
       |> case do
            {:ok, %{num_rows: 1}} ->
@@ -145,25 +146,11 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     @impl true
-    def status(%State{schema: schema, repo: repo, key_field: key_field, lock_field: lock_field, stale_timeout: stale_timeout}) do
-      import Ecto.Query
-
-      count_query =
-        from(s in schema,
-          select: count(field(s, ^key_field)),
-          where: not is_nil(field(s, ^lock_field)))
-
-      in_progress_query =
-        from(s in count_query, where: field(s, ^lock_field) > msecs_ago_fragment(^stale_timeout))
-
-      abandoned_query =
-        from(s in schema,
-          select: count(field(s, ^key_field)),
-          where: field(s, ^lock_field) == ^@abandoned)
-
-      [count] = repo.all(count_query)
-      [in_progress] = repo.all(in_progress_query)
-      [abandoned] = repo.all(abandoned_query)
+    def status(%State{repo: repo, sql: sql} = state) do
+      {:ok, %{num_rows: 1, rows: [[count, in_progress, abandoned]]}} =
+        state
+        |> sql.status
+        |> repo.query([])
 
       %{count: count, in_progress: in_progress, abandoned: abandoned}
     end

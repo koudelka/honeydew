@@ -7,6 +7,9 @@ otp_release:
   - 19.3
   - 20.0
 
+services:
+  - postgresql
+
 cache:
   directories:
     - _build
@@ -22,8 +25,10 @@ before_script:
   - MIX_ENV=test mix compile --warnings-as-errors
   - MIX_ENV=test mix dialyzer --plt
   - cd cockroach-v2.0.0.linux-amd64 && ./cockroach sql --insecure --host=localhost --execute "create database postgres" && cd -
+  - psql -c 'create database honeydew_test;' -U postgres
 
 script:
   - mix test
-  - cd examples/ecto_poll_queue && MIX_ENV=test mix dialyzer --halt-exit-status
+  - cd examples/ecto_poll_queue/cockroachdb && MIX_ENV=test mix dialyzer --halt-exit-status && cd -
+  - cd examples/ecto_poll_queue/postgres && MIX_ENV=test mix dialyzer --halt-exit-status && cd -
   - MIX_ENV=test mix dialyzer --halt-exit-status

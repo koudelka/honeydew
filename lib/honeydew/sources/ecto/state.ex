@@ -2,6 +2,7 @@ defmodule Honeydew.EctoSource.State do
   defstruct [
     :schema,
     :repo,
+    :sql,
     :table,
     :key_field,
     :lock_field,
@@ -15,6 +16,7 @@ defmodule Honeydew.EctoSource.State do
 
   @type t :: %__MODULE__{schema: module,
                          repo: module,
+                         sql: module,
                          table: String.t(),
                          key_field: String.t(),
                          lock_field: String.t(),

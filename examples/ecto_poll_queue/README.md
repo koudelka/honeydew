@@ -113,3 +113,13 @@ iex(1)> {:ok, _photo} = %MyApp.Photo{} |> MyApp.Repo.insert
 
 #=> "Photo contained a xenomorph!"
 ```
+
+## CockroachDB
+
+Honeydew auto-selects the correct set of SQL queries for your database, depending on which Ecto adapter your repository is using. However, since CockroachDB uses the Postgres adapter, Honeydew can't tell it apart. You'll need to tell Honeydew that you're using Cockroach in two places:
+
+- Your supervision specification:
+`{EctoPollQueue, [:classify_photos, schema: Photo, repo: Repo, database: :cockroachdb]},`
+
+- Your migration:
+`honeydew_fields(:classify_photos, database: :cockroachdb)`

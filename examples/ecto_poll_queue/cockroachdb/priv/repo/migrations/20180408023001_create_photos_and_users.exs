@@ -14,7 +14,7 @@ defmodule EctoPollQueueExample.Repo.Migrations.CreatePhotosAndUsers do
       add :sleep, :integer
       add :from, ErlangTerm.type()
 
-      honeydew_fields(classify_queue())
+      honeydew_fields(classify_queue(), database: :cockroachdb)
       timestamps()
     end
     honeydew_indexes(:photos, classify_queue())
@@ -27,7 +27,7 @@ defmodule EctoPollQueueExample.Repo.Migrations.CreatePhotosAndUsers do
       add :sleep, :integer
       add :from, ErlangTerm.type()
 
-      honeydew_fields(notify_queue())
+      honeydew_fields(notify_queue(), database: :cockroachdb)
       timestamps()
     end
     honeydew_indexes(:users, notify_queue())

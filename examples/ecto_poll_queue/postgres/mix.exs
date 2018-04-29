@@ -31,9 +31,9 @@ defmodule EctoPollQueueExample.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:honeydew, path: "../.."},
+      {:honeydew, path: "../../.."},
       {:ecto, "~> 2.0"},
-      {:postgrex, "~> 0.13", hex: :postgrex_cdb, override: true},
+      {:postgrex, "~> 0.13"},
       {:dialyxir, "~> 0.5", only: :test, runtime: false}
     ]
   end

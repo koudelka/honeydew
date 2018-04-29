@@ -1,34 +1,51 @@
 defmodule Honeydew.EctoSource.SQL do
   alias Honeydew.EctoSource.State
+  alias Honeydew.EctoSource.SQL.Cockroach
+  alias Honeydew.EctoSource.SQL.Postgres
 
   #
   # you might be wondering "what's all this shitty sql for?", it's to make sure that the database is sole arbiter of "now",
   # in case of clock skew between the various nodes running this queue
   #
 
-  @type sql_fragment :: String.t()
+  @type sql :: String.t()
+  @type msecs :: integer()
+  @type repo :: module()
+  @type override :: :cockroachdb | nil
+  @type sql_module :: Postgres | Cockroach
 
-  @spec time_in_msecs_sql(sql_fragment) :: sql_fragment
-  def time_in_msecs_sql(time) do
-    "(EXTRACT('millisecond', (#{time})) + CAST((#{time}) AS INT) * 1000)"
-  end
+  @callback integer_type :: atom()
+  @callback reserve(State.t()) :: sql
+  @callback cancel(State.t()) :: sql
+  @callback ready :: sql
+  @callback status(State.t()) :: sql
 
-  @spec now_msecs_sql() :: sql_fragment
-  def now_msecs_sql do
-    time_in_msecs_sql("NOW()")
-  end
+  @spec module(repo, override) :: sql_module | no_return
+  def module(repo, override) do
+    case override do
+      :cockroachdb ->
+        Cockroach
 
-  @spec msecs_ago_sql(sql_fragment | State.stale_timeout()) :: sql_fragment
-  def msecs_ago_sql(msecs) do
-    "#{now_msecs_sql()} - #{msecs}"
-  end
-
-  defmacro msecs_ago_fragment(msecs) do
-    sql = msecs_ago_sql("?")
-
-    quote do
-      fragment(unquote(sql), unquote(msecs))
+      nil ->
+        case repo.__adapter__() do
+          Ecto.Adapters.Postgres ->
+            Postgres
+          unsupported ->
+            raise ArgumentError, unsupported_adapter_error(unsupported)
+        end
     end
+  end
+
+  defmacro ready_fragment(module) do
+    quote do
+      unquote(module).ready
+      |> fragment
+    end
+  end
+
+  @doc false
+  defp unsupported_adapter_error(adapter) do
+    "your repo's ecto adapter, #{inspect adapter}, isn't currently supported, but it's probably not hard to implement, open an issue and we'll chat!"
   end
 
   # "I left in love, in laughter, and in truth. And wherever truth, love and laughter abide, I am there in spirit."
@@ -37,35 +54,4 @@ defmodule Honeydew.EctoSource.SQL do
     ~N[1994-03-26 04:20:00]
   end
 
-  defmacro ready_fragment do
-    sql =
-      "CAST('#{far_in_the_past()}' AS TIMESTAMP)"
-      |> time_in_msecs_sql
-      |> msecs_ago_sql
-
-    quote do
-      fragment(unquote(sql))
-    end
-  end
-
-  @spec reserve_sql(State.t()) :: String.t()
-  def reserve_sql(state) do
-    "UPDATE #{state.table}
-    SET #{state.lock_field} = #{now_msecs_sql()}
-    WHERE #{state.lock_field} BETWEEN 0 AND #{msecs_ago_sql(state.stale_timeout)}
-    ORDER BY #{state.lock_field}, #{state.key_field}
-    LIMIT 1
-    RETURNING #{state.key_field}, #{state.private_field}"
-  end
-
-  @spec cancel_sql(State.t()) :: String.t()
-  def cancel_sql(state) do
-    "UPDATE #{state.table}
-    SET #{state.lock_field} = NULL
-    WHERE
-      id = $1
-      AND #{state.lock_field} BETWEEN 0 AND #{msecs_ago_sql(state.stale_timeout)}
-    LIMIT 1
-    RETURNING #{state.lock_field}"
-  end
 end
