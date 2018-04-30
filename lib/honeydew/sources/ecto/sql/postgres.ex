@@ -28,7 +28,7 @@ if Code.ensure_loaded?(Ecto) do
         WHERE #{state.lock_field} BETWEEN 0 AND #{msecs_ago(state.stale_timeout)}
         ORDER BY #{state.lock_field}, #{state.key_field}
         LIMIT 1
-        FOR UPDATE
+        FOR UPDATE SKIP LOCKED
       )
       RETURNING #{state.key_field}, #{state.private_field}"
     end
