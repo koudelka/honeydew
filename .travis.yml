@@ -10,6 +10,9 @@ otp_release:
 services:
   - postgresql
 
+addons:
+  postgresql: "9.5"
+
 cache:
   directories:
     - _build
