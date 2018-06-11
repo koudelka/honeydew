@@ -18,7 +18,7 @@ defmodule Honeydew.WorkerStarter do
   end
 
   def handle_cast({:queue_available, queue_pid}, queue) do
-    Logger.info "[Honeydew] Queue #{queue_pid} from #{inspect queue} became available, starting workers ..."
+    Logger.info "[Honeydew] Queue #{inspect queue_pid} from #{inspect queue} on node #{node(queue_pid)} became available, starting workers ..."
     start_group(queue, queue_pid)
     {:noreply, queue}
   end
