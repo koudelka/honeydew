@@ -186,7 +186,7 @@ defmodule Honeydew.Queue do
   def handle_info({:nodeup, node}, %State{queue: {:global, _} = queue} = state) do
     Logger.info "[Honeydew] Connection to #{node} established, asking it to start workers..."
 
-    start_workers(queue)
+    start_workers(queue, node)
 
     {:noreply, state}
   end
@@ -221,7 +221,11 @@ defmodule Honeydew.Queue do
   defp start_workers(queue) do
     :known # start workers on this node too, if need be
     |> :erlang.nodes
-    |> Enum.each(&GenServer.cast({Honeydew.process(queue, :worker_starter), &1}, {:queue_available, self()}))
+    |> Enum.each(&start_workers(queue, &1))
+  end
+
+  defp start_workers(queue, node) do
+    GenServer.cast({Honeydew.process(queue, :worker_starter), node}, {:queue_available, self()})
   end
 
   defp send_job(worker, job, %State{queue: queue, failure_mode: failure_mode, success_mode: success_mode, monitors: monitors} = state) do
