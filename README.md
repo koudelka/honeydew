@@ -62,7 +62,7 @@ In your mix.exs file:
 
 ```elixir
 defp deps do
-  [{:honeydew, "~> 1.1.4"}]
+  [{:honeydew, "~> 1.1.5"}]
 end
 ```
 
