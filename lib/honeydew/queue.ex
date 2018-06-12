@@ -218,10 +218,14 @@ defmodule Honeydew.Queue do
     |> module.enqueue(private)
   end
 
-  defp start_workers(queue) do
+  defp start_workers({:global, _} = queue) do
     :known # start workers on this node too, if need be
     |> :erlang.nodes
     |> Enum.each(&start_workers(queue, &1))
+  end
+
+  defp start_workers(queue) do
+    start_workers(queue, node())
   end
 
   defp start_workers(queue, node) do
