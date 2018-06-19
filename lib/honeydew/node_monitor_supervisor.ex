@@ -1,6 +1,13 @@
 defmodule Honeydew.NodeMonitorSupervisor do
   alias Honeydew.NodeMonitor
 
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, opts}
+    }
+  end
+
   def start_link(queue, nodes) do
     children = [{NodeMonitor, [], restart: :transient}]
 

@@ -1,6 +1,13 @@
 defmodule Honeydew.WorkerGroupsSupervisor do
   alias Honeydew.WorkerGroupSupervisor
 
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, opts}
+    }
+  end
+
   def start_link(queue, opts) do
     children = [{WorkerGroupSupervisor, [queue, opts]}]
 
