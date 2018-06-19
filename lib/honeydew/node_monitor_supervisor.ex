@@ -2,9 +2,7 @@ defmodule Honeydew.NodeMonitorSupervisor do
   alias Honeydew.NodeMonitor
 
   def start_link(queue, nodes) do
-    import Supervisor.Spec
-
-    children = [worker(NodeMonitor, [], restart: :transient)]
+    children = [{NodeMonitor, [], restart: :transient}]
 
     opts = [
       name: Honeydew.supervisor(queue, :node_monitor),

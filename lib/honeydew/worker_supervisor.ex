@@ -1,10 +1,17 @@
 defmodule Honeydew.WorkerSupervisor do
   alias Honeydew.Worker
 
-  def start_link(queue, %{shutdown: shutdown, init_retry: init_retry_secs, num: num} = opts, queue_pid) do
-    import Supervisor.Spec
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, opts}
+    }
+  end
 
-    children = [worker(Worker, [queue, opts, queue_pid], restart: :transient, shutdown: shutdown)]
+  def start_link(queue, %{shutdown: shutdown, init_retry: init_retry_secs, num: num} = opts, queue_pid) do
+    children = [
+      Worker.child_spec([queue, opts, queue_pid], [restart: :transient, shutdown: shutdown])
+    ]
 
     supervisor_opts = [
       strategy: :simple_one_for_one,

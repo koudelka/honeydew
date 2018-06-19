@@ -23,7 +23,7 @@ defmodule Honeydew.Workers do
   - `shutdown`: if a worker is in the middle of a job, the amount of time, in
      milliseconds, to wait before brutally killing it. Defaults to `10_000`.
 
-  - `supervisor_opts` options accepted by `Supervisor.Spec.supervisor/3`.
+  - `supervisor_opts` options accepted by `Supervisor.child_spec()`.
 
   - `nodes`: for :global queues, you can provide a list of nodes to stay
      connected to (your queue node and enqueuing nodes). Defaults to `[]`.
@@ -36,8 +36,8 @@ defmodule Honeydew.Workers do
 
   - `Honeydew.child_spec({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
   """
-  # @spec child_spec([queue_name, mod_or_mod_args, [worker_spec_opt]]) :: Supervisor.Spec.spec
-  @spec child_spec([...]) :: Supervisor.Spec.spec
+  # @spec child_spec([queue_name, mod_or_mod_args, [worker_spec_opt]]) :: Supervisor.child_spec()
+  @spec child_spec([...]) :: Supervisor.child_spec()
   def child_spec([queue, module_and_args]), do: child_spec([queue, module_and_args, []])
 
   def child_spec([queue, module_and_args | opts]) do

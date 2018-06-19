@@ -32,7 +32,7 @@ defmodule Honeydew.EctoPollQueue do
 
   - `Honeydew.queue_spec(:classify_photos, repo: MyApp.Repo, schema: MyApp.Photo failure_mode: {Honeydew.Retry, times: 3})`
   """
-  @spec child_spec([queue_name | ecto_poll_queue_spec_opt]) :: Supervisor.Spec.spec
+  @spec child_spec([queue_name | ecto_poll_queue_spec_opt]) :: Supervisor.child_spec()
   def child_spec([queue_name | opts]) do
     {poll_interval, opts} = Keyword.pop(opts, :poll_interval)
     {stale_timeout, opts} = Keyword.pop(opts, :stale_timeout)
