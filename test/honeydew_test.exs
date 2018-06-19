@@ -75,20 +75,27 @@ defmodule HoneydewTest do
       init_retry_secs: 5,
       supervisor_opts: [id: :my_worker_supervisor])
 
-    assert spec == {:my_worker_supervisor,
-                    {Honeydew.Workers, :start_link,
-                     [queue, %{init_retry: 5, ma: {Worker, [1,2,3]}, nodes: [], num: 123, shutdown: 10000}]}, :permanent,
-                    :infinity, :supervisor, [Honeydew.Workers]}
+    assert spec == %{
+      id: :my_worker_supervisor,
+      start: {Honeydew.Workers, :start_link,
+              [queue, %{init_retry: 5, ma: {Worker, [1,2,3]}, nodes: [], num: 123, shutdown: 10000}]},
+      restart: :permanent,
+      shutdown: :infinity
+    }
   end
 
   test "worker_spec/2 defaults" do
     queue = :erlang.unique_integer
 
     spec =  Honeydew.worker_spec(queue, Worker)
-    assert spec == {{:worker, queue},
-                    {Honeydew.Workers, :start_link,
-                    [queue, %{init_retry: 5, ma: {Worker, []}, nodes: [], num: 10, shutdown: 10000}]}, :permanent,
-                    :infinity, :supervisor, [Honeydew.Workers]}
+
+    assert spec == %{
+      id: {:worker, queue},
+      start: {Honeydew.Workers, :start_link,
+              [queue, %{init_retry: 5, ma: {Worker, []}, nodes: [], num: 10, shutdown: 10000}]},
+      restart: :permanent,
+      shutdown: :infinity
+    }
   end
 
   test "group/1" do

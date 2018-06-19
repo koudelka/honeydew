@@ -363,13 +363,12 @@ defmodule Honeydew do
     supervisor_opts =
       opts
       |> Keyword.get(:supervisor_opts, [])
-      |> Keyword.put_new(:id, {:queue, name})
       |> Keyword.put_new(:restart, :permanent)
       |> Keyword.put_new(:shutdown, :infinity)
       |> Enum.into(%{})
 
     spec = %{
-      id: Honeydew.QueueSupervisor,
+      id: {:queue, name},
       start: {Honeydew.QueueSupervisor, :start_link,
               [name, module, args, num, dispatcher, failure_mode, success_mode, suspended]},
     }

@@ -50,7 +50,9 @@ defmodule Honeydew.Workers do
     supervisor_opts =
       opts
       |> Keyword.get(:supervisor_opts, [])
-      |> Keyword.put_new(:id, {:worker, queue})
+      |> Keyword.put_new(:restart, :permanent)
+      |> Keyword.put_new(:shutdown, :infinity)
+      |> Enum.into(%{})
 
     opts = %{
       ma: {module, args},
@@ -60,7 +62,12 @@ defmodule Honeydew.Workers do
       nodes: opts[:nodes] || []
     }
 
-    Supervisor.Spec.supervisor(__MODULE__, [queue, opts], supervisor_opts)
+    spec = %{
+      id: {:worker, queue},
+      start: {__MODULE__, :start_link, [queue, opts]}
+    }
+
+    Map.merge(spec, supervisor_opts)
   end
 
 
