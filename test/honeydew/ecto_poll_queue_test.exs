@@ -27,54 +27,67 @@ defmodule Honeydew.EctoPollQueueTest do
                                        stale_timeout: 456,
                                        failure_mode: {Abandon, []}])
 
-      assert spec == {{:queue, queue},
-                      {Honeydew.QueueSupervisor, :start_link,
-                      [queue,
-                        Honeydew.PollQueue, [Honeydew.EctoSource, [schema: :my_schema,
-                                                                   repo: PseudoRepo,
-                                                                   sql: SQL.Postgres,
-                                                                   poll_interval: 123,
-                                                                   stale_timeout: 456]],
-                        1,
-                        {Honeydew.Dispatcher.LRU, []},
-                        {Abandon, []},
-                        nil, false]}, :permanent, :infinity, :supervisor, [Honeydew.QueueSupervisor]}
+      assert spec == %{
+        id: {:queue, queue},
+        start: {Honeydew.QueueSupervisor, :start_link,
+                [queue,
+                 Honeydew.PollQueue, [Honeydew.EctoSource, [schema: :my_schema,
+                                                            repo: PseudoRepo,
+                                                            sql: SQL.Postgres,
+                                                            poll_interval: 123,
+                                                            stale_timeout: 456]],
+                 1,
+                 {Honeydew.Dispatcher.LRU, []},
+                 {Abandon, []},
+                 nil, false]},
+        restart: :permanent,
+        shutdown: :infinity
+      }
     end
 
     test "defaults" do
       queue = :erlang.unique_integer
       spec = EctoPollQueue.child_spec([queue, schema: :my_schema, repo: PseudoRepo])
 
-      assert spec == {{:queue, queue},
-                      {Honeydew.QueueSupervisor, :start_link,
-                       [queue,
-                        Honeydew.PollQueue, [Honeydew.EctoSource, [schema: :my_schema,
-                                                                   repo: PseudoRepo,
-                                                                   sql: SQL.Postgres,
-                                                                   poll_interval: 10,
-                                                                   stale_timeout: 300]],
-                        1,
-                        {Honeydew.Dispatcher.LRU, []},
-                        {Abandon, []},
-                        nil, false]}, :permanent, :infinity, :supervisor, [Honeydew.QueueSupervisor]}
+      assert spec == %{
+        id: {:queue, queue},
+        start: {Honeydew.QueueSupervisor, :start_link,
+                [queue,
+                 Honeydew.PollQueue, [Honeydew.EctoSource, [schema: :my_schema,
+                                                            repo: PseudoRepo,
+                                                            sql: SQL.Postgres,
+                                                            poll_interval: 10,
+                                                            stale_timeout: 300]],
+                 1,
+                 {Honeydew.Dispatcher.LRU, []},
+                 {Abandon, []},
+                 nil, false]},
+        restart: :permanent,
+        shutdown: :infinity
+      }
     end
 
     test "cockroachdb" do
       queue = :erlang.unique_integer
       spec = EctoPollQueue.child_spec([queue, schema: :my_schema, repo: PseudoRepo, database: :cockroachdb])
 
-      assert spec == {{:queue, queue},
-                      {Honeydew.QueueSupervisor, :start_link,
-                       [queue,
-                        Honeydew.PollQueue, [Honeydew.EctoSource, [schema: :my_schema,
-                                                                   repo: PseudoRepo,
-                                                                   sql: SQL.Cockroach,
-                                                                   poll_interval: 10,
-                                                                   stale_timeout: 300]],
-                        1,
-                        {Honeydew.Dispatcher.LRU, []},
-                        {Abandon, []},
-                        nil, false]}, :permanent, :infinity, :supervisor, [Honeydew.QueueSupervisor]}
+
+      assert spec == %{
+        id: {:queue, queue},
+        start: {Honeydew.QueueSupervisor, :start_link,
+                [queue,
+                 Honeydew.PollQueue, [Honeydew.EctoSource, [schema: :my_schema,
+                                                            repo: PseudoRepo,
+                                                            sql: SQL.Cockroach,
+                                                            poll_interval: 10,
+                                                            stale_timeout: 300]],
+                 1,
+                 {Honeydew.Dispatcher.LRU, []},
+                 {Abandon, []},
+                 nil, false]},
+        restart: :permanent,
+        shutdown: :infinity
+      }
     end
 
     test "should raise when database isn't supported" do
