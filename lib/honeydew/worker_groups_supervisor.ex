@@ -9,15 +9,14 @@ defmodule Honeydew.WorkerGroupsSupervisor do
   end
 
   def start_link(queue, opts) do
-    children = [{WorkerGroupSupervisor, [queue, opts]}]
+    supervisor_opts = [strategy: :one_for_one,
+                       name: Honeydew.supervisor(queue, :worker_groups),
+                       extra_arguments: [queue, opts]]
 
-    supervisor_opts = [strategy: :simple_one_for_one,
-                       name: Honeydew.supervisor(queue, :worker_groups)]
-
-    Supervisor.start_link(children, supervisor_opts)
+    DynamicSupervisor.start_link(supervisor_opts)
   end
 
   def start_group(supervisor, queue_pid) do
-    {:ok, _group} = Supervisor.start_child(supervisor, [queue_pid])
+    {:ok, _group} = DynamicSupervisor.start_child(supervisor, {WorkerGroupSupervisor, [queue_pid]})
   end
 end
