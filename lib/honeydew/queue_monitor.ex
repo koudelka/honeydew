@@ -7,9 +7,9 @@ defmodule Honeydew.QueueMonitor do
     defstruct [:worker_group_pid, :queue_pid]
   end
 
-  def child_spec(opts) do
+  def child_spec(opts, queue: queue) do
     %{
-      id: __MODULE__,
+      id: {__MODULE__, queue},
       start: {__MODULE__, :start_link, opts}
     }
   end

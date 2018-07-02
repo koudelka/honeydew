@@ -10,7 +10,7 @@ defmodule Honeydew.WorkerGroupSupervisor do
 
   def start_link(queue, opts, queue_pid) do
     children = [
-      {QueueMonitor, [self(), queue_pid]},
+      QueueMonitor.child_spec([self(), queue_pid], queue: queue),
       {WorkerSupervisor, [queue, opts, queue_pid]}
     ]
 

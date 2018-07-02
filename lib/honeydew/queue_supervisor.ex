@@ -9,14 +9,13 @@ defmodule Honeydew.QueueSupervisor do
             # if a queue dies because it's trying to connect to a remote host,
             # should we delay the restart like with workers?
             max_restarts: num_queues,
-            max_seconds: 5,
-            extra_arguments: [queue, module, args, dispatcher, failure_mode, success_mode, suspended]]
+            max_seconds: 5]
 
     {:ok, supervisor} = DynamicSupervisor.start_link(opts)
 
     # start up workers
     Enum.each(1..num_queues, fn _ ->
-      {:ok, _} = DynamicSupervisor.start_child(supervisor, {Honeydew.Queue, []})
+      {:ok, _} = DynamicSupervisor.start_child(supervisor, {Honeydew.Queue, [queue, module, args, dispatcher, failure_mode, success_mode, suspended]})
     end)
 
     {:ok, supervisor}
