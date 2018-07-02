@@ -21,9 +21,7 @@ defmodule HoneydewTest do
       id: :my_queue_supervisor,
       start: {Honeydew.QueueSupervisor, :start_link,
               [queue, :abc, [1, 2, 3], 1, {Dis.Patcher, [:a, :b]},
-               {Abandon, []}, {Log, []}, true]},
-      restart: :permanent,
-      shutdown: :infinity
+               {Abandon, []}, {Log, []}, true]}
     }
   end
 
@@ -47,9 +45,7 @@ defmodule HoneydewTest do
       id: {:queue, queue},
       start: {Honeydew.QueueSupervisor, :start_link,
               [queue, Honeydew.Queue.ErlangQueue, [], 1,
-               {Honeydew.Dispatcher.LRU, []}, {Honeydew.FailureMode.Abandon, []}, nil, false]},
-      restart: :permanent,
-      shutdown: :infinity
+               {Honeydew.Dispatcher.LRU, []}, {Honeydew.FailureMode.Abandon, []}, nil, false]}
     }
 
     queue = {:global, :erlang.unique_integer}
@@ -59,9 +55,7 @@ defmodule HoneydewTest do
       id: {:queue, queue},
       start: {Honeydew.QueueSupervisor, :start_link,
               [queue, Honeydew.Queue.ErlangQueue, [], 1,
-               {Honeydew.Dispatcher.LRUNode, []}, {Honeydew.FailureMode.Abandon, []}, nil, false]},
-      restart: :permanent,
-      shutdown: :infinity
+               {Honeydew.Dispatcher.LRUNode, []}, {Honeydew.FailureMode.Abandon, []}, nil, false]}
     }
   end
 
@@ -78,9 +72,7 @@ defmodule HoneydewTest do
     assert spec == %{
       id: :my_worker_supervisor,
       start: {Honeydew.Workers, :start_link,
-              [queue, %{init_retry: 5, ma: {Worker, [1,2,3]}, nodes: [], num: 123, shutdown: 10000}]},
-      restart: :permanent,
-      shutdown: :infinity
+              [queue, %{init_retry: 5, ma: {Worker, [1,2,3]}, nodes: [], num: 123, shutdown: 10000}]}
     }
   end
 
@@ -92,9 +84,7 @@ defmodule HoneydewTest do
     assert spec == %{
       id: {:worker, queue},
       start: {Honeydew.Workers, :start_link,
-              [queue, %{init_retry: 5, ma: {Worker, []}, nodes: [], num: 10, shutdown: 10000}]},
-      restart: :permanent,
-      shutdown: :infinity
+              [queue, %{init_retry: 5, ma: {Worker, []}, nodes: [], num: 10, shutdown: 10000}]}
     }
   end
 

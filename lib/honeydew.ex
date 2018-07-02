@@ -363,8 +363,6 @@ defmodule Honeydew do
     supervisor_opts =
       opts
       |> Keyword.get(:supervisor_opts, [])
-      |> Keyword.put_new(:restart, :permanent)
-      |> Keyword.put_new(:shutdown, :infinity)
       |> Enum.into(%{})
 
     spec = %{

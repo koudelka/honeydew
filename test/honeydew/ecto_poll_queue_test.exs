@@ -39,9 +39,7 @@ defmodule Honeydew.EctoPollQueueTest do
                  1,
                  {Honeydew.Dispatcher.LRU, []},
                  {Abandon, []},
-                 nil, false]},
-        restart: :permanent,
-        shutdown: :infinity
+                 nil, false]}
       }
     end
 
@@ -61,9 +59,7 @@ defmodule Honeydew.EctoPollQueueTest do
                  1,
                  {Honeydew.Dispatcher.LRU, []},
                  {Abandon, []},
-                 nil, false]},
-        restart: :permanent,
-        shutdown: :infinity
+                 nil, false]}
       }
     end
 
@@ -84,9 +80,7 @@ defmodule Honeydew.EctoPollQueueTest do
                  1,
                  {Honeydew.Dispatcher.LRU, []},
                  {Abandon, []},
-                 nil, false]},
-        restart: :permanent,
-        shutdown: :infinity
+                 nil, false]}
       }
     end
 
