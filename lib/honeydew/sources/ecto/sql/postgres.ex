@@ -51,6 +51,11 @@ if Code.ensure_loaded?(Ecto) do
       FROM #{state.table}"
     end
 
+    @impl true
+    def filter(state, :abandoned) do
+      "SELECT id FROM #{state.table} WHERE #{state.lock_field} = #{EctoSource.abandoned()}"
+    end
+
     defp msecs_ago(msecs) do
       "#{now_msecs()} - #{msecs}"
     end

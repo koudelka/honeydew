@@ -13,12 +13,14 @@ defmodule Honeydew.EctoSource.SQL do
   @type repo :: module()
   @type override :: :cockroachdb | nil
   @type sql_module :: Postgres | Cockroach
+  @type filter :: atom
 
   @callback integer_type :: atom()
   @callback reserve(State.t()) :: sql
   @callback cancel(State.t()) :: sql
   @callback ready :: sql
   @callback status(State.t()) :: sql
+  @callback filter(State.t(), filter) :: sql
 
   @spec module(repo, override) :: sql_module | no_return
   def module(repo, override) do

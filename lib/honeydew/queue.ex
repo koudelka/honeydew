@@ -19,6 +19,7 @@ defmodule Honeydew.Queue do
   @type job :: Job.t
   @type private :: term
   @type name :: Honeydew.queue_name
+  @type filter :: Honeydew.filter()
 
   @callback init(name, arg :: term) :: {:ok, private}
   @callback enqueue(job, private) :: {private, job}
@@ -26,7 +27,7 @@ defmodule Honeydew.Queue do
   @callback ack(job, private) :: private
   @callback nack(job, private) :: private
   @callback status(private) :: %{:count => number, :in_progress => number, optional(atom) => any}
-  @callback filter(private, function) :: [job]
+  @callback filter(private, filter) :: [job]
   @callback cancel(job, private) :: {:ok | {:error, :in_progress | :not_found}, private}
 
   # stolen from GenServer, with a slight change
@@ -144,7 +145,6 @@ defmodule Honeydew.Queue do
   end
 
   def handle_call(:status, _from, %State{module: module, private: private, suspended: suspended, monitors: monitors} = state) do
-
     status =
       private
       |> module.status
@@ -154,11 +154,11 @@ defmodule Honeydew.Queue do
     {:reply, status, state}
   end
 
-  def handle_call({:filter, function}, _from, %State{module: module, private: private} = state) do
+  def handle_call({:filter, filter}, _from, %State{module: module, private: private} = state) do
     # try to prevent user code crashing the queue
     reply =
       try do
-        {:ok, module.filter(private, function)}
+        {:ok, module.filter(private, filter)}
       rescue e ->
           {:error, e}
       end

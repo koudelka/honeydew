@@ -156,6 +156,20 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     @impl true
+    def filter(%State{repo: repo, schema: schema, sql: sql, queue: queue} = state, filter) do
+      {:ok, %{rows: rows}} =
+        state
+        |> sql.filter(filter)
+        |> repo.query([])
+
+      Enum.map(rows, fn [id] ->
+        # convert key from db representation to schema's type
+        %^schema{id: id} = repo.load(schema, %{id: id})
+        %Job{queue: queue, private: id}
+      end)
+    end
+
+    @impl true
     def handle_info(msg, queue_state) do
       Logger.warn("[Honeydew] Queue #{inspect(self())} received unexpected message #{inspect(msg)}")
 

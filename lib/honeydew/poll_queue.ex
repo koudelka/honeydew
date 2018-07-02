@@ -9,6 +9,7 @@ defmodule Honeydew.PollQueue do
   @type job :: Job.t()
   @type private :: any()
   @type name :: Honeydew.queue_name()
+  @type filter :: atom()
 
   @callback init(name, arg :: any()) :: {:ok, private}
   @callback reserve(private) :: {job, private}
@@ -16,6 +17,7 @@ defmodule Honeydew.PollQueue do
   @callback nack(job, private) :: private
   @callback status(private) :: %{:count => number, :in_progress => number, optional(atom) => any}
   @callback cancel(job, private) :: {:ok | {:error, :in_progress | :not_found}, private}
+  @callback filter(private, filter) :: [job]
 
   @callback handle_info(msg :: :timeout | term, state :: private) ::
               {:noreply, new_state}
@@ -72,8 +74,13 @@ defmodule Honeydew.PollQueue do
   end
 
   @impl true
-  def filter(_state, _function) do
-    raise "filter/2 is unsupported for poll queues"
+  def filter(%State{source: {source, source_state}}, filter) when is_atom(filter) do
+    source.filter(source_state, filter)
+  end
+
+  @impl true
+  def filter(_state, _filter) do
+    raise "Implementations of PollQueue only support predefined filters (atoms)"
   end
 
   @impl true

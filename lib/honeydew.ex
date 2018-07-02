@@ -11,6 +11,7 @@ defmodule Honeydew do
   @type supervisor_opts :: Keyword.t
   @type async_opt :: {:reply, true}
   @type task :: {atom, [arg :: term]}
+  @type filter :: (Job.t -> boolean) | atom
 
   @typedoc """
   Result of a `Honeydew.Job`
@@ -157,8 +158,15 @@ defmodule Honeydew do
   @doc """
   Filters the jobs currently on the queue.
 
-  Please Note -- This function returns a `List`, not a `Stream`, so calling it
-  can be memory intensive when invoked on a large queue.
+  Filtration support depends on the queue implementation.
+
+  ErlangQueue and Mnesia queues support filtering with functions.
+
+  Ecto Poll Queues have pre-defined, named filters. At the moment, only `:abandoned` is implemented.
+
+  Note:
+  - This function returns a `List`, not a `Stream`, so calling it can be memory intensive when invoked on a large queue.
+  - The filtration is done by the queue process, not the client, so a heavy filter will tie up the queue.
 
   ## Examples
 
@@ -166,16 +174,18 @@ defmodule Honeydew do
 
       Honeydew.filter(:my_queue, &match?(%Honeydew.Job{task: {:ping, _}}, &1))
 
+      Honeydew.filter(:my_queue, :abandoned)
+
   Return all jobs.
 
       Honeydew.filter(:my_queue, fn _ -> true end)
   """
-  @spec filter(queue_name, (Job.t -> boolean)) :: [Job.t]
-  def filter(queue, function) do
+  @spec filter(queue_name, filter) :: [Job.t]
+  def filter(queue, filter) do
     {:ok, jobs} =
       queue
       |> get_queue
-      |> GenServer.call({:filter, function})
+      |> GenServer.call({:filter, filter})
 
     jobs
   end

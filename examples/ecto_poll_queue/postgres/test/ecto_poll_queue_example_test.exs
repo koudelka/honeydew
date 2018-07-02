@@ -1,13 +1,16 @@
 defmodule EctoPollQueueExampleTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   alias EctoPollQueueExample.Repo
   alias EctoPollQueueExample.Photo
   alias EctoPollQueueExample.User
   alias Honeydew.EctoSource
+  alias Honeydew.Job
 
   @moduletag :capture_log
 
-  setup_all do
+  setup do
+    Honeydew.resume(User.notify_queue())
+    Honeydew.resume(Photo.classify_queue())
     Repo.delete_all(Photo)
     Repo.delete_all(User)
     :ok
@@ -31,19 +34,45 @@ defmodule EctoPollQueueExampleTest do
   end
 
   test "status/1" do
-    {:ok, _} = %User{from: self(), sleep: 10_000} |> Repo.insert()
-    {:ok, _} = %User{from: self(), sleep: 10_000} |> Repo.insert()
-    {:ok, _} = %User{from: self(), sleep: 10_000} |> Repo.insert()
+    {:ok, _} = %User{from: self(), sleep: 2_000} |> Repo.insert()
+    {:ok, _} = %User{from: self(), sleep: 2_000} |> Repo.insert()
+    {:ok, _} = %User{from: self(), sleep: 2_000} |> Repo.insert()
     {:ok, _} = %User{from: self(), should_fail: true} |> Repo.insert()
-    Process.sleep(2_000)
+    Process.sleep(1_000)
     Honeydew.suspend(User.notify_queue())
 
     {:ok, _} = %User{from: self(), sleep: 1_000} |> Repo.insert()
 
     assert %{queue: %{abandoned: 1, count: 5, in_progress: 3}} =
              Honeydew.status(User.notify_queue())
+  end
 
-    Honeydew.resume(User.notify_queue())
+  test "filter/2 abandoned" do
+    {:ok, _} = %Photo{from: self(), sleep: 10_000} |> Repo.insert()
+    {:ok, _} = %Photo{from: self(), sleep: 10_000} |> Repo.insert()
+    {:ok, _} = %Photo{from: self(), sleep: 10_000} |> Repo.insert()
+
+    failed_ids =
+      Enum.map(1..2, fn _ ->
+        {:ok, %Photo{id: failed_id}} = %Photo{from: self(), should_fail: true} |> Repo.insert()
+        failed_id
+      end)
+      |> Enum.sort
+
+    Process.sleep(1000)
+    Honeydew.suspend(Photo.classify_queue())
+    {:ok, _} = %Photo{from: self(), sleep: 1_000} |> Repo.insert()
+
+    assert failed_jobs = Honeydew.filter(Photo.classify_queue(), :abandoned)
+
+    ids =
+      Enum.map(failed_jobs, fn %Job{private: id, queue: queue} ->
+        assert queue == Photo.classify_queue
+        id
+      end)
+      |> Enum.sort
+
+    assert ids == failed_ids
   end
 
   test "cancel/2" do
