@@ -17,7 +17,7 @@ defmodule Honeydew.NodeMonitorSupervisor do
     {:ok, supervisor} = DynamicSupervisor.start_link(opts)
 
     Enum.each(nodes, fn node ->
-      DynamicSupervisor.start_child(supervisor, [node])
+      DynamicSupervisor.start_child(supervisor, {NodeMonitor, [node]})
     end)
 
     {:ok, supervisor}

@@ -4,13 +4,6 @@ defmodule Honeydew.NodeMonitor do
 
   @interval 1_000 # ms
 
-  def child_spec(opts) do
-    %{
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, opts}
-    }
-  end
-
   def start_link(node) do
     GenServer.start_link(__MODULE__, node)
   end
