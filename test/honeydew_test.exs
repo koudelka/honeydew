@@ -19,6 +19,7 @@ defmodule HoneydewTest do
 
     assert spec == %{
       id: :my_queue_supervisor,
+      type: :supervisor,
       start: {Honeydew.QueueSupervisor, :start_link,
               [queue, :abc, [1, 2, 3], 1, {Dis.Patcher, [:a, :b]},
                {Abandon, []}, {Log, []}, true]}
@@ -43,6 +44,7 @@ defmodule HoneydewTest do
 
     assert spec == %{
       id: {:queue, queue},
+      type: :supervisor,
       start: {Honeydew.QueueSupervisor, :start_link,
               [queue, Honeydew.Queue.ErlangQueue, [], 1,
                {Honeydew.Dispatcher.LRU, []}, {Honeydew.FailureMode.Abandon, []}, nil, false]}
@@ -53,6 +55,7 @@ defmodule HoneydewTest do
 
     assert spec == %{
       id: {:queue, queue},
+      type: :supervisor,
       start: {Honeydew.QueueSupervisor, :start_link,
               [queue, Honeydew.Queue.ErlangQueue, [], 1,
                {Honeydew.Dispatcher.LRUNode, []}, {Honeydew.FailureMode.Abandon, []}, nil, false]}
@@ -71,6 +74,7 @@ defmodule HoneydewTest do
 
     assert spec == %{
       id: :my_worker_supervisor,
+      type: :supervisor,
       start: {Honeydew.Workers, :start_link,
               [queue, %{init_retry: 5, ma: {Worker, [1,2,3]}, nodes: [], num: 123, shutdown: 10000}]}
     }
@@ -83,6 +87,7 @@ defmodule HoneydewTest do
 
     assert spec == %{
       id: {:worker, queue},
+      type: :supervisor,
       start: {Honeydew.Workers, :start_link,
               [queue, %{init_retry: 5, ma: {Worker, []}, nodes: [], num: 10, shutdown: 10000}]}
     }

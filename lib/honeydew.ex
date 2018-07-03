@@ -369,6 +369,7 @@ defmodule Honeydew do
       id: {:queue, name},
       start: {Honeydew.QueueSupervisor, :start_link,
               [name, module, args, num, dispatcher, failure_mode, success_mode, suspended]},
+      type: :supervisor
     }
 
     Map.merge(spec, supervisor_opts)

@@ -62,7 +62,8 @@ defmodule Honeydew.Workers do
 
     spec = %{
       id: {:worker, queue},
-      start: {__MODULE__, :start_link, [queue, opts]}
+      start: {__MODULE__, :start_link, [queue, opts]},
+      type: :supervisor
     }
 
     Map.merge(spec, supervisor_opts)

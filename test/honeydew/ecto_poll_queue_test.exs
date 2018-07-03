@@ -29,6 +29,7 @@ defmodule Honeydew.EctoPollQueueTest do
 
       assert spec == %{
         id: {:queue, queue},
+        type: :supervisor,
         start: {Honeydew.QueueSupervisor, :start_link,
                 [queue,
                  Honeydew.PollQueue, [Honeydew.EctoSource, [schema: :my_schema,
@@ -49,6 +50,7 @@ defmodule Honeydew.EctoPollQueueTest do
 
       assert spec == %{
         id: {:queue, queue},
+        type: :supervisor,
         start: {Honeydew.QueueSupervisor, :start_link,
                 [queue,
                  Honeydew.PollQueue, [Honeydew.EctoSource, [schema: :my_schema,
@@ -70,6 +72,7 @@ defmodule Honeydew.EctoPollQueueTest do
 
       assert spec == %{
         id: {:queue, queue},
+        type: :supervisor,
         start: {Honeydew.QueueSupervisor, :start_link,
                 [queue,
                  Honeydew.PollQueue, [Honeydew.EctoSource, [schema: :my_schema,
