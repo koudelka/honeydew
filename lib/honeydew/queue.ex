@@ -53,6 +53,13 @@ defmodule Honeydew.Queue do
 
   @optional_callbacks handle_call: 3, handle_cast: 2, handle_info: 2
 
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, opts}
+    }
+  end
+
   def start_link(queue, module, args, dispatcher, failure_mode, success_mode, suspended) do
     GenServer.start_link(__MODULE__, [queue, module, args, dispatcher, failure_mode, success_mode, suspended])
   end

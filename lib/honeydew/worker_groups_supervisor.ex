@@ -1,18 +1,23 @@
 defmodule Honeydew.WorkerGroupsSupervisor do
   alias Honeydew.WorkerGroupSupervisor
 
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, opts},
+      type: :supervisor
+    }
+  end
+
   def start_link(queue, opts) do
-    import Supervisor.Spec
+    supervisor_opts = [strategy: :one_for_one,
+                       name: Honeydew.supervisor(queue, :worker_groups),
+                       extra_arguments: [queue, opts]]
 
-    children = [supervisor(WorkerGroupSupervisor, [queue, opts])]
-
-    supervisor_opts = [strategy: :simple_one_for_one,
-                       name: Honeydew.supervisor(queue, :worker_groups)]
-
-    Supervisor.start_link(children, supervisor_opts)
+    DynamicSupervisor.start_link(supervisor_opts)
   end
 
   def start_group(supervisor, queue_pid) do
-    {:ok, _group} = Supervisor.start_child(supervisor, [queue_pid])
+    {:ok, _group} = DynamicSupervisor.start_child(supervisor, {WorkerGroupSupervisor, [queue_pid]})
   end
 end

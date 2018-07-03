@@ -23,7 +23,7 @@ defmodule Honeydew.Workers do
   - `shutdown`: if a worker is in the middle of a job, the amount of time, in
      milliseconds, to wait before brutally killing it. Defaults to `10_000`.
 
-  - `supervisor_opts` options accepted by `Supervisor.Spec.supervisor/3`.
+  - `supervisor_opts` options accepted by `Supervisor.child_spec()`.
 
   - `nodes`: for :global queues, you can provide a list of nodes to stay
      connected to (your queue node and enqueuing nodes). Defaults to `[]`.
@@ -36,8 +36,8 @@ defmodule Honeydew.Workers do
 
   - `Honeydew.child_spec({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
   """
-  # @spec child_spec([queue_name, mod_or_mod_args, [worker_spec_opt]]) :: Supervisor.Spec.spec
-  @spec child_spec([...]) :: Supervisor.Spec.spec
+  # @spec child_spec([queue_name, mod_or_mod_args, [worker_spec_opt]]) :: Supervisor.child_spec()
+  @spec child_spec([...]) :: Supervisor.child_spec()
   def child_spec([queue, module_and_args]), do: child_spec([queue, module_and_args, []])
 
   def child_spec([queue, module_and_args | opts]) do
@@ -50,7 +50,7 @@ defmodule Honeydew.Workers do
     supervisor_opts =
       opts
       |> Keyword.get(:supervisor_opts, [])
-      |> Keyword.put_new(:id, {:worker, queue})
+      |> Enum.into(%{})
 
     opts = %{
       ma: {module, args},
@@ -60,17 +60,23 @@ defmodule Honeydew.Workers do
       nodes: opts[:nodes] || []
     }
 
-    Supervisor.Spec.supervisor(__MODULE__, [queue, opts], supervisor_opts)
+    spec = %{
+      id: {:worker, queue},
+      start: {__MODULE__, :start_link, [queue, opts]},
+      type: :supervisor
+    }
+
+    Map.merge(spec, supervisor_opts)
   end
 
 
   def start_link(queue, %{nodes: nodes} = opts) do
-    import Supervisor.Spec
-
     Honeydew.create_groups(queue)
 
-    children = [supervisor(WorkerGroupsSupervisor, [queue, opts]),
-                worker(WorkerStarter, [queue])]
+    children = [
+      {WorkerGroupsSupervisor, [queue, opts]},
+      {WorkerStarter, [queue]}
+    ]
 
     # if the worker groups supervisor shuts down due to too many groups
     # restarting (hits max intensity), we also want the WorkerStarter to die
@@ -81,7 +87,7 @@ defmodule Honeydew.Workers do
 
     queue
     |> case do
-         {:global, _} -> children ++ [supervisor(Honeydew.NodeMonitorSupervisor, [queue, nodes])]
+         {:global, _} -> children ++ [{Honeydew.NodeMonitorSupervisor, [queue, nodes]}]
          _ -> children
        end
     |> Supervisor.start_link(supervisor_opts)

@@ -306,7 +306,7 @@ defmodule Honeydew do
      can pass either a module, or `{module, args}`. The module must implement
      the `Honeydew.SuccessMode` behaviour. Defaults to `nil`.
 
-  - `supervisor_opts`: options accepted by `Supervisor.Spec.supervisor/3`.
+  - `supervisor_opts`: options accepted by `Supervisor.child_spec()`.
 
   - `suspended`: Start queue in suspended state. Defaults to `false`.
 
@@ -317,7 +317,7 @@ defmodule Honeydew do
   - `Honeydew.queue_spec("my_awesome_queue", queue: {MyQueueModule, [ip: "localhost"]},
                                              dispatcher: {Honeydew.Dispatcher.MRU, []})`
   """
-  @spec queue_spec(queue_name, [queue_spec_opt]) :: Supervisor.Spec.spec
+  @spec queue_spec(queue_name, [queue_spec_opt]) :: Supervisor.child_spec()
   def queue_spec(name, opts \\ []) do
     {module, args} =
       case opts[:queue] do
@@ -363,12 +363,16 @@ defmodule Honeydew do
     supervisor_opts =
       opts
       |> Keyword.get(:supervisor_opts, [])
-      |> Keyword.put_new(:id, {:queue, name})
+      |> Enum.into(%{})
 
-    Supervisor.Spec.supervisor(
-      Honeydew.QueueSupervisor,
-      [name, module, args, num, dispatcher, failure_mode, success_mode, suspended],
-      supervisor_opts)
+    spec = %{
+      id: {:queue, name},
+      start: {Honeydew.QueueSupervisor, :start_link,
+              [name, module, args, num, dispatcher, failure_mode, success_mode, suspended]},
+      type: :supervisor
+    }
+
+    Map.merge(spec, supervisor_opts)
   end
 
   @type worker_spec_opt ::
@@ -379,7 +383,7 @@ defmodule Honeydew do
 
   # @deprecated "Use module based child specs with Honeydew.Workers instead"
   # @since "1.1.1"
-  @spec worker_spec(queue_name, mod_or_mod_args, [worker_spec_opt]) :: Supervisor.Spec.spec
+  @spec worker_spec(queue_name, mod_or_mod_args, [worker_spec_opt]) :: Supervisor.child_spec()
   def worker_spec(queue, module_and_args, opts \\ []) do
     Honeydew.Workers.child_spec([queue, module_and_args | opts])
   end

@@ -7,6 +7,13 @@ defmodule Honeydew.QueueMonitor do
     defstruct [:worker_group_pid, :queue_pid]
   end
 
+  def child_spec(opts, queue: queue) do
+    %{
+      id: {__MODULE__, queue},
+      start: {__MODULE__, :start_link, opts}
+    }
+  end
+
   def start_link(worker_group_pid, queue_pid) do
     GenServer.start_link(__MODULE__, [worker_group_pid, queue_pid])
   end

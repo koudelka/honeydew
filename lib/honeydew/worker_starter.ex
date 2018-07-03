@@ -4,6 +4,13 @@ defmodule Honeydew.WorkerStarter do
   alias Honeydew.WorkerGroupsSupervisor
   require Logger
 
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, opts}
+    }
+  end
+
   def start_link(queue) do
     GenServer.start_link(__MODULE__, queue, name: Honeydew.process(queue, :worker_starter))
   end
