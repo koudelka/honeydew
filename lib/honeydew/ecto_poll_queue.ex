@@ -28,11 +28,11 @@ defmodule Honeydew.EctoPollQueue do
 
   For example:
 
-  - `Honeydew.queue_spec(:classify_photos, repo: MyApp.Repo, schema: MyApp.Photo)`
+  - `{Honeydew.Queues, [:classify_photos, repo: MyApp.Repo, schema: MyApp.Photo]}`
+  - `{Honeydew.Queues, [:classify_photos, repo: MyApp.Repo, schema: MyApp.Photo, failure_mode: {Honeydew.Retry, times: 3}]}`
 
-  - `Honeydew.queue_spec(:classify_photos, repo: MyApp.Repo, schema: MyApp.Photo failure_mode: {Honeydew.Retry, times: 3})`
   """
-  @spec child_spec([queue_name | ecto_poll_queue_spec_opt]) :: Supervisor.Spec.spec
+  @spec child_spec([queue_name | ecto_poll_queue_spec_opt]) :: Supervisor.child_spec()
   def child_spec([queue_name | opts]) do
     {poll_interval, opts} = Keyword.pop(opts, :poll_interval)
     {stale_timeout, opts} = Keyword.pop(opts, :stale_timeout)
@@ -59,7 +59,7 @@ defmodule Honeydew.EctoPollQueue do
       |> Keyword.delete(:repo)
       |> Keyword.put(:queue, {PollQueue, [EctoSource, ecto_source_args]})
 
-    Honeydew.queue_spec(queue_name, opts)
+    Honeydew.Queues.child_spec([queue_name | opts])
   end
 
   @doc false

@@ -3,8 +3,8 @@ defmodule Honeydew.Support.ClusterSetups do
   alias Honeydew.Queue.ErlangQueue
 
   def start_queue_node(queue) do
-    queue
-    |> Honeydew.queue_spec([queue: ErlangQueue])
+    [queue, queue: ErlangQueue]
+    |> Honeydew.Queues.child_spec
     |> start_node(queue, :queue)
   end
 

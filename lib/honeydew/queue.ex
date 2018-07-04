@@ -53,8 +53,8 @@ defmodule Honeydew.Queue do
 
   @optional_callbacks handle_call: 3, handle_cast: 2, handle_info: 2
 
-  def start_link(queue, module, args, dispatcher, failure_mode, success_mode, suspended) do
-    GenServer.start_link(__MODULE__, [queue, module, args, dispatcher, failure_mode, success_mode, suspended])
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts)
   end
 
   def init([queue, module, args, {dispatcher, dispatcher_args}, failure_mode, success_mode, suspended]) do

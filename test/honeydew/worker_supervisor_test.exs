@@ -6,7 +6,7 @@ defmodule Honeydew.WorkerSupervisorTest do
 
     Honeydew.create_groups(pool)
 
-    {:ok, supervisor} = Honeydew.WorkerSupervisor.start_link(pool, %{ma: {Stateful, [:state_here]}, num: 7, init_retry: 5, shutdown: 10_000}, nil)
+    {:ok, supervisor} = Honeydew.WorkerSupervisor.start_link([pool, %{ma: {Stateful, [:state_here]}, num: 7, init_retry: 5, shutdown: 10_000}, nil])
 
     # on_exit fn ->
     #   Supervisor.stop(supervisor)

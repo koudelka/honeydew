@@ -6,7 +6,7 @@ defmodule Honeydew.Mixfile do
   def project do
     [app: :honeydew,
      version: @version,
-     elixir: "~> 1.5",
+     elixir: "~> 1.6",
      docs: docs(),
      deps: deps(),
      package: package(),

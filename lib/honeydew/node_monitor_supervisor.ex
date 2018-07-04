@@ -1,22 +1,21 @@
 defmodule Honeydew.NodeMonitorSupervisor do
+  use DynamicSupervisor
   alias Honeydew.NodeMonitor
 
-  def start_link(queue, nodes) do
-    import Supervisor.Spec
+  def start_link([queue, nodes]) do
+    opts = [name: Honeydew.supervisor(queue, :node_monitor)]
 
-    children = [worker(NodeMonitor, [], restart: :transient)]
-
-    opts = [
-      name: Honeydew.supervisor(queue, :node_monitor),
-      strategy: :simple_one_for_one
-    ]
-
-    {:ok, supervisor} = Supervisor.start_link(children, opts)
+    {:ok, supervisor} = DynamicSupervisor.start_link(__MODULE__, [], opts)
 
     Enum.each(nodes, fn node ->
-      Supervisor.start_child(supervisor, [node])
+      DynamicSupervisor.start_child(supervisor, {NodeMonitor, node})
     end)
 
     {:ok, supervisor}
+  end
+
+  @impl true
+  def init(_) do
+    DynamicSupervisor.init(strategy: :one_for_one)
   end
 end

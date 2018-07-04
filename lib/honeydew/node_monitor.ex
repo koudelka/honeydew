@@ -4,6 +4,12 @@ defmodule Honeydew.NodeMonitor do
 
   @interval 1_000 # ms
 
+  def child_spec(args) do
+    args
+    |> super
+    |> Map.put(:restart, :transient)
+  end
+
   def start_link(node) do
     GenServer.start_link(__MODULE__, node)
   end

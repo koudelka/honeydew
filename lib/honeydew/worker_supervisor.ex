@@ -1,29 +1,26 @@
 defmodule Honeydew.WorkerSupervisor do
+  use DynamicSupervisor
   alias Honeydew.Worker
 
-  def start_link(queue, %{shutdown: shutdown, init_retry: init_retry_secs, num: num} = opts, queue_pid) do
-    import Supervisor.Spec
+  def start_link([queue, %{shutdown: shutdown, num: num} = opts, queue_pid]) do
+    supervisor_opts = [name: Honeydew.supervisor(queue, :worker),]
 
-    children = [worker(Worker, [queue, opts, queue_pid], restart: :transient, shutdown: shutdown)]
+    {:ok, supervisor} = DynamicSupervisor.start_link(__MODULE__, opts, supervisor_opts)
 
-    supervisor_opts = [
-      strategy: :simple_one_for_one,
-      name: Honeydew.supervisor(queue, :worker),
-      max_restarts: num,
-      max_seconds: init_retry_secs
-    ]
-
-    {:ok, supervisor} = Supervisor.start_link(children, supervisor_opts)
-
-    start_workers(supervisor, num)
+    Enum.each(1..num, fn _ ->
+      spec = Worker.child_spec([queue, opts, queue_pid], shutdown)
+      DynamicSupervisor.start_child(supervisor, spec)
+    end)
 
     {:ok, supervisor}
   end
 
-  defp start_workers(_supervisor, 0), do: :noop
-
-  defp start_workers(supervisor, num) do
-    Supervisor.start_child(supervisor, [])
-    start_workers(supervisor, num - 1)
+  @impl true
+  def init(%{num: num, init_retry: init_retry_secs}) do
+    DynamicSupervisor.init(
+      strategy: :one_for_one,
+      max_restarts: num,
+      max_seconds: init_retry_secs
+    )
   end
 end

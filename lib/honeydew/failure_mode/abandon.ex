@@ -2,9 +2,9 @@ defmodule Honeydew.FailureMode.Abandon do
   @moduledoc """
   Instructs Honeydew to abandon a job on failure.
 
-  ## Example
+  ## Example:
 
-      Honeydew.queue_spec(:my_queue, failure_mode: #{inspect __MODULE__})
+    {Honeydew.Queues, [:my_queue, failure_mode: #{inspect __MODULE__}]}
 
   """
   require Logger

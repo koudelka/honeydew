@@ -14,8 +14,15 @@ defmodule Honeydew.Worker do
     defstruct [:queue, :queue_pid, :module, :user_state]
   end
 
+  def child_spec(args, shutdown) do
+    args
+    |> child_spec
+    |> Map.put(:restart, :transient)
+    |> Map.put(:shutdown, shutdown)
+  end
+
   @doc false
-  def start_link(queue, %{ma: {module, args}, init_retry: init_retry_secs}, queue_pid) do
+  def start_link([queue, %{ma: {module, args}, init_retry: init_retry_secs}, queue_pid]) do
     GenServer.start_link(__MODULE__, [queue, queue_pid, module, args, init_retry_secs])
   end
 

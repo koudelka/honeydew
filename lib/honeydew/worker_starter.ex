@@ -12,20 +12,17 @@ defmodule Honeydew.WorkerStarter do
     # this process starts after the WorkerGroupsSupervisor, so we can send it start requests
     queue
     |> Honeydew.get_all_queues
-    |> Enum.each(&start_group(queue, &1))
+    |> Enum.each(&WorkerGroupsSupervisor.start_group(queue, &1))
 
     {:ok, queue}
   end
 
   def handle_cast({:queue_available, queue_pid}, queue) do
     Logger.info "[Honeydew] Queue #{inspect queue_pid} from #{inspect queue} on node #{node(queue_pid)} became available, starting workers ..."
-    start_group(queue, queue_pid)
+
+    {:ok, _} = WorkerGroupsSupervisor.start_group(queue, queue_pid)
+
     {:noreply, queue}
   end
 
-  defp start_group(queue, queue_pid) do
-    queue
-    |> Honeydew.supervisor(:worker_groups)
-    |> WorkerGroupsSupervisor.start_group(queue_pid)
-  end
 end

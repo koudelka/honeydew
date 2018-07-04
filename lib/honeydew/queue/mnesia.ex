@@ -7,8 +7,6 @@ defmodule Honeydew.Queue.Mnesia do
   * Run with replication (with queues running on multiple nodes)
   * Persist jobs to disk (dets)
   * Follow various safety modes ("access contexts")
-
-  Started with `Honeydew.queue_spec/2`.
   """
   require Honeydew.Job
   require Logger

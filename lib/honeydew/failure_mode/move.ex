@@ -6,7 +6,7 @@ defmodule Honeydew.FailureMode.Move do
 
   Move this job to the `:failed` queue, on failure.
 
-      Honeydew.queue_spec(:my_queue, failure_mode: {#{inspect __MODULE__}, [queue: :failed]})
+      {Honeydew.Queues, [:my_queue, failure_mode: {#{inspect __MODULE__}, [queue: :failed]}]}
   """
 
   alias Honeydew.Job

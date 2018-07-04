@@ -7,16 +7,16 @@ defmodule Honeydew.FailureMode.Retry do
 
   Retry jobs in this queue 3 times:
 
-      Honeydew.queue_spec(:my_queue, failure_mode: {#{inspect __MODULE__}, [times: 3]})
+      {Honeydew.Queues, [:my_queue, failure_mode: {#{inspect __MODULE__}, [times: 3]]}
 
   Retry jobs in this queue 3 times and then move to another queue:
 
-      Honeydew.queue_spec(:my_queue,
+      {Honeydew.Queues, [:my_queue,
         failure_mode: {
           #{inspect __MODULE__},
           [times: 3, finally: {#{inspect Move}, [queue: :another_queue]}]
-        }
-      )
+        }]
+      }
   """
   alias Honeydew.FailureMode.Abandon
   alias Honeydew.Job
