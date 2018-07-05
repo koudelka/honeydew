@@ -14,17 +14,17 @@ defmodule Honeydew.Monitor do
   @claim_delay 5_000 # ms
 
   defmodule State do
-    defstruct [:queue, :worker, :job, :failure_mode, :success_mode, :progress]
+    defstruct [:queue_pid, :worker, :job, :failure_mode, :success_mode, :progress]
   end
 
-  def start(job, queue, failure_mode, success_mode) do
-    GenServer.start(__MODULE__, [job, queue, failure_mode, success_mode])
+  def start(job, queue_pid, failure_mode, success_mode) do
+    GenServer.start(__MODULE__, [job, queue_pid, failure_mode, success_mode])
   end
 
-  def init([job, queue, failure_mode, success_mode]) do
+  def init([job, queue_pid, failure_mode, success_mode]) do
     Process.send_after(self(), :return_job, @claim_delay)
 
-    {:ok, %State{job: job, queue: queue, failure_mode: failure_mode, success_mode: success_mode, progress: :awaiting_claim}}
+    {:ok, %State{job: job, queue_pid: queue_pid, failure_mode: failure_mode, success_mode: success_mode, progress: :awaiting_claim}}
   end
 
   def handle_call({:claim, job}, {worker, _ref}, state) do
@@ -42,12 +42,10 @@ defmodule Honeydew.Monitor do
     {:reply, :ok, %{state | progress: {:running, progress}}}
   end
 
-  def handle_call(:ack, {worker, _ref}, %State{job: job, queue: queue, worker: worker, success_mode: success_mode} = state) do
+  def handle_call(:ack, {worker, _ref}, %State{job: job, queue_pid: queue_pid, worker: worker, success_mode: success_mode} = state) do
     job = %{job | completed_at: System.system_time(:millisecond)}
 
-    queue
-    |> Honeydew.get_queue
-    |> GenServer.cast({:ack, job})
+    GenServer.cast(queue_pid, {:ack, job})
 
     with {success_mode_module, success_mode_args} <- success_mode,
       do: success_mode_module.handle_success(job, success_mode_args)
@@ -56,10 +54,8 @@ defmodule Honeydew.Monitor do
   end
 
   # no worker has claimed the job, return it
-  def handle_info(:return_job, %State{job: job, queue: queue, worker: nil} = state) do
-    queue
-    |> Honeydew.get_queue
-    |> GenServer.cast({:nack, job})
+  def handle_info(:return_job, %State{job: job, queue_pid: queue_pid, worker: nil} = state) do
+    GenServer.cast(queue_pid, {:nack, job})
 
     {:stop, :normal, reset(state)}
   end
@@ -80,5 +76,4 @@ defmodule Honeydew.Monitor do
   defp reset(state) do
    %{state | job: nil, progress: :about_to_die}
   end
-
 end

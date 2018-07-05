@@ -4,6 +4,8 @@ defmodule Honeydew do
   """
 
   alias Honeydew.Job
+  alias Honeydew.WorkerGroupSupervisor
+  alias Honeydew.WorkerStarter
   require Logger
 
   @type mod_or_mod_args :: module | {module, args :: term}
@@ -300,6 +302,40 @@ defmodule Honeydew do
     Honeydew.Queues.child_spec([name | opts])
   end
 
+  @doc """
+  Starts a queue under Honeydew's supervision tree.
+
+  `name` is how you'll refer to the queue to add a task.
+
+  You can provide any of the following `opts`:
+
+  - `queue`: is the module that queue will use. Defaults to
+    `Honeydew.Queue.ErlangQueue`. You may also provide args to the queue's
+    `c:Honeydew.Queue.init/2` callback using the following format:
+    `{module, args}`.
+  - `dispatcher`: the job dispatching strategy, `{module, init_args}`.
+
+  - `failure_mode`: the way that failed jobs should be handled. You can pass
+    either a module, or `{module, args}`. The module must implement the
+    `Honeydew.FailureMode` behaviour. Defaults to
+    `{Honeydew.FailureMode.Abandon, []}`.
+
+  - `success_mode`: a callback that runs when a job successfully completes. You
+     can pass either a module, or `{module, args}`. The module must implement
+     the `Honeydew.SuccessMode` behaviour. Defaults to `nil`.
+
+  - `suspended`: Start queue in suspended state. Defaults to `false`.
+
+  For example:
+
+  - `Honeydew.start_queue("my_awesome_queue")`
+
+  - `Honeydew.start_queue("my_awesome_queue", queue: {MyQueueModule, [ip: "localhost"]},
+                                              dispatcher: {Honeydew.Dispatcher.MRU, []})`
+  """
+  @spec start_queue(queue_name, [queue_spec_opt]) :: :ok
+  defdelegate start_queue(name, opts \\ []), to: Honeydew.Queues
+
   @type worker_spec_opt ::
     {:num, non_neg_integer} |
     {:init_retry, non_neg_integer} |
@@ -312,9 +348,40 @@ defmodule Honeydew do
     Honeydew.Workers.child_spec([queue, module_and_args | opts])
   end
 
-  @groups [:workers,
-           :monitors,
-           :queues]
+  @doc """
+  Creates a supervision spec for workers.
+
+  `queue` is the name of the queue that the workers pull jobs from.
+
+  `module` is the module that the workers in your queue will use. You may also
+  provide `c:Honeydew.Worker.init/1` args with `{module, args}`.
+
+  You can provide any of the following `opts`:
+
+  - `num`: the number of workers to start. Defaults to `10`.
+
+  - `init_retry`: the amount of time, in seconds, to wait before respawning
+     a worker whose `c:Honeydew.Worker.init/1` function failed. Defaults to `5`.
+
+  - `shutdown`: if a worker is in the middle of a job, the amount of time, in
+     milliseconds, to wait before brutally killing it. Defaults to `10_000`.
+
+  - `supervisor_opts` options accepted by `Supervisor.child_spec()`.
+
+  - `nodes`: for :global queues, you can provide a list of nodes to stay
+     connected to (your queue node and enqueuing nodes). Defaults to `[]`.
+
+  For example:
+
+  - `Honeydew.start_workers("my_awesome_queue", MyJobModule)`
+
+  - `Honeydew.start_workers("my_awesome_queue", {MyJobModule, [key: "secret key"]}, num: 3)`
+
+  - `Honeydew.start_workers({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
+  """
+  defdelegate start_workers(name, module_and_args, opts \\ []), to: Honeydew.Workers
+
+  @groups [:workers, :queues]
 
   Enum.each(@groups, fn group ->
     @doc false
@@ -323,26 +390,12 @@ defmodule Honeydew do
     end
   end)
 
-  @supervisors [:worker_root,
-                :worker_groups,
-                :worker_group,
-                :worker,
-                :node_monitor,
-                :queue]
-
-  Enum.each(@supervisors, fn supervisor ->
-    @doc false
-    def supervisor(queue, unquote(supervisor)) do
-      name(queue, "#{unquote(supervisor)}_supervisor")
-    end
-  end)
-
-  @processes [:worker_starter]
+  @processes [WorkerGroupSupervisor, WorkerStarter]
 
   Enum.each(@processes, fn process ->
     @doc false
     def process(queue, unquote(process)) do
-      name(queue, "#{unquote(process)}_process")
+      name(queue, unquote(process))
     end
   end)
 
@@ -418,7 +471,7 @@ defmodule Honeydew do
   end
 
   defp name(queue, component) do
-    ["honeydew", component, queue] |> List.flatten |> Enum.join(".") |> String.to_atom
+    [component, queue] |> List.flatten |> Enum.join(".") |> String.to_atom
   end
 
   @doc false

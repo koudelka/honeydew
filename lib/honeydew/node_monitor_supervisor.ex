@@ -3,9 +3,7 @@ defmodule Honeydew.NodeMonitorSupervisor do
   alias Honeydew.NodeMonitor
 
   def start_link([queue, nodes]) do
-    opts = [name: Honeydew.supervisor(queue, :node_monitor)]
-
-    {:ok, supervisor} = DynamicSupervisor.start_link(__MODULE__, [], opts)
+    {:ok, supervisor} = DynamicSupervisor.start_link(__MODULE__, [], [])
 
     Enum.each(nodes, fn node ->
       DynamicSupervisor.start_child(supervisor, {NodeMonitor, node})

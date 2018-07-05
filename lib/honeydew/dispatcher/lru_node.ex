@@ -64,10 +64,13 @@ defmodule Honeydew.Dispatcher.LRUNode do
     end
   end
 
+  def known?(worker, {_node_queue, workers}) do
+    Enum.any?(workers, fn {_node, node_workers} -> LRU.known?(worker, node_workers) end)
+  end
+
   # for testing
   defp worker_node({_worker, node}), do: node
   defp worker_node(worker) do
     :erlang.node(worker)
   end
-
 end

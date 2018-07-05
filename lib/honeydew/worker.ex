@@ -39,7 +39,10 @@ defmodule Honeydew.Worker do
            |> Honeydew.group(:workers)
            |> :pg2.join(self())
 
-           GenServer.cast(self(), :subscribe_to_queues)
+           Honeydew.debug "[Honeydew] Worker #{inspect self()} sending ready"
+
+           GenServer.cast(queue_pid, {:monitor_me, self()})
+           GenServer.cast(queue_pid, {:worker_ready, self()})
            {:ok, state}
          bad ->
            Logger.warn("#{module}.init/1 must return {:ok, state}, got: #{inspect bad}, retrying in #{init_retry_secs}s...")
@@ -63,7 +66,7 @@ defmodule Honeydew.Worker do
   end
   def worker_init(false, _args, state), do: {:ok, %{state | user_state: :no_state}}
 
-  def handle_cast({:run, %Job{task: task, from: from, monitor: monitor} = job}, %State{queue: queue, module: module, user_state: user_state} = state) do
+  def handle_cast({:run, %Job{task: task, from: from, monitor: monitor} = job}, %State{queue_pid: queue_pid, module: module, user_state: user_state} = state) do
     job = %{job | by: node()}
 
     :ok = GenServer.call(monitor, {:claim, job})
@@ -90,22 +93,7 @@ defmodule Honeydew.Worker do
     :ok = GenServer.call(monitor, :ack)
     Process.delete(:monitor)
 
-    queue
-    |> Honeydew.get_queue
-    |> GenServer.cast({:worker_ready, self()})
-
-    {:noreply, state}
-  end
-
-  def handle_cast(:subscribe_to_queues, %State{queue: queue} = state) do
-    Honeydew.debug "[Honeydew] Worker #{inspect self()} sending ready"
-    queue
-    |> Honeydew.get_all_members(:queues)
-    |> Enum.each(&GenServer.cast(&1, {:monitor_me, self()}))
-
-    queue
-    |> Honeydew.get_all_members(:queues)
-    |> Enum.each(&GenServer.cast(&1, {:worker_ready, self()}))
+    GenServer.cast(queue_pid, {:worker_ready, self()})
 
     {:noreply, state}
   end

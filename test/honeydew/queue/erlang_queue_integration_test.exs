@@ -20,8 +20,11 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
   end
 
   test "hammer async/3", %{queue: queue} do
-    Enum.each(0..10_000, fn i ->
+    num = 10_000
+    Enum.each(0..num, fn i ->
       %Job{} = {:send_msg, [self(), i]} |> Honeydew.async(queue)
+    end)
+    Enum.each(0..num, fn i ->
       assert_receive ^i
     end)
   end
@@ -312,7 +315,7 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
   end
 
   defp start_worker_pool(queue) do
-    Helper.start_worker_link(queue, Stateless)
+    Helper.start_worker_link(queue, Stateless, num: 10)
   end
 
   defp start_doctest_env(_) do

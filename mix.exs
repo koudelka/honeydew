@@ -7,6 +7,7 @@ defmodule Honeydew.Mixfile do
     [app: :honeydew,
      version: @version,
      elixir: "~> 1.6",
+     start_permanent: Mix.env() == :prod,
      docs: docs(),
      deps: deps(),
      package: package(),
@@ -31,7 +32,8 @@ defmodule Honeydew.Mixfile do
   #
   # Type `mix help compile.app` for more information
   def application do
-    [extra_applications: [:logger]]
+    [extra_applications: [:logger],
+     mod: {Honeydew.Application, []}]
   end
 
   defp deps do
