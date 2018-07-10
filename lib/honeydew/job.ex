@@ -14,7 +14,7 @@ defmodule Honeydew.Job do
            :result,
            :by, # node last processed the job
            :queue,
-           :monitor,
+           :job_monitor,
            :enqueued_at,
            :started_at,
            :completed_at]

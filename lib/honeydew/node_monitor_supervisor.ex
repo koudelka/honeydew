@@ -2,7 +2,7 @@ defmodule Honeydew.NodeMonitorSupervisor do
   use DynamicSupervisor
   alias Honeydew.NodeMonitor
 
-  def start_link([queue, nodes]) do
+  def start_link([_queue, nodes]) do
     {:ok, supervisor} = DynamicSupervisor.start_link(__MODULE__, [], [])
 
     Enum.each(nodes, fn node ->

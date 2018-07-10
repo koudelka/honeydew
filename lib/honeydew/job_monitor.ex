@@ -1,11 +1,7 @@
-defmodule Honeydew.Monitor do
+defmodule Honeydew.JobMonitor do
   use GenServer
   require Logger
   require Honeydew
-
-  #
-  # FIXME: this should be a supervised process
-  #
 
   # when the queue casts a job to a worker, it spawns a local Monitor with the job as state,
   # the Monitor watches the worker, if the worker dies (or its node is disconnected), the Monitor returns the
@@ -17,8 +13,8 @@ defmodule Honeydew.Monitor do
     defstruct [:queue_pid, :worker, :job, :failure_mode, :success_mode, :progress]
   end
 
-  def start(job, queue_pid, failure_mode, success_mode) do
-    GenServer.start(__MODULE__, [job, queue_pid, failure_mode, success_mode])
+  def start_link(job, queue_pid, failure_mode, success_mode) do
+    GenServer.start_link(__MODULE__, [job, queue_pid, failure_mode, success_mode])
   end
 
   def init([job, queue_pid, failure_mode, success_mode]) do

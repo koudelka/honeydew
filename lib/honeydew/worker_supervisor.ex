@@ -14,7 +14,7 @@ defmodule Honeydew.WorkerSupervisor do
   end
 
   @impl true
-  def init([%{num: num, init_retry: init_retry_secs}, queue_pid]) do
+  def init([%{num: num, init_retry: init_retry_secs}]) do
     DynamicSupervisor.init(
       strategy: :one_for_one,
       max_restarts: num,

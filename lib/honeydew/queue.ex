@@ -14,7 +14,7 @@ defmodule Honeydew.Queue do
       suspended: false,
       failure_mode: nil,
       success_mode: nil,
-      monitors: %{}
+      job_monitors: %{}
   end
 
   @type job :: Job.t
@@ -55,7 +55,7 @@ defmodule Honeydew.Queue do
 
   @optional_callbacks handle_call: 3, handle_cast: 2, handle_info: 2
 
-  def start_link([queue_name | _] = opts) do
+  def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
   end
 
@@ -91,114 +91,60 @@ defmodule Honeydew.Queue do
                   dispatcher: {dispatcher, dispatcher_private}}}
   end
 
-  @impl true
-  def handle_cast({:monitor_me, worker}, state) do
-    Process.monitor(worker)
-    {:noreply, state}
-  end
-
-  def handle_cast({:worker_ready, worker}, state) do
-    Honeydew.debug "[Honeydew] Queue #{inspect self()} ready for worker #{inspect worker}"
-
-    state =
-      state
-      |> check_in_worker(worker)
-      |> dispatch
-
-    {:noreply, state}
-  end
-
   #
-  # Ack/Nack
+  # Honeydew API
   #
 
-  def handle_cast({:ack, job}, %State{module: module, private: private} = state) do
-    Honeydew.debug "[Honeydew] Job #{inspect job.private} acked in #{inspect self()}"
-    {:noreply, %{state | private: module.ack(job, private)}}
-  end
-
-  def handle_cast({:nack, job}, state) do
-    {:noreply, nack(job, state)}
-  end
-
-  def nack(job, %State{module: module, private: private} = state) do
-    Honeydew.debug "[Honeydew] Job #{inspect job.private} nacked by #{inspect self()}"
-    private = module.nack(job, private)
-
-    dispatch(%{state | private: private})
-  end
-
-  #
-  # Suspend/Resume
-  #
-
-  def handle_cast(:resume, %State{suspended: false} = state), do: {:noreply, state}
-  def handle_cast(:resume, state) do
-    # resume(state)
-
-    {:noreply, dispatch(%{state | suspended: false})}
-  end
-
-  def handle_cast(:suspend, %State{suspended: true} = state), do: {:noreply, state}
-  def handle_cast(:suspend, state) do
-    # suspend(state)
-
-    {:noreply, %{state | suspended: true}}
-  end
-
-  def handle_cast(msg, %State{module: module} = state) do
-    module.handle_cast(msg, state)
-  end
-
-  #
-  # Enqueue
-  #
-
-  @impl true
-  def handle_call({:enqueue, job}, _from, state) do
+  def enqueue(job, state) do
     {private, job} = do_enqueue(job, state)
     state = %{state | private: private} |> dispatch
-    {:reply, {:ok, job}, state}
+    {job, state}
   end
 
-  def handle_call(:status, _from, %State{module: module, private: private, suspended: suspended, monitors: monitors} = state) do
-    status =
-      private
-      |> module.status
-      |> Map.put(:suspended, suspended)
-      |> Map.put(:monitors, Map.keys(monitors))
-
-    {:reply, status, state}
+  def status(%State{module: module, private: private, suspended: suspended, job_monitors: job_monitors}) do
+    private
+    |> module.status
+    |> Map.put(:suspended, suspended)
+    |> Map.put(:job_monitors, Map.keys(job_monitors))
   end
 
-  def handle_call({:filter, filter}, _from, %State{module: module, private: private} = state) do
+  def filter(filter, %State{module: module, private: private}) do
     # try to prevent user code crashing the queue
-    reply =
-      try do
-        {:ok, module.filter(private, filter)}
-      rescue e ->
-          {:error, e}
-      end
-    {:reply, reply, state}
+    try do
+      {:ok, module.filter(private, filter)}
+    rescue e ->
+        {:error, e}
+    end
   end
 
-  def handle_call({:cancel, job}, _from, %State{module: module, private: private} = state) do
+  def cancel(job, %State{module: module, private: private} = state) do
     {reply, private} = module.cancel(job, private)
-    {:reply, reply, %{state | private: private}}
+    {reply, %{state | private: private}}
   end
 
-  # debugging
-  def handle_call(:"$honeydew.state", _from, state) do
-    {:reply, state, state}
+  def resume(%State{suspended: false} = state), do: state
+  def resume(state) do
+    # module.resume(state)
+    dispatch(%{state | suspended: false})
   end
 
-  def handle_call(msg, from, %State{module: module} = state) do
-    module.handle_call(msg, from, state)
+  def suspend(%State{suspended: true} = state), do: state
+  def suspend(state) do
+    # module.suspend(state)
+    %{state | suspended: true}
   end
 
   #
   # Worker Lifecycle
   #
+
+  def worker_ready(worker, state) do
+    Honeydew.debug "[Honeydew] Queue #{inspect self()} ready for worker #{inspect worker}"
+
+    state
+    |> check_in_worker(worker)
+    |> dispatch
+  end
 
   def node_up(queue, node) do
     Logger.info "[Honeydew] Connection to #{node} established, asking it to start workers for queue #{inspect queue}"
@@ -223,20 +169,91 @@ defmodule Honeydew.Queue do
   # Job Monitor Lifecycle
   #
 
-  def start_monitor do
+  def job_monitor_stopped(job_monitor, %State{job_monitors: job_monitors} = state) do
+    %{state | job_monitors: Map.delete(job_monitors, job_monitor)}
   end
 
-  def monitor_stopped(monitor, %State{monitors: monitors} = state) do
-    %{state | monitors: Map.delete(monitors, monitor)}
+  def job_monitor_crashed(job_monitor, reason, %State{job_monitors: job_monitors} = state) do
+    {job, job_monitors} = Map.pop(job_monitors, job_monitor)
+    Logger.warn "[Honeydew] Job Monitor #{inspect job_monitor} crashed, this really should never happen, is there a bug in the success/failure mode module? Reason: #{inspect reason} Job: #{inspect job}"
+    %{state | job_monitors: job_monitors}
   end
 
-  def monitor_crashed(monitor, reason, %State{monitors: monitors} = state) do
-    {job, monitors} = Map.pop(monitors, monitor)
-    Logger.warn "[Honeydew] A job monitor, #{inspect monitor}, has crashed, this should never happen, please report this error! Reason: '#{inspect reason}' Job: '#{inspect job}'"
-    %{state | monitors: monitors}
+  #
+  # Ack/Nack
+  #
+
+  def ack(job, %State{module: module, private: private} = state) do
+    Honeydew.debug "[Honeydew] Job #{inspect job.private} acked in #{inspect self()}"
+    %{state | private: module.ack(job, private)}
+  end
+
+  def nack(job, %State{module: module, private: private} = state) do
+    Honeydew.debug "[Honeydew] Job #{inspect job.private} nacked by #{inspect self()}"
+    private = module.nack(job, private)
+
+    dispatch(%{state | private: private})
+  end
+
+  #
+  # GenServer Callbacks
+  #
+
+  @impl true
+  def handle_call({:enqueue, job}, _from, state) do
+    {job, state} = enqueue(job, state)
+    {:reply, {:ok, job}, state}
+  end
+
+  def handle_call(:status, _from, state) do
+    {:reply, status(state), state}
+  end
+
+  def handle_call({:filter, filter}, _from, state) do
+    {:reply, filter(filter, state), state}
+  end
+
+  def handle_call({:cancel, job}, _from,  state) do
+    {reply, state} = cancel(job, state)
+    {:reply, reply, state}
+  end
+
+  # debugging
+  def handle_call(:"$honeydew.state", _from, state) do
+    {:reply, state, state}
+  end
+
+  def handle_call(msg, from, %State{module: module} = state) do
+    module.handle_call(msg, from, state)
+  end
+
+  @impl true
+  def handle_cast({:worker_ready, worker}, state) do
+    {:noreply, worker_ready(worker, state)}
+  end
+
+  def handle_cast({:ack, job}, state) do
+    {:noreply, ack(job, state)}
+  end
+
+  def handle_cast({:nack, job}, state) do
+    {:noreply, nack(job, state)}
+  end
+
+  def handle_cast(:resume, state) do
+    {:noreply, resume(state)}
+  end
+
+  def handle_cast(:suspend, state) do
+    {:noreply, suspend(state)}
+  end
+
+  def handle_cast(msg, %State{module: module} = state) do
+    module.handle_cast(msg, state)
   end
 
 
+  @impl true
   def handle_info({:nodeup, node}, %State{queue: {:global, _} = queue} = state) do
     node_up(queue, node)
     {:noreply, state}
@@ -247,20 +264,28 @@ defmodule Honeydew.Queue do
     {:noreply, state}
   end
 
-  def handle_info({:DOWN, _ref, :process, process, :normal}, state), do: process_finished(process, state)
-  def handle_info({:DOWN, _ref, :process, process, :shutdown}, state), do: process_finished(process, state)
-  def handle_info({:DOWN, _ref, :process, process, {:shutdown, _}}, state), do: process_finished(process, state)
-  def handle_info({:DOWN, _ref, :process, process, reason}, state), do: process_crashed(process, reason, state)
+  def handle_info({:EXIT, process, reason}, state), do: process_halted(process, reason, state)
+  def handle_info({:DOWN, _ref, :process, process, reason}, state), do: process_halted(process, reason, state)
 
   def handle_info(msg, %State{module: module} = state) do
     module.handle_info(msg, state)
+  end
+
+
+  defp process_halted(process, reason, state) do
+    case reason do
+      :normal -> process_finished(process, state)
+      :shutdown -> process_finished(process, state)
+      {:shutdown, _} -> process_finished(process, state)
+      _ -> process_crashed(process, reason, state)
+    end
   end
 
   defp process_finished(process, state) do
     state =
       case process_type(process, state) do
         :worker -> worker_stopped(process, state)
-        :monitor -> monitor_stopped(process, state)
+        :job_monitor -> job_monitor_stopped(process, state)
         :unknown ->
           Logger.warn "[Honeydew] Received non-crash DOWN message for unknown process #{inspect process}"
           state
@@ -272,7 +297,7 @@ defmodule Honeydew.Queue do
     state =
       case process_type(process, state) do
         :worker -> worker_crashed(process, reason, state)
-        :monitor -> monitor_crashed(process, reason, state)
+        :job_monitor -> job_monitor_crashed(process, reason, state)
         :unknown ->
           Logger.warn "[Honeydew] Received DOWN message for unknown process #{inspect process}, reason: #{inspect reason}"
           state
@@ -280,9 +305,9 @@ defmodule Honeydew.Queue do
     {:noreply, state}
   end
 
-  defp process_type(process, %State{monitors: monitors, dispatcher: {dispatcher, dispatcher_private}}) do
+  defp process_type(process, %State{job_monitors: job_monitors, dispatcher: {dispatcher, dispatcher_private}}) do
     cond do
-      Map.has_key?(monitors, process) -> :monitor
+      Map.has_key?(job_monitors, process) -> :job_monitor
       dispatcher.known?(process, dispatcher_private) -> :worker
       true -> :unknown
     end
@@ -309,10 +334,10 @@ defmodule Honeydew.Queue do
     GenServer.cast({Honeydew.process(queue, WorkerStarter), node}, {:queue_available, self()})
   end
 
-  defp send_job(worker, job, %State{failure_mode: failure_mode, success_mode: success_mode, monitors: monitors} = state) do
-    {:ok, monitor} = JobMonitor.start_link(job, self(), failure_mode, success_mode)
-    GenServer.cast(worker, {:run, %{job | monitor: monitor}})
-    %{state | monitors: Map.put(monitors, monitor, job)}
+  defp send_job(worker, job, %State{failure_mode: failure_mode, success_mode: success_mode, job_monitors: job_monitors} = state) do
+    {:ok, job_monitor} = JobMonitor.start_link(job, self(), failure_mode, success_mode)
+    GenServer.cast(worker, {:run, %{job | job_monitor: job_monitor}})
+    %{state | job_monitors: Map.put(job_monitors, job_monitor, job)}
   end
 
   def dispatch(%State{suspended: true} = state), do: state

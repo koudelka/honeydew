@@ -1,6 +1,5 @@
 defmodule Honeydew.WorkerGroupSupervisor do
   use DynamicSupervisor
-  alias Honeydew.WorkerSupervisor
   alias Honeydew.WorkersPerQueueSupervisor
 
   def start_link([queue, opts]) do

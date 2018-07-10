@@ -41,7 +41,7 @@ defmodule Honeydew.Worker do
 
            Honeydew.debug "[Honeydew] Worker #{inspect self()} sending ready"
 
-           GenServer.cast(queue_pid, {:monitor_me, self()})
+           Process.link(queue_pid)
            GenServer.cast(queue_pid, {:worker_ready, self()})
            {:ok, state}
          bad ->
@@ -66,11 +66,11 @@ defmodule Honeydew.Worker do
   end
   def worker_init(false, _args, state), do: {:ok, %{state | user_state: :no_state}}
 
-  def handle_cast({:run, %Job{task: task, from: from, monitor: monitor} = job}, %State{queue_pid: queue_pid, module: module, user_state: user_state} = state) do
+  def handle_cast({:run, %Job{task: task, from: from, job_monitor: job_monitor} = job}, %State{queue_pid: queue_pid, module: module, user_state: user_state} = state) do
     job = %{job | by: node()}
 
-    :ok = GenServer.call(monitor, {:claim, job})
-    Process.put(:monitor, monitor)
+    :ok = GenServer.call(job_monitor, {:claim, job})
+    Process.put(:job_monitor, job_monitor)
 
     user_state_args =
       case user_state do
@@ -90,8 +90,8 @@ defmodule Honeydew.Worker do
     with {owner, _ref} <- from,
       do: send(owner, job)
 
-    :ok = GenServer.call(monitor, :ack)
-    Process.delete(:monitor)
+    :ok = GenServer.call(job_monitor, :ack)
+    Process.delete(:job_monitor)
 
     GenServer.cast(queue_pid, {:worker_ready, self()})
 

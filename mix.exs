@@ -48,7 +48,7 @@ defmodule Honeydew.Mixfile do
   defp package do
     [maintainers: ["Michael Shapiro"],
      licenses: ["MIT"],
-     links: %{"GitHub": "https://github.com/koudelka/elixir-honeydew"}]
+     links: %{"GitHub": "https://github.com/koudelka/honeydew"}]
   end
 
   defp docs do
