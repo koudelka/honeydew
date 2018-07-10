@@ -272,14 +272,10 @@ defmodule Honeydew.Queue do
   end
 
 
-  defp process_halted(process, reason, state) do
-    case reason do
-      :normal -> process_finished(process, state)
-      :shutdown -> process_finished(process, state)
-      {:shutdown, _} -> process_finished(process, state)
-      _ -> process_crashed(process, reason, state)
-    end
-  end
+  defp process_halted(process, :normal, state), do: process_finished(process, state)
+  defp process_halted(process, :shutdown, state), do: process_finished(process, state)
+  defp process_halted(process, {:shutdown, _}, state), do: process_finished(process, state)
+  defp process_halted(process, reason, state), do: process_crashed(process, reason, state)
 
   defp process_finished(process, state) do
     state =
@@ -287,7 +283,7 @@ defmodule Honeydew.Queue do
         :worker -> worker_stopped(process, state)
         :job_monitor -> job_monitor_stopped(process, state)
         :unknown ->
-          Logger.warn "[Honeydew] Received non-crash DOWN message for unknown process #{inspect process}"
+          Logger.warn "[Honeydew] Received non-crash EXIT/DOWN message for unknown process #{inspect process}"
           state
       end
     {:noreply, state}
@@ -299,7 +295,7 @@ defmodule Honeydew.Queue do
         :worker -> worker_crashed(process, reason, state)
         :job_monitor -> job_monitor_crashed(process, reason, state)
         :unknown ->
-          Logger.warn "[Honeydew] Received DOWN message for unknown process #{inspect process}, reason: #{inspect reason}"
+          Logger.warn "[Honeydew] Received EXIT/DOWN message for unknown process #{inspect process}, reason: #{inspect reason}"
           state
       end
     {:noreply, state}
