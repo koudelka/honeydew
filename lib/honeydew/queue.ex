@@ -95,20 +95,30 @@ defmodule Honeydew.Queue do
   # Honeydew API
   #
 
-  def enqueue(job, state) do
-    {private, job} = do_enqueue(job, state)
+  def enqueue(queue_process, job), do: GenServer.call(queue_process, {:enqueue, job})
+  def status(queue_process), do: GenServer.call(queue_process, :status)
+  def filter(queue_process, filter), do: GenServer.call(queue_process, {:filter, filter})
+  def cancel(queue_process, job), do: GenServer.call(queue_process, {:cancel, job})
+  def resume(queue_process), do: GenServer.call(queue_process, :resume)
+  def suspend(queue_process), do: GenServer.call(queue_process, :suspend)
+
+  defp do_enqueue(job, %State{module: module, private: private} = state) do
+    {private, job} =
+      job
+      |> struct(enqueued_at: System.system_time(:millisecond))
+      |> module.enqueue(private)
     state = %{state | private: private} |> dispatch
     {job, state}
   end
 
-  def status(%State{module: module, private: private, suspended: suspended, job_monitors: job_monitors}) do
+  defp do_status(%State{module: module, private: private, suspended: suspended, job_monitors: job_monitors}) do
     private
     |> module.status
     |> Map.put(:suspended, suspended)
     |> Map.put(:job_monitors, Map.keys(job_monitors))
   end
 
-  def filter(filter, %State{module: module, private: private}) do
+  defp do_filter(filter, %State{module: module, private: private}) do
     # try to prevent user code crashing the queue
     try do
       {:ok, module.filter(private, filter)}
@@ -117,19 +127,19 @@ defmodule Honeydew.Queue do
     end
   end
 
-  def cancel(job, %State{module: module, private: private} = state) do
+  defp do_cancel(job, %State{module: module, private: private} = state) do
     {reply, private} = module.cancel(job, private)
     {reply, %{state | private: private}}
   end
 
-  def resume(%State{suspended: false} = state), do: state
-  def resume(state) do
+  defp do_resume(%State{suspended: false} = state), do: state
+  defp do_resume(state) do
     # module.resume(state)
     dispatch(%{state | suspended: false})
   end
 
-  def suspend(%State{suspended: true} = state), do: state
-  def suspend(state) do
+  defp do_suspend(%State{suspended: true} = state), do: state
+  defp do_suspend(state) do
     # module.suspend(state)
     %{state | suspended: true}
   end
@@ -201,20 +211,20 @@ defmodule Honeydew.Queue do
 
   @impl true
   def handle_call({:enqueue, job}, _from, state) do
-    {job, state} = enqueue(job, state)
+    {job, state} = do_enqueue(job, state)
     {:reply, {:ok, job}, state}
   end
 
   def handle_call(:status, _from, state) do
-    {:reply, status(state), state}
+    {:reply, do_status(state), state}
   end
 
   def handle_call({:filter, filter}, _from, state) do
-    {:reply, filter(filter, state), state}
+    {:reply, do_filter(filter, state), state}
   end
 
   def handle_call({:cancel, job}, _from,  state) do
-    {reply, state} = cancel(job, state)
+    {reply, state} = do_cancel(job, state)
     {:reply, reply, state}
   end
 
@@ -241,11 +251,11 @@ defmodule Honeydew.Queue do
   end
 
   def handle_cast(:resume, state) do
-    {:noreply, resume(state)}
+    {:noreply, do_resume(state)}
   end
 
   def handle_cast(:suspend, state) do
-    {:noreply, suspend(state)}
+    {:noreply, do_suspend(state)}
   end
 
   def handle_cast(msg, %State{module: module} = state) do
@@ -309,13 +319,6 @@ defmodule Honeydew.Queue do
     end
   end
 
-
-  defp do_enqueue(job, %State{module: module, private: private}) do
-    job
-    |> struct(enqueued_at: System.system_time(:millisecond))
-    |> module.enqueue(private)
-  end
-
   defp start_workers({:global, _} = queue) do
     :known # start workers on this node too, if need be
     |> :erlang.nodes
@@ -327,7 +330,7 @@ defmodule Honeydew.Queue do
   end
 
   defp start_workers(queue, node) do
-    GenServer.cast({Honeydew.process(queue, WorkerStarter), node}, {:queue_available, self()})
+    WorkerStarter.queue_available(queue, node)
   end
 
   defp send_job(worker, job, %State{failure_mode: failure_mode, success_mode: success_mode, job_monitors: job_monitors} = state) do

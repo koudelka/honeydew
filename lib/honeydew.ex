@@ -6,6 +6,7 @@ defmodule Honeydew do
   alias Honeydew.Job
   alias Honeydew.WorkerGroupSupervisor
   alias Honeydew.WorkerStarter
+  alias Honeydew.Queue
   require Logger
 
   @type mod_or_mod_args :: module | {module, args :: term}
@@ -114,7 +115,7 @@ defmodule Honeydew do
   def suspend(queue) do
     queue
     |> get_all_members(:queues)
-    |> Enum.each(&GenServer.cast(&1, :suspend))
+    |> Enum.each(&Queue.suspend/1)
   end
 
   @doc """
@@ -124,18 +125,18 @@ defmodule Honeydew do
   def resume(queue) do
     queue
     |> get_all_members(:queues)
-    |> Enum.each(&GenServer.cast(&1, :resume))
+    |> Enum.each(&Queue.resume/1)
   end
 
   def status(queue) do
     queue_status =
       queue
       |> get_queue
-      |> GenServer.call(:status)
+      |> Queue.status
 
     busy_workers =
       queue_status
-      |> Map.get(:monitors)
+      |> Map.get(:job_monitors)
       |> Enum.map(fn monitor ->
            try do
              GenServer.call(monitor, :status)
@@ -154,7 +155,7 @@ defmodule Honeydew do
       |> Enum.into(%{})
       |> Map.merge(busy_workers)
 
-    %{queue: Map.delete(queue_status, :monitors), workers: workers}
+    %{queue: Map.delete(queue_status, :job_monitors), workers: workers}
   end
 
   @doc """
@@ -187,7 +188,7 @@ defmodule Honeydew do
     {:ok, jobs} =
       queue
       |> get_queue
-      |> GenServer.call({:filter, filter})
+      |> Queue.filter(filter)
 
     jobs
   end
@@ -206,7 +207,7 @@ defmodule Honeydew do
   def cancel(%Job{queue: queue} = job) do
     queue
     |> get_queue
-    |> GenServer.call({:cancel, job})
+    |> Queue.cancel(job)
   end
 
   @doc """
@@ -265,7 +266,7 @@ defmodule Honeydew do
          nil -> raise RuntimeError, no_queues_running_error(job)
          queue -> queue
        end
-    |> GenServer.call({:enqueue, job})
+    |> Queue.enqueue(job)
   end
 
   @doc false

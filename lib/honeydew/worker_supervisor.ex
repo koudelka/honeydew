@@ -3,7 +3,7 @@ defmodule Honeydew.WorkerSupervisor do
   alias Honeydew.Worker
 
   def start_link([queue, %{shutdown: shutdown, num: num} = opts, queue_pid]) do
-    {:ok, supervisor} = DynamicSupervisor.start_link(__MODULE__, [opts, queue_pid], [])
+    {:ok, supervisor} = DynamicSupervisor.start_link(__MODULE__, opts, [])
 
     Enum.each(1..num, fn _ ->
       spec = Worker.child_spec([queue, opts, queue_pid], shutdown)
@@ -14,7 +14,7 @@ defmodule Honeydew.WorkerSupervisor do
   end
 
   @impl true
-  def init([%{num: num, init_retry: init_retry_secs}]) do
+  def init(%{num: num, init_retry: init_retry_secs}) do
     DynamicSupervisor.init(
       strategy: :one_for_one,
       max_restarts: num,

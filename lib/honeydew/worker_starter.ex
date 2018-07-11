@@ -4,6 +4,11 @@ defmodule Honeydew.WorkerStarter do
   alias Honeydew.WorkerGroupSupervisor
   require Logger
 
+  # called by a queue to tell the workerstarter to start workers
+  def queue_available(queue, node) do
+    GenServer.cast({Honeydew.process(queue, __MODULE__), node}, {:queue_available, self()})
+  end
+
   def start_link(queue) do
     GenServer.start_link(__MODULE__, queue, name: Honeydew.process(queue, __MODULE__))
   end
