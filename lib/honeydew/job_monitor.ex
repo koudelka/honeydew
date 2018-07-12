@@ -20,7 +20,11 @@ defmodule Honeydew.JobMonitor do
   def init([job, queue_pid, failure_mode, success_mode]) do
     Process.send_after(self(), :return_job, @claim_delay)
 
-    {:ok, %State{job: job, queue_pid: queue_pid, failure_mode: failure_mode, success_mode: success_mode, progress: :awaiting_claim}}
+    {:ok, %State{job: job,
+                 queue_pid: queue_pid,
+                 failure_mode: failure_mode,
+                 success_mode: success_mode,
+                 progress: :awaiting_claim}}
   end
 
   def handle_call({:claim, job}, {worker, _ref}, state) do

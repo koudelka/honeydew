@@ -195,12 +195,6 @@ defmodule Honeydew.Queue.Mnesia do
     {reply, state}
   end
 
-  @impl true
-  def handle_info(msg, state) do
-    Logger.warn "[Honeydew] Queue #{inspect self()} received unexpected message #{inspect msg}"
-    {:noreply, state}
-  end
-
   defp reset_after_crash(table, access_context) do
     :mnesia.activity(access_context, fn ->
       table

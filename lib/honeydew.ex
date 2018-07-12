@@ -251,13 +251,6 @@ defmodule Honeydew do
     new_job
   end
 
-  # FIXME: remove
-  def state(queue) do
-    queue
-    |> get_all_members(:queues)
-    |> Enum.map(&GenServer.call(&1, :"$honeydew.state"))
-  end
-
   @doc false
   def enqueue(%Job{queue: queue} = job) do
     queue

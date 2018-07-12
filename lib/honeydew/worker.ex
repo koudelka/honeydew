@@ -3,15 +3,30 @@ defmodule Honeydew.Worker do
   require Logger
   require Honeydew
   alias Honeydew.Job
+  alias Honeydew.Queue
+
+  @type private :: term
 
   @doc """
   Invoked when the worker starts up for the first time.
   """
   @callback init(args :: term) :: {:ok, state :: term}
-  @optional_callbacks init: 1
+
+  @callback handle_info(msg :: :timeout | term, state :: private) ::
+  {:noreply, new_state}
+  | {:noreply, new_state, timeout | :hibernate}
+  | {:stop, reason :: term, new_state}
+  when new_state: private
+
+  @optional_callbacks init: 1, handle_info: 2
 
   defmodule State do
-    defstruct [:queue, :queue_pid, :module, :user_state]
+    defstruct [:queue,
+               :queue_pid,
+               :module,
+               :has_init_fcn?,
+               :init_args,
+               {:user_state, :no_state}]
   end
 
   def child_spec(args, shutdown) do
@@ -22,51 +37,64 @@ defmodule Honeydew.Worker do
   end
 
   @doc false
-  def start_link([queue, %{ma: {module, args}, init_retry: init_retry_secs}, queue_pid]) do
-    GenServer.start_link(__MODULE__, [queue, queue_pid, module, args, init_retry_secs])
+  def start_link([queue, %{ma: {module, init_args}}, queue_pid]) do
+    GenServer.start_link(__MODULE__, [queue, queue_pid, module, init_args,])
   end
 
-  def init([queue, queue_pid, module, args, init_retry_secs]) do
+  @impl true
+  def init([queue, queue_pid, module, init_args]) do
     Process.flag(:trap_exit, true)
-    state = %State{queue: queue, queue_pid: queue_pid, module: module}
 
-    module.__info__(:functions)
-    |> Enum.member?({:init, 1})
-    |> worker_init(args, state)
-    |> case do
-         {:ok, state} ->
-           queue
-           |> Honeydew.group(:workers)
-           |> :pg2.join(self())
+    queue
+    |> Honeydew.group(:workers)
+    |> :pg2.join(self())
 
-           Honeydew.debug "[Honeydew] Worker #{inspect self()} sending ready"
+    GenServer.cast(self(), :init)
 
-           Process.link(queue_pid)
-           GenServer.cast(queue_pid, {:worker_ready, self()})
-           {:ok, state}
-         bad ->
-           Logger.warn("#{module}.init/1 must return {:ok, state}, got: #{inspect bad}, retrying in #{init_retry_secs}s...")
-           :timer.apply_after(init_retry_secs * 1_000, Supervisor, :start_child, [Honeydew.supervisor(queue, :worker), []])
-           :ignore
-       end
+    has_init_fcn =
+      :functions
+      |> module.__info__
+      |> Enum.member?({:init, 1})
+
+    {:ok, %State{queue: queue,
+                 queue_pid: queue_pid,
+                 module: module,
+                 has_init_fcn?: has_init_fcn,
+                 init_args: init_args}}
+  end
+
+  def run(worker, job, job_monitor) do
+    GenServer.cast(worker, {:run, %{job | job_monitor: job_monitor}})
   end
 
   @doc false
-  def worker_init(true, args, %State{module: module} = state) do
+  def do_module_init(%State{has_init_fcn?: false} = state), do: send_ready(state)
+  def do_module_init(%State{module: module, init_args: init_args} = state) do
     try do
-      case apply(module, :init, [args]) do
+      case apply(module, :init, [init_args]) do
         {:ok, user_state} ->
-          {:ok, %{state | user_state: {:state, user_state}}}
+          %{state | user_state: {:state, user_state}}
         bad ->
-          {:error, bad}
+          Logger.warn("#{module}.init/1 must return {:ok, state}, got: #{inspect bad}")
+          state
       end
     rescue e ->
-        {:exception, e}
+        Logger.warn("#{module}.init/1 must return {:ok, state}, but raised #{inspect e}")
+        state
     end
+    |> send_ready
   end
-  def worker_init(false, _args, state), do: {:ok, %{state | user_state: :no_state}}
 
-  def handle_cast({:run, %Job{task: task, from: from, job_monitor: job_monitor} = job}, %State{queue_pid: queue_pid, module: module, user_state: user_state} = state) do
+  defp send_ready(%State{queue_pid: queue_pid} = state) do
+    Honeydew.debug "[Honeydew] Worker #{inspect self()} sending ready"
+
+    Process.link(queue_pid)
+    Queue.worker_ready(queue_pid)
+
+    state
+  end
+
+  defp do_run(%Job{task: task, from: from, job_monitor: job_monitor} = job, %State{queue_pid: queue_pid, module: module, user_state: user_state}) do
     job = %{job | by: node()}
 
     :ok = GenServer.call(job_monitor, {:claim, job})
@@ -94,24 +122,36 @@ defmodule Honeydew.Worker do
     Process.delete(:job_monitor)
 
     GenServer.cast(queue_pid, {:worker_ready, self()})
+  end
 
+
+  @impl true
+  def handle_cast(:init, state) do
+    {:noreply, do_module_init(state)}
+  end
+
+  def handle_cast({:run, job}, state) do
+    do_run(job, state)
     {:noreply, state}
   end
 
-  def handle_info({:EXIT, _pid, :normal}, state), do: {:noreply, state}
-  def handle_info({:EXIT, _pid, :shutdown}, state), do: {:noreply, state}
-  def handle_info({:EXIT, pid, reason}, state) do
-    Logger.warn "[Honeydew] Worker #{inspect self()} died because linked process #{inspect pid} crashed"
-    {:stop, reason, %{state | user_state: nil}}
+  @impl true
+  def handle_info(msg, %State{queue: queue, module: module} = state) do
+    :functions
+    |> module.__info__
+    |> Enum.member?({:handle_info, 2})
+    |> if do
+      module.handle_info(msg, state)
+    else
+      Logger.warn "[Honeydew] Queue #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}"
+      {:noreply, state}
+    end
   end
 
-  def handle_info({_, {:DOWN, _, :normal}}, state), do: {:noreply, state}
-  def handle_info({_, {:DOWN, _, :shutdown}}, state), do: {:noreply, state}
-  def handle_info(msg, state) do
-    Logger.warn "[Honeydew] Worker #{inspect self()} received unexpected message #{inspect msg}"
-    {:noreply, state}
-  end
-
+  @impl true
+  def terminate(:normal, _state), do: :ok
+  def terminate(:shutdown, _state), do: :ok
+  def terminate({:shutdown, _}, _state), do: :ok
   def terminate(reason, _state) do
     Logger.info "[Honeydew] Worker #{inspect self()} stopped because #{inspect reason}"
   end

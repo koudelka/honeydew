@@ -3,7 +3,7 @@
 # Honeydew.status(:my_queue)
 
 defmodule HeavyTask do
-  use Honeydew.Progress
+  import Honeydew.Progress
 
   @behaviour Honeydew.Worker
 
@@ -16,14 +16,9 @@ defmodule HeavyTask do
   end
 end
 
-
 defmodule App do
   def start do
-    children = [
-      Honeydew.queue_spec(:my_queue),
-      Honeydew.worker_spec(:my_queue, HeavyTask, num: 10)
-    ]
-
-    Supervisor.start_link(children, strategy: :one_for_one)
+    :ok = Honeydew.start_queue(:my_queue)
+    :ok = Honeydew.start_workers(:my_queue, HeavyTask, num: 20)
   end
 end

@@ -84,10 +84,4 @@ defmodule Honeydew.Queue.ErlangQueue do
 
     {reply, {new_pending, in_progress}}
   end
-
-  @impl true
-  def handle_info(msg, state) do
-    Logger.warn "[Honeydew] Queue #{inspect self()} received unexpected message #{inspect msg}"
-    {:noreply, state}
-  end
 end
