@@ -332,7 +332,6 @@ defmodule Honeydew do
 
   @type worker_spec_opt ::
     {:num, non_neg_integer} |
-    {:init_retry, non_neg_integer} |
     {:supervisor_opts, supervisor_opts} |
     {:nodes, [node]}
 
@@ -353,9 +352,6 @@ defmodule Honeydew do
   You can provide any of the following `opts`:
 
   - `num`: the number of workers to start. Defaults to `10`.
-
-  - `init_retry`: the amount of time, in seconds, to wait before respawning
-     a worker whose `c:Honeydew.Worker.init/1` function failed. Defaults to `5`.
 
   - `shutdown`: if a worker is in the middle of a job, the amount of time, in
      milliseconds, to wait before brutally killing it. Defaults to `10_000`.

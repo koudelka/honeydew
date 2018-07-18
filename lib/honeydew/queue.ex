@@ -108,6 +108,9 @@ defmodule Honeydew.Queue do
   #
 
   def worker_ready(queue_process), do: GenServer.cast(queue_process, {:worker_ready, self()})
+  def worker_not_ready(queue_process), do: GenServer.cast(queue_process, {:worker_not_ready, self()})
+  def ack(queue_process, job), do: GenServer.cast(queue_process, {:ack, job})
+  def nack(queue_process, job), do: GenServer.cast(queue_process, {:nack, job})
 
 
   defp do_enqueue(job, %State{module: module, private: private} = state) do
@@ -157,11 +160,17 @@ defmodule Honeydew.Queue do
   #
 
   def do_worker_ready(worker, state) do
-    Honeydew.debug "[Honeydew] Queue #{inspect self()} ready for worker #{inspect worker}"
+    Honeydew.debug "[Honeydew] Queue #{inspect self()}, worker #{inspect worker} is ready."
 
     state
     |> check_in_worker(worker)
     |> dispatch
+  end
+
+  def do_worker_not_ready(worker, state) do
+    Honeydew.debug "[Honeydew] Queue #{inspect self()}, worker #{inspect worker} is NOT ready."
+
+    remove_worker(state, worker)
   end
 
   def node_up(queue, node) do
@@ -201,12 +210,12 @@ defmodule Honeydew.Queue do
   # Ack/Nack
   #
 
-  def ack(job, %State{module: module, private: private} = state) do
+  def do_ack(job, %State{module: module, private: private} = state) do
     Honeydew.debug "[Honeydew] Job #{inspect job.private} acked in #{inspect self()}"
     %{state | private: module.ack(job, private)}
   end
 
-  def nack(job, %State{module: module, private: private} = state) do
+  def do_nack(job, %State{module: module, private: private} = state) do
     Honeydew.debug "[Honeydew] Job #{inspect job.private} nacked by #{inspect self()}"
     dispatch(%{state | private: module.nack(job, private)})
   end
@@ -232,8 +241,9 @@ defmodule Honeydew.Queue do
 
   @impl true
   def handle_cast({:worker_ready, worker}, state), do: {:noreply, do_worker_ready(worker, state)}
-  def handle_cast({:ack, job}, state), do: {:noreply, ack(job, state)}
-  def handle_cast({:nack, job}, state), do: {:noreply, nack(job, state)}
+  def handle_cast({:worker_not_ready, worker}, state), do: {:noreply, do_worker_not_ready(worker, state)}
+  def handle_cast({:ack, job}, state), do: {:noreply, do_ack(job, state)}
+  def handle_cast({:nack, job}, state), do: {:noreply, do_nack(job, state)}
   def handle_cast(:resume, state), do: {:noreply, do_resume(state)}
   def handle_cast(:suspend, state), do: {:noreply, do_suspend(state)}
   def handle_cast(msg, %State{module: module} = state), do: module.handle_cast(msg, state)

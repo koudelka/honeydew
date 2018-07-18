@@ -2,12 +2,13 @@ defmodule Honeydew.JobMonitor do
   use GenServer
   require Logger
   require Honeydew
+  alias Honeydew.Queue
 
   # when the queue casts a job to a worker, it spawns a local Monitor with the job as state,
   # the Monitor watches the worker, if the worker dies (or its node is disconnected), the Monitor returns the
   # job to the queue. it waits @claim_delay miliseconds for the worker to confirm receipt of the job.
 
-  @claim_delay 5_000 # ms
+  @claim_delay 1_000 # ms
 
   defmodule State do
     defstruct [:queue_pid, :worker, :job, :failure_mode, :success_mode, :progress]
@@ -45,7 +46,7 @@ defmodule Honeydew.JobMonitor do
   def handle_call(:ack, {worker, _ref}, %State{job: job, queue_pid: queue_pid, worker: worker, success_mode: success_mode} = state) do
     job = %{job | completed_at: System.system_time(:millisecond)}
 
-    GenServer.cast(queue_pid, {:ack, job})
+    Queue.ack(queue_pid, job)
 
     with {success_mode_module, success_mode_args} <- success_mode,
       do: success_mode_module.handle_success(job, success_mode_args)
@@ -55,7 +56,7 @@ defmodule Honeydew.JobMonitor do
 
   # no worker has claimed the job, return it
   def handle_info(:return_job, %State{job: job, queue_pid: queue_pid, worker: nil} = state) do
-    GenServer.cast(queue_pid, {:nack, job})
+    Queue.nack(queue_pid, job)
 
     {:stop, :normal, reset(state)}
   end
