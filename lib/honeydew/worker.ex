@@ -70,7 +70,7 @@ defmodule Honeydew.Worker do
     GenServer.cast(worker, {:run, %{job | job_monitor: job_monitor}})
   end
 
-  def module_init(), do: GenServer.cast(self(), :init)
+  def module_init(me \\ self()), do: GenServer.cast(me, :module_init)
   def ready(ready), do: GenServer.cast(self(), {:ready, ready})
 
 
@@ -104,7 +104,7 @@ defmodule Honeydew.Worker do
     state
   end
 
-  defp send_ready_or_callback(%State{module: module, init_args: init_args} = state) do
+  defp send_ready_or_callback(%State{module: module} = state) do
     :functions
     |> module.__info__
     |> Enum.member?({:failed_init, 0})
@@ -112,7 +112,7 @@ defmodule Honeydew.Worker do
       module.failed_init
     else
       Logger.info "[Honeydew] Worker #{inspect self()} re-initing in #{@init_retry_secs}s"
-      :timer.apply_after(@init_retry_secs * 1_000, __MODULE__, :reinit, [init_args])
+      :timer.apply_after(@init_retry_secs * 1_000, __MODULE__, :module_init, [self()])
     end
 
     state
@@ -154,7 +154,7 @@ defmodule Honeydew.Worker do
 
 
   @impl true
-  def handle_cast(:init, state) do
+  def handle_cast(:module_init, state) do
     {:noreply, do_module_init(state)}
   end
 
