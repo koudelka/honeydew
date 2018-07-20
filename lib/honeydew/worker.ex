@@ -5,7 +5,7 @@ defmodule Honeydew.Worker do
   alias Honeydew.Job
   alias Honeydew.Queue
 
-  @init_retry_secs 10
+  @init_retry_secs 5
 
   @type private :: term
 
@@ -119,10 +119,10 @@ defmodule Honeydew.Worker do
   end
 
 
+  #
   # the job monitor's timer will nack the job, since we're not going to claim it
-  defp do_run(_job, %State{ready: false}), do: :noop
-
-  defp do_run(%Job{task: task, from: from, job_monitor: job_monitor} = job, %State{queue_pid: queue_pid, module: module, private: private}) do
+  #
+  defp do_run(%Job{task: task, from: from, job_monitor: job_monitor} = job, %State{ready: true, queue_pid: queue_pid, module: module, private: private}) do
     job = %{job | by: node()}
 
     :ok = GenServer.call(job_monitor, {:claim, job})

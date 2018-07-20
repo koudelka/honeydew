@@ -12,20 +12,20 @@ defmodule Worker do
     {:ok, db}
   end
 
-  def run(id, db) do
-    IO.puts "Sending email to user id #{id}!"
+  def send_email(id, db) do
+    %{name: name, email: email} = Database.find(id, db)
 
-    id
-    |> Database.find(db)
-    |> send_email("Hello!")
+    IO.puts "sending email to #{email}"
+    IO.inspect "hello #{name}, want to enlarge ur keyboard by 500%???"
   end
 
 end
 ```
 
-If your `init/1` function returns anything other than `{:ok, state}` or raises an error, Honeydew will retry your init function in ten seconds.
+If your `init/1` function returns anything other than `{:ok, state}` or raises an error, Honeydew will retry your init function in five seconds.
 
-Then we'll ask Honeydew to start both the queue and workers in its supervision tree.
+
+We'll ask Honeydew to start both the queue and workers in its supervision tree.
 
 ```elixir
 defmodule App do
@@ -38,10 +38,8 @@ end
 
 Add the task to your queue using `async/3`, Honeydew will append your state to the list of arguments.
 
-
 ```elixir
 iex(1)> {:run, [123]} |> Honeydew.async(:my_queue)
-Sending email to user id 123!
+Sending email to koudelka+honeydew@ryoukai.org!
+"hello koudelka, want to enlarge ur keyboard by 500%???"
 ```
-
-The `async/3` function returns a `Honeydew.Job` struct. You can call `cancel/1` with it, if you want to try to kill the job.

@@ -183,8 +183,8 @@ defmodule Honeydew do
 
       Honeydew.filter(:my_queue, fn _ -> true end)
   """
-  @spec filter(queue_name, filter) :: [Job.t]
-  def filter(queue, filter) do
+  @spec filter(filter, queue_name) :: [Job.t]
+  def filter(filter, queue) do
     {:ok, jobs} =
       queue
       |> get_queue

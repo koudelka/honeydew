@@ -1,6 +1,6 @@
 defmodule Stateless do
   @behaviour Honeydew.Worker
-  use Honeydew.Progress
+  import Honeydew.Progress
 
   def send_msg(to, msg) do
     send(to, msg)

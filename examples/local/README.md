@@ -1,5 +1,7 @@
 ### Simple Local Example
 
+![local queue](local.png)
+
 Here's a barebones example of a local, in-memory Honeydew queue.
 
 ```elixir
