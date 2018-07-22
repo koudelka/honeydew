@@ -223,8 +223,8 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
     job = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
 
     other_queue = generate_queue_name()
-    {:ok, _} = start_queue(other_queue)
-    {:ok, _} = start_worker_pool(other_queue)
+    :ok = start_queue(other_queue)
+    :ok = start_worker_pool(other_queue)
 
     assert %Job{queue: ^other_queue} =
       Honeydew.move(job, other_queue)
@@ -237,8 +237,8 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
     job = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
 
     other_queue = generate_queue_name()
-    {:ok, _} = start_queue(other_queue)
-    {:ok, _} = start_worker_pool(other_queue)
+    :ok = start_queue(other_queue)
+    :ok = start_worker_pool(other_queue)
 
     assert %Job{queue: ^other_queue} =
       Honeydew.move(job, other_queue)
@@ -255,8 +255,8 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
     job = Honeydew.async({:return, [:pong]}, queue, reply: true)
 
     other_queue = generate_queue_name()
-    {:ok, _} = start_queue(other_queue)
-    {:ok, _} = start_worker_pool(other_queue)
+    :ok = start_queue(other_queue)
+    :ok = start_worker_pool(other_queue)
 
     assert %Job{queue: ^other_queue} = Honeydew.move(job, other_queue)
     assert 0 = queue |> Honeydew.status |> get_in([:queue, :count])
@@ -270,8 +270,8 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
     job = Honeydew.async({:return, [:pong]}, queue, reply: true)
 
     other_queue = generate_queue_name()
-    {:ok, _} = start_queue(other_queue)
-    {:ok, _} = start_worker_pool(other_queue)
+    :ok = start_queue(other_queue)
+    :ok = start_worker_pool(other_queue)
 
     assert %Job{queue: ^other_queue} =
       Honeydew.move(job, other_queue)
@@ -295,14 +295,12 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
 
   defp setup_queue(%{queue: queue} = context) do
     suspended = Map.get(context, :start_suspended, false)
-    {:ok, queue_sup} = start_queue(queue, suspended: suspended)
-    {:ok, [queue_sup: queue_sup]}
+    :ok = start_queue(queue, suspended: suspended)
   end
 
   defp setup_worker_pool(%{skip_worker_pool: true}), do: :ok
   defp setup_worker_pool(%{queue: queue}) do
-    {:ok, worker_sup} = start_worker_pool(queue)
-    {:ok, [worker_sup: worker_sup]}
+    :ok = start_worker_pool(queue)
   end
 
   defp generate_queue_name do
@@ -311,17 +309,17 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
 
   defp start_queue(queue, opts \\ []) do
     queue_opts = Keyword.merge([queue: Honeydew.Queue.ErlangQueue], opts)
-    Helper.start_queue_link(queue, queue_opts)
+    Honeydew.start_queue(queue, queue_opts)
   end
 
   defp start_worker_pool(queue) do
-    Helper.start_worker_link(queue, Stateless, num: 10)
+    Honeydew.start_workers(queue, Stateless, num: 10)
   end
 
   defp start_doctest_env(_) do
     queue = :my_queue
     start_queue(queue)
-    Helper.start_worker_link(queue, DocTestWorker)
+    Honeydew.start_workers(queue, DocTestWorker)
 
     :ok
   end

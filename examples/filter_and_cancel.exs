@@ -34,11 +34,10 @@ Honeydew.status(:my_queue)
 # find the job that would run with the argument `10`, as it wont have started yet
 # and cancel it
 :ok =
-  fn
+  Honeydew.filter(:my_queue, fn
     %Honeydew.Job{task: {:run, [10]}} -> true
     _ -> false
-  end
-  |> Honeydew.filter(:my_queue)
+  end)
   |> List.first
   |> Honeydew.cancel
 

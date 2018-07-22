@@ -4,6 +4,8 @@
 
 Here's a barebones example of a local, in-memory Honeydew queue.
 
+Let's create a basic worker module:
+
 ```elixir
 defmodule Worker do
   @behaviour Honeydew.Worker

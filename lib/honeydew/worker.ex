@@ -4,6 +4,7 @@ defmodule Honeydew.Worker do
   require Honeydew
   alias Honeydew.Job
   alias Honeydew.Queue
+  alias Honeydew.Workers
 
   @init_retry_secs 5
 
@@ -48,7 +49,7 @@ defmodule Honeydew.Worker do
     Process.flag(:trap_exit, true)
 
     queue
-    |> Honeydew.group(:workers)
+    |> Honeydew.group(Workers)
     |> :pg2.join(self())
 
     has_init_fcn =

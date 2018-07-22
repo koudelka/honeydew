@@ -6,6 +6,7 @@ defmodule Honeydew.Queue do
   alias Honeydew.JobMonitor
   alias Honeydew.Worker
   alias Honeydew.WorkerStarter
+  alias Honeydew.Queues
 
   defmodule State do
     defstruct [:queue,
@@ -66,12 +67,12 @@ defmodule Honeydew.Queue do
 
     :ok =
       queue
-      |> Honeydew.group(:queues)
+      |> Honeydew.group(Queues)
       |> :pg2.create
 
     :ok =
       queue
-      |> Honeydew.group(:queues)
+      |> Honeydew.group(Queues)
       |> :pg2.join(self())
 
     with {:global, _name} <- queue,
@@ -237,6 +238,8 @@ defmodule Honeydew.Queue do
 
   def handle_call(:status, _, state), do: {:reply, do_status(state), state}
   def handle_call({:filter, filter}, _, state), do: {:reply, do_filter(filter, state), state}
+  def handle_call(:resume, _, state), do: {:reply, :ok, do_resume(state)}
+  def handle_call(:suspend, _, state), do: {:reply, :ok, do_suspend(state)}
   def handle_call(msg, from, %State{module: module} = state), do: module.handle_call(msg, from, state)
 
   @impl true
@@ -244,8 +247,6 @@ defmodule Honeydew.Queue do
   def handle_cast({:worker_not_ready, worker}, state), do: {:noreply, do_worker_not_ready(worker, state)}
   def handle_cast({:ack, job}, state), do: {:noreply, do_ack(job, state)}
   def handle_cast({:nack, job}, state), do: {:noreply, do_nack(job, state)}
-  def handle_cast(:resume, state), do: {:noreply, do_resume(state)}
-  def handle_cast(:suspend, state), do: {:noreply, do_suspend(state)}
   def handle_cast(msg, %State{module: module} = state), do: module.handle_cast(msg, state)
 
   @impl true

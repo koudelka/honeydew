@@ -7,6 +7,7 @@ defmodule Honeydew do
   alias Honeydew.WorkerGroupSupervisor
   alias Honeydew.WorkerStarter
   alias Honeydew.Queue
+  alias Honeydew.{Queues, Workers}
   require Logger
 
   @type mod_or_mod_args :: module | {module, args :: term}
@@ -44,7 +45,7 @@ defmodule Honeydew do
       Honeydew.yield(job)
 
       # With pipes
-      result =
+      :pong =
         {:ping, ["127.0.0.1"]}
         |> Honeydew.async(:my_queue, reply: true)
         |> Honeydew.yield()
@@ -114,7 +115,7 @@ defmodule Honeydew do
   @spec suspend(queue_name) :: :ok
   def suspend(queue) do
     queue
-    |> get_all_members(:queues)
+    |> get_all_members(Queues)
     |> Enum.each(&Queue.suspend/1)
   end
 
@@ -124,7 +125,7 @@ defmodule Honeydew do
   @spec resume(queue_name) :: :ok
   def resume(queue) do
     queue
-    |> get_all_members(:queues)
+    |> get_all_members(Queues)
     |> Enum.each(&Queue.resume/1)
   end
 
@@ -150,7 +151,7 @@ defmodule Honeydew do
 
     workers =
       queue
-      |> get_all_members(:workers)
+      |> get_all_members(Workers)
       |> Enum.map(&{&1, nil})
       |> Enum.into(%{})
       |> Map.merge(busy_workers)
@@ -183,8 +184,8 @@ defmodule Honeydew do
 
       Honeydew.filter(:my_queue, fn _ -> true end)
   """
-  @spec filter(filter, queue_name) :: [Job.t]
-  def filter(filter, queue) do
+  @spec filter(queue_name, filter) :: [Job.t]
+  def filter(queue, filter) do
     {:ok, jobs} =
       queue
       |> get_queue
@@ -282,19 +283,18 @@ defmodule Honeydew do
     "can't enqueue job #{inspect job} because there aren't any queue processes running for `#{inspect queue}`"
   end
 
-  @type queue_spec_opt ::
-    {:queue, mod_or_mod_args} |
-    {:dispatcher, mod_or_mod_args} |
-    {:failure_mode, mod_or_mod_args | nil} |
-    {:success_mode, mod_or_mod_args | nil} |
-    {:supervisor_opts, supervisor_opts} |
-    {:suspended, boolean}
-
-  @deprecated "Use module based child specs with Honeydew.Queues instead"
-  @spec queue_spec(queue_name, [queue_spec_opt]) :: Supervisor.child_spec()
-  def queue_spec(name, opts \\ []) do
-    Honeydew.Queues.child_spec([name | opts])
+  @deprecated "Honeydew now supervises your queue processes, please use `Honeydew.start_queue/2 instead.`"
+  def queue_spec(_name, _opts) do
+    raise "Honeydew now supervises your queue processes, please use `Honeydew.start_queue/2 instead.`"
   end
+
+  @type queue_spec_opt ::
+  {:queue, mod_or_mod_args} |
+  {:dispatcher, mod_or_mod_args} |
+  {:failure_mode, mod_or_mod_args | nil} |
+  {:success_mode, mod_or_mod_args | nil} |
+  {:supervisor_opts, supervisor_opts} |
+  {:suspended, boolean}
 
   @doc """
   Starts a queue under Honeydew's supervision tree.
@@ -328,23 +328,22 @@ defmodule Honeydew do
                                               dispatcher: {Honeydew.Dispatcher.MRU, []})`
   """
   @spec start_queue(queue_name, [queue_spec_opt]) :: :ok
-  defdelegate start_queue(name, opts \\ []), to: Honeydew.Queues
+  defdelegate start_queue(name, opts \\ []), to: Queues
 
-  @type worker_spec_opt ::
-    {:num, non_neg_integer} |
-    {:supervisor_opts, supervisor_opts} |
-    {:nodes, [node]}
-
-  @deprecated "Use module based child specs with Honeydew.Workers instead"
-  @spec worker_spec(queue_name, mod_or_mod_args, [worker_spec_opt]) :: Supervisor.child_spec()
-  def worker_spec(queue, module_and_args, opts \\ []) do
-    Honeydew.Workers.child_spec([queue, module_and_args | opts])
+  @deprecated "Honeydew now supervises your worker processes, please use `Honeydew.start_workers/3 instead.`"
+  def worker_spec(_queue, _module_and_args, _opts \\ []) do
+    raise "Honeydew now supervises your worker processes, please use `Honeydew.start_workers/3 instead.`"
   end
 
-  @doc """
-  Creates a supervision spec for workers.
+  @type worker_spec_opt ::
+  {:num, non_neg_integer} |
+  {:supervisor_opts, supervisor_opts} |
+  {:nodes, [node]}
 
-  `queue` is the name of the queue that the workers pull jobs from.
+  @doc """
+  Starts workers under Honeydew's supervision tree.
+
+  `name` is the name of the queue that the workers pull jobs from.
 
   `module` is the module that the workers in your queue will use. You may also
   provide `c:Honeydew.Worker.init/1` args with `{module, args}`.
@@ -371,7 +370,7 @@ defmodule Honeydew do
   """
   defdelegate start_workers(name, module_and_args, opts \\ []), to: Honeydew.Workers
 
-  @groups [:workers, :queues]
+  @groups [Workers, Queues]
 
   Enum.each(@groups, fn group ->
     @doc false
@@ -435,14 +434,14 @@ defmodule Honeydew do
   @doc false
   def get_all_queues({:global, _name} = queue) do
     queue
-    |> group(:queues)
+    |> group(Queues)
     |> :pg2.get_members
   end
 
   @doc false
   def get_all_queues(queue) do
     queue
-    |> group(:queues)
+    |> group(Queues)
     |> :pg2.get_local_members
   end
 
