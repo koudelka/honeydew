@@ -163,9 +163,16 @@ defmodule Honeydew.Worker do
     {:noreply, state}
   end
 
+  #
+  # Our Queue died, our QueueMonitor will stop us soon.
+  #
   @impl true
+  def handle_info({:EXIT, queue_pid, _reason}, %State{queue_pid: queue_pid} = state) do
+    {:noreply, state}
+  end
+
   def handle_info(msg, %State{queue: queue} = state) do
-    Logger.warn "[Honeydew] Queue #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}"
+    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}"
     {:noreply, state}
   end
 

@@ -274,7 +274,7 @@ defmodule Honeydew do
 
   @doc false
   def no_queues_running_error(%Job{queue: {:global, _} = queue} = job) do
-    "can't enqueue job #{inspect job} because there aren't any queue processes running for the distributed queue `#{inspect queue}, are you connected to the cluster?`"
+    "can't enqueue job because there aren't any queue processes running for the distributed queue `#{inspect queue}, are you connected to the cluster? #{inspect job} `"
   end
 
   @doc false

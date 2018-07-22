@@ -4,68 +4,68 @@ defmodule Honeydew.Dispatcher.LRUNode do
   # TODO: docs
 
   def init do
-    # {node_queue, workers}
+    # {node_queue, node -> lrus}
     {:ok, {:queue.new, Map.new}}
   end
 
-  def available?({_node_queue, workers}) do
-    workers
+  def available?({_node_queue, lrus}) do
+    lrus
     |> Map.values
     |> Enum.any?(&LRU.available?/1)
   end
 
-  def check_in(worker, {node_queue, workers}) do
+  def check_in(worker, {node_queue, lrus}) do
     node = worker_node(worker)
 
-    {node_queue, node_workers} =
-      workers
+    {node_queue, lru} =
+      lrus
       |> Map.get(node)
       |> case do
            nil ->
              # this node isn't currently known
-             {:ok, node_workers} = LRU.init
-             {:queue.in(node, node_queue), node_workers}
-           node_workers ->
+             {:ok, lru} = LRU.init
+             {:queue.in(node, node_queue), lru}
+           lru ->
              # there's already at least one worker from this node present
-             {node_queue, node_workers}
+             {node_queue, lru}
          end
 
-    {node_queue, Map.put(workers, node, LRU.check_in(worker, node_workers))}
+    {node_queue, Map.put(lrus, node, LRU.check_in(worker, lru))}
   end
 
-  def check_out(job, {node_queue, workers} = state) do
+  def check_out(job, {node_queue, lrus} = state) do
     with {{:value, node}, node_queue} <- :queue.out(node_queue),
-         %{^node => node_workers} <- workers,
-         {worker, node_workers} when not is_nil(worker) <- LRU.check_out(job, node_workers) do
-      if :queue.is_empty(node_workers) do
-        {worker, {node_queue, Map.delete(workers, node)}}
+         %{^node => lru} <- lrus,
+         {worker, lru} when not is_nil(worker) <- LRU.check_out(job, lru) do
+      unless LRU.available?(lru) do
+        {worker, {node_queue, Map.delete(lrus, node)}}
       else
-        {worker, {:queue.in(node, node_queue), Map.put(workers, node, node_workers)}}
+        {worker, {:queue.in(node, node_queue), Map.put(lrus, node, lru)}}
       end
     else _ ->
       {nil, state}
     end
   end
 
-  def remove(worker, {node_queue, workers}) do
+  def remove(worker, {node_queue, lrus}) do
     node = worker_node(worker)
 
-    with %{^node => node_workers} <- workers,
-         node_workers <- LRU.remove(worker, node_workers) do
-      if LRU.available?(node_workers) do
-        {node_queue, Map.put(workers, node, node_workers)}
+    with %{^node => lru} <- lrus,
+         lru <- LRU.remove(worker, lru) do
+      if LRU.available?(lru) do
+        {node_queue, Map.put(lrus, node, lru)}
       else
-        {:queue.filter(&(&1 != node), node_queue), Map.delete(workers, node)}
+        {:queue.filter(&(&1 != node), node_queue), Map.delete(lrus, node)}
       end
     else _ ->
         # this means that we've been asked to remove a worker we don't know about
         # this should never happen :o
-        {node_queue, workers}
+        {node_queue, lrus}
     end
   end
 
-  def known?(worker, {_node_queue, workers}) do
-    Enum.any?(workers, fn {_node, node_workers} -> LRU.known?(worker, node_workers) end)
+  def known?(worker, {_node_queue, lrus}) do
+    Enum.any?(lrus, fn {_node, lru} -> LRU.known?(worker, lru) end)
   end
 
   # for testing

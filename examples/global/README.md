@@ -1,5 +1,5 @@
-### Distributed Queue Example
-![distributed queue](distributed.png)
+### Global Queue Example
+![global queue](global.png)
 
 Say we've got some pretty heavy tasks that we want to distribute over a farm of background job processing nodes, they're too heavy to process on our client-facing nodes. In a distributed Erlang scenario, you have the option of distributing Honeydew's various components around different nodes in your cluster. Honeydew is basically a simple collection of queue processes and worker processes. Honeydew detects when nodes go up and down, and reconnects workers.
 
