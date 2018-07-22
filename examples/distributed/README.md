@@ -5,28 +5,22 @@ Say we've got some pretty heavy tasks that we want to distribute over a farm of 
 
 To start a global queue, pass a `{:global, name}` tuple when you start Honeydew's components
 
-In this example, we'll use the Mnesa queue with stateless workers.
+In this example, we'll use the Mnesia queue with stateless workers.
 
 We'll start the queue on node `queue@dax` with:
 
 ```elixir
 defmodule QueueApp do
   def start do
-    nodes = [node()]
-
-    children = [
-      Honeydew.queue_spec({:global, :my_queue}, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
-    ]
-
-    Supervisor.start_link(children, strategy: :one_for_one)
+    :ok = Honeydew.start_queue({:global, :my_queue}, queue: {Honeydew.Queue.Mnesia, [[node()], [disc_copies: nodes], []]})
   end
 end
 
 iex(queue@dax)1> QueueApp.start
-{:ok, #PID<0.209.0>}
+:ok
 ```
 
-And we'll run our workers on `background@dax` with:
+And we'll run our workers on `worker@dax` with:
 ```elixir
 defmodule HeavyTask do
   @behaviour Honeydew.Worker
@@ -41,16 +35,12 @@ end
 
 defmodule WorkerApp do
   def start do
-    children = [
-      Honeydew.worker_spec({:global, :my_queue}, HeavyTask, num: 10, nodes: [:clientfacing@dax, :queue@dax])
-    ]
-
-    Supervisor.start_link(children, strategy: :one_for_one)
+    :ok = Honeydew.start_workers({:global, :my_queue}, HeavyTask, num: 10, nodes: [:clientfacing@dax, :queue@dax])
   end
 end
 
 iex(background@dax)1> WorkerApp.start
-{:ok, #PID<0.205.0>}
+:ok
 ```
 
 Note that we've provided a list of nodes to the worker spec, Honeydew will attempt to heal the cluster if any of these nodes go down.

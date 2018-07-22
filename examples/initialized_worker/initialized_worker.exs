@@ -1,5 +1,5 @@
 #
-# iex -S mix run job_replies.exs
+# elixir -S mix run initialized_worker.exs
 #
 
 defmodule Database do
