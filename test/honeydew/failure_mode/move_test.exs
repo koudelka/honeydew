@@ -7,9 +7,9 @@ defmodule Honeydew.FailureMode.MoveTest do
     queue = :erlang.unique_integer
     failure_queue = "#{queue}_failed"
 
-    {:ok, _} = Helper.start_queue_link(queue, failure_mode: {Honeydew.FailureMode.Move, queue: failure_queue})
-    {:ok, _} = Helper.start_queue_link(failure_queue)
-    {:ok, _} = Helper.start_worker_link(queue, Stateless)
+    :ok = Honeydew.start_queue(queue, failure_mode: {Honeydew.FailureMode.Move, queue: failure_queue})
+    :ok = Honeydew.start_queue(failure_queue)
+    :ok = Honeydew.start_workers(queue, Stateless)
 
     [queue: queue, failure_queue: failure_queue]
   end
@@ -42,7 +42,7 @@ defmodule Honeydew.FailureMode.MoveTest do
 
     assert {:moved, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
 
-    {:ok, _} = Helper.start_worker_link(failure_queue, Stateless)
+    :ok = Honeydew.start_workers(failure_queue, Stateless)
 
     # job ran in the failure queue
     assert {:error, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)

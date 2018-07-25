@@ -1,90 +1,73 @@
 defmodule Honeydew.QueuesTest do
   use ExUnit.Case, async: true
+  import Helper
+  alias Honeydew.Queues
+  alias Honeydew.Queue.State
   alias Honeydew.Queue.ErlangQueue
+  alias Honeydew.Queue.Mnesia
+  alias Honeydew.Dispatcher.LRU
+  alias Honeydew.Dispatcher.MRU
   alias Honeydew.FailureMode.Abandon
+  alias Honeydew.FailureMode.Retry
   alias Honeydew.SuccessMode.Log
 
-  setup do
-    pool = :erlang.unique_integer
+  setup :restart_honeydew
 
-    Honeydew.create_groups(pool)
+  test "stop_queue/2 removes child spec" do
+    :ok = Honeydew.start_queue(:abc)
+    assert [{:abc, _, _, _}] = Supervisor.which_children(Queues)
 
-    {:ok, supervisor} = Honeydew.Queues.start_link([3, pool, ErlangQueue, [], {Honeydew.Dispatcher.LRU, []}, {Abandon, []}, nil, false])
-
-    # on_exit fn ->
-    #   Supervisor.stop(supervisor)
-    #   Honeydew.delete_groups(pool)
-    # end
-
-    [supervisor: supervisor]
+    :ok = Honeydew.stop_queue(:abc)
+    assert Enum.empty? Supervisor.which_children(Queues)
   end
 
-  test "starts the correct number of queues", context do
-    assert context[:supervisor]
-    |> Supervisor.which_children
-    |> Enum.count == 3
-  end
+  describe "start_queue/2" do
+    test "options" do
+      nodes = [node()]
 
-  test "starts the given queue module", context do
-    assert   {_, _, _, [Honeydew.Queue]} = context[:supervisor] |> Supervisor.which_children |> List.first
-  end
-
-  test "child_spec/2" do
-    queue = :erlang.unique_integer
-
-    spec =
-      Honeydew.Queues.child_spec([
-        queue,
-        queue: {:abc, [1,2,3]},
-        dispatcher: {Dis.Patcher, [:a, :b]},
-        failure_mode: {Abandon, []},
+      options = [
+        queue: {Mnesia, [nodes, [disc_copies: nodes], []]},
+        dispatcher: {MRU, []},
+        failure_mode: {Retry, [times: 5]},
         success_mode: {Log, []},
-        supervisor_opts: [id: :my_queue_supervisor],
-        suspended: true])
+        suspended: true
+      ]
 
-    assert spec == %{
-      id: :my_queue_supervisor,
-      type: :supervisor,
-      start: {Honeydew.Queues, :start_link,
-              [[1, queue, :abc, [1, 2, 3], {Dis.Patcher, [:a, :b]},
-               {Abandon, []}, {Log, []}, true]]}
-    }
-  end
+      :ok = Honeydew.start_queue({:global, :abc}, options)
+      assert [{{:global, :abc}, pid, _, _}] = Supervisor.which_children(Queues)
 
-  test "child_spec/2 should raise when failure/success mode args are invalid" do
-    queue = :erlang.unique_integer
-
-    assert_raise ArgumentError, fn ->
-      Honeydew.Queues.child_spec([queue, failure_mode: {Abandon, [:abc]}])
+      assert %State{
+        dispatcher: {Honeydew.Dispatcher.MRU, _dispatcher_state},
+        failure_mode: {Honeydew.FailureMode.Retry, [times: 5]},
+        module: Honeydew.Queue.Mnesia,
+        queue: {:global, :abc},
+        success_mode: {Honeydew.SuccessMode.Log, []},
+        suspended: true
+      } = :sys.get_state(pid)
     end
 
-    assert_raise ArgumentError, fn ->
-      Honeydew.Queues.child_spec([queue, success_mode: {Log, [:abc]}])
+    test "raises when failure/success mode args are invalid" do
+      assert_raise ArgumentError, fn ->
+        Honeydew.start_queue(:abc, failure_mode: {Abandon, [:abc]})
+      end
+
+      assert_raise ArgumentError, fn ->
+        Honeydew.start_queue(:abc, success_mode: {Log, [:abc]})
+      end
+    end
+
+    test "default options" do
+      :ok = Honeydew.start_queue(:abc)
+      assert [{:abc, pid, _, _}] = Supervisor.which_children(Queues)
+
+      assert %State{
+        dispatcher: {LRU, _dispatcher_state},
+        failure_mode: {Abandon, []},
+        module: ErlangQueue,
+        queue: :abc,
+        success_mode: nil,
+        suspended: false
+      } = :sys.get_state(pid)
     end
   end
-
-  test "child_spec/2 defaults" do
-    queue = :erlang.unique_integer
-    spec =  Honeydew.Queues.child_spec([queue])
-
-    assert spec == %{
-      id: {:queue, queue},
-      type: :supervisor,
-      start: {Honeydew.Queues, :start_link,
-              [[1, queue, Honeydew.Queue.ErlangQueue, [],
-               {Honeydew.Dispatcher.LRU, []}, {Abandon, []}, nil, false]]}
-    }
-
-    queue = {:global, :erlang.unique_integer}
-    spec =  Honeydew.Queues.child_spec([queue])
-
-    assert spec == %{
-      id: {:queue, queue},
-      type: :supervisor,
-      start: {Honeydew.Queues, :start_link,
-              [[1, queue, Honeydew.Queue.ErlangQueue, [],
-               {Honeydew.Dispatcher.LRUNode, []}, {Abandon, []}, nil, false]]}
-    }
-  end
-
 end

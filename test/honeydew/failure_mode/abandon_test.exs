@@ -5,8 +5,8 @@ defmodule Honeydew.FailureMode.AbandonTest do
 
   setup do
     queue = :erlang.unique_integer
-    {:ok, _} = Helper.start_queue_link(queue, failure_mode: Honeydew.FailureMode.Abandon)
-    {:ok, _} = Helper.start_worker_link(queue, Stateless)
+    :ok = Honeydew.start_queue(queue, failure_mode: Honeydew.FailureMode.Abandon)
+    :ok = Honeydew.start_workers(queue, Stateless)
 
     [queue: queue]
   end

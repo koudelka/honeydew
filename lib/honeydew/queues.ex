@@ -1,9 +1,24 @@
 defmodule Honeydew.Queues do
-  use DynamicSupervisor
+  use Supervisor
   alias Honeydew.Queue
 
   @type name :: Honeydew.queue_name()
   @type queue_spec_opt :: Honeydew.queue_spec_opt()
+
+  @spec queues() :: [name]
+  def queues do
+    __MODULE__
+    |> Supervisor.which_children
+    |> Enum.map(fn {queue, _, _, _} -> queue end)
+    |> Enum.sort
+  end
+
+  @spec stop_queue(name) :: :ok | {:error, :not_running}
+  def stop_queue(name) do
+    with :ok <- Supervisor.terminate_child(__MODULE__, name) do
+      Supervisor.delete_child(__MODULE__, name)
+    end
+  end
 
   @spec start_queue(name, [queue_spec_opt]) :: :ok
   def start_queue(name, opts) do
@@ -47,17 +62,17 @@ defmodule Honeydew.Queues do
     Honeydew.create_groups(name)
 
     opts = [name, module, args, dispatcher, failure_mode, success_mode, suspended]
-    {:ok, _} = DynamicSupervisor.start_child(__MODULE__, {Queue, opts})
+    {:ok, _} = Supervisor.start_child(__MODULE__, {Queue, opts})
     :ok
   end
 
   def start_link(args) do
-    DynamicSupervisor.start_link(__MODULE__, args, name: __MODULE__)
+    Supervisor.start_link(__MODULE__, args, name: __MODULE__)
   end
 
   @impl true
   def init(_args) do
-    DynamicSupervisor.init(strategy: :one_for_one)
+    Supervisor.init([], strategy: :one_for_one)
   end
 
 end

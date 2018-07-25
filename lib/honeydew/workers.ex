@@ -1,10 +1,25 @@
 defmodule Honeydew.Workers do
-  use DynamicSupervisor
+  use Supervisor
   alias Honeydew.WorkerRootSupervisor
 
-  @type queue_name :: Honeydew.queue_name()
+  @type name :: Honeydew.queue_name()
   @type mod_or_mod_args :: Honeydew.mod_or_mod_args()
   @type worker_spec_opt :: Honeydew.worker_spec_opt()
+
+  @spec workers() :: [name]
+  def workers do
+    __MODULE__
+    |> Supervisor.which_children
+    |> Enum.map(fn {queue, _, _, _} -> queue end)
+    |> Enum.sort
+  end
+
+  @spec stop_workers(name) :: :ok | {:error, :not_running}
+  def stop_workers(name) do
+    with :ok <- Supervisor.terminate_child(__MODULE__, name) do
+      Supervisor.delete_child(__MODULE__, name)
+    end
+  end
 
   def start_workers(name, module_and_args, opts \\ []) do
     {module, args} =
@@ -27,17 +42,17 @@ defmodule Honeydew.Workers do
 
     Honeydew.create_groups(name)
 
-    {:ok, _} = DynamicSupervisor.start_child(__MODULE__, {WorkerRootSupervisor, [name, opts]})
+    {:ok, _} = Supervisor.start_child(__MODULE__, {WorkerRootSupervisor, [name, opts]})
     :ok
   end
 
   def start_link(args) do
-    DynamicSupervisor.start_link(__MODULE__, args, name: __MODULE__)
+    Supervisor.start_link(__MODULE__, args, name: __MODULE__)
   end
 
   @impl true
   def init(_args) do
-    DynamicSupervisor.init(strategy: :one_for_one)
+    Supervisor.init([], strategy: :one_for_one)
   end
 
   def invalid_module_error(module) do

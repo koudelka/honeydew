@@ -57,6 +57,13 @@ defmodule Honeydew.Queue do
 
   @optional_callbacks handle_call: 3, handle_cast: 2, handle_info: 2
 
+  @spec child_spec([name | any()]) :: Supervisor.child_spec()
+  def child_spec([name | _] = opts) do
+    opts
+    |> super
+    |> Map.put(:id, name)
+  end
+
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
   end

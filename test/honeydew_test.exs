@@ -1,8 +1,39 @@
 defmodule HoneydewTest do
   use ExUnit.Case, async: false
+  import Helper
   alias Honeydew.Job
   alias Honeydew.WorkerGroupSupervisor
   alias Honeydew.Workers
+
+  setup :restart_honeydew
+
+  test "queues/0 + stop_queue/1" do
+    assert Enum.empty?(Honeydew.queues)
+
+    :ok = Honeydew.start_queue(:a_queue)
+    :ok = Honeydew.start_queue(:another_queue)
+    :ok = Honeydew.start_queue({:global, :a_global_queue})
+
+    assert Honeydew.queues() == [:a_queue, :another_queue, {:global, :a_global_queue}]
+
+    :ok = Honeydew.stop_queue({:global, :a_global_queue})
+
+    assert Honeydew.queues() == [:a_queue, :another_queue]
+  end
+
+  test "workers/0 + stop_workers/1" do
+    assert Enum.empty?(Honeydew.workers)
+
+    :ok = Honeydew.start_workers(:a_queue, Stateless)
+    :ok = Honeydew.start_workers(:another_queue, Stateless)
+    :ok = Honeydew.start_workers({:global, :a_global_queue}, Stateless)
+
+    assert Honeydew.workers() == [:a_queue, :another_queue, {:global, :a_global_queue}]
+
+    :ok = Honeydew.stop_workers({:global, :a_global_queue})
+
+    assert Honeydew.workers() == [:a_queue, :another_queue]
+  end
 
   test "group/1" do
     assert Honeydew.group(:my_queue, Workers) == :"Elixir.Honeydew.Workers.my_queue"

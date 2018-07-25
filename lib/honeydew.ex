@@ -288,6 +288,18 @@ defmodule Honeydew do
     raise "Honeydew now supervises your queue processes, please use `Honeydew.start_queue/2 instead.`"
   end
 
+  @doc """
+  Returns a list of queues running on this node.
+  """
+  @spec queues() :: [queue_name]
+  defdelegate queues(), to: Queues
+
+  @doc """
+  Returns a list of queues that have workers are running on this node.
+  """
+  @spec workers() :: [queue_name]
+  defdelegate workers(), to: Workers
+
   @type queue_spec_opt ::
   {:queue, mod_or_mod_args} |
   {:dispatcher, mod_or_mod_args} |
@@ -335,6 +347,12 @@ defmodule Honeydew do
     raise "Honeydew now supervises your worker processes, please use `Honeydew.start_workers/3 instead.`"
   end
 
+  @doc """
+  Stops the local instance of the provided queue name.
+  """
+  @spec stop_queue(queue_name) :: :ok | {:error, :not_running}
+  defdelegate stop_queue(name), to: Queues
+
   @type worker_spec_opt ::
   {:num, non_neg_integer} |
   {:supervisor_opts, supervisor_opts} |
@@ -369,6 +387,12 @@ defmodule Honeydew do
   - `Honeydew.start_workers({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
   """
   defdelegate start_workers(name, module_and_args, opts \\ []), to: Honeydew.Workers
+
+  @doc """
+  Stops the local workers for the provided queue name.
+  """
+  @spec stop_workers(queue_name) :: :ok | {:error, :not_running}
+  defdelegate stop_workers(name), to: Workers
 
   @groups [Workers, Queues]
 
