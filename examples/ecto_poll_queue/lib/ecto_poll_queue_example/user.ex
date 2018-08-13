@@ -3,9 +3,15 @@ defmodule EctoPollQueueExample.User do
   import Honeydew.EctoPollQueue.Schema
   alias Honeydew.EctoSource.ErlangTerm
 
+  if Mix.env == :cockroach do
+    @primary_key {:id, :binary_id, autogenerate: false, read_after_writes: true}
+    @foreign_key_type :binary_id
+  else
+    @primary_key {:id, :binary_id, autogenerate: true}
+  end
+
   @notify_queue :notify_user
 
-  @primary_key {:id, :binary_id, autogenerate: true}
   schema "users" do
     field(:name)
     field(:should_fail, :boolean)

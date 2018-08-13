@@ -30,6 +30,19 @@ defmodule Honeydew.PollQueue do
   end
 
   @impl true
+  def validate_args!(args) do
+    validate_poll_interval!(args[:poll_interval])
+  end
+
+  defp validate_poll_interval!(interval) when is_integer(interval), do: :ok
+  defp validate_poll_interval!(nil), do: :ok
+  defp validate_poll_interval!(arg), do: raise invalid_poll_interval_error(arg)
+
+  defp invalid_poll_interval_error(argument) do
+    "Poll interval must be an integer number of seconds. You gave #{inspect argument}"
+  end
+
+  @impl true
   def init(queue, [source, args]) do
     poll_interval = args[:poll_interval] * 1_000 |> trunc
 

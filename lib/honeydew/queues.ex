@@ -1,6 +1,10 @@
 defmodule Honeydew.Queues do
   use Supervisor
   alias Honeydew.Queue
+  alias Honeydew.Queue.ErlangQueue
+  alias Honeydew.Dispatcher.LRUNode
+  alias Honeydew.Dispatcher.LRU
+  alias Honeydew.FailureMode.Abandon
 
   @type name :: Honeydew.queue_name()
   @type queue_spec_opt :: Honeydew.queue_spec_opt()
@@ -24,7 +28,7 @@ defmodule Honeydew.Queues do
   def start_queue(name, opts) do
     {module, args} =
       case opts[:queue] do
-        nil -> {Honeydew.Queue.ErlangQueue, []}
+        nil -> {ErlangQueue, []}
         module when is_atom(module) -> {module, []}
         {module, args} -> {module, args}
       end
@@ -32,19 +36,19 @@ defmodule Honeydew.Queues do
     dispatcher =
       opts[:dispatcher] ||
       case name do
-        {:global, _} -> {Honeydew.Dispatcher.LRUNode, []}
-        _ -> {Honeydew.Dispatcher.LRU, []}
+        {:global, _} -> {LRUNode, []}
+        _ -> {LRU, []}
       end
 
     failure_mode =
       case opts[:failure_mode] do
-        nil -> {Honeydew.FailureMode.Abandon, []}
+        nil -> {Abandon, []}
         {module, args} -> {module, args}
         module when is_atom(module) -> {module, []}
       end
 
     {failure_module, failure_args} = failure_mode
-    :ok = failure_module.validate_args!(failure_args) # will raise on failure
+    failure_module.validate_args!(failure_args)
 
     success_mode =
       case opts[:success_mode] do
@@ -54,14 +58,27 @@ defmodule Honeydew.Queues do
       end
 
     with {success_module, success_args} <- success_mode do
-      :ok = success_module.validate_args!(success_args) # will raise on failure
+      success_module.validate_args!(success_args)
     end
 
     suspended = Keyword.get(opts, :suspended, false)
 
     Honeydew.create_groups(name)
 
+    module.validate_args!(args)
+
     opts = [name, module, args, dispatcher, failure_mode, success_mode, suspended]
+
+    opts =
+      :functions
+      |> module.__info__
+      |> Enum.member?({:rewrite_opts, 1})
+      |> if do
+        module.rewrite_opts(opts)
+      else
+        opts
+      end
+
     {:ok, _} = Supervisor.start_child(__MODULE__, {Queue, opts})
     :ok
   end

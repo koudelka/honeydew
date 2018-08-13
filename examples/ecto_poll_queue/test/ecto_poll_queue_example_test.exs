@@ -18,7 +18,7 @@ defmodule EctoPollQueueExampleTest do
 
   test "automatically enqueues when a new row is saved" do
     {:ok, %Photo{id: id}} = %Photo{} |> Repo.insert()
-    Process.sleep(1_000)
+    Process.sleep(2_000)
 
     %Photo{
       tag: tag,
@@ -119,7 +119,7 @@ defmodule EctoPollQueueExampleTest do
       end)
 
     Enum.each(ids, fn id ->
-      assert_receive({:classify_job_ran, ^id}, 200)
+      assert_receive({:classify_job_ran, ^id}, 400)
     end)
 
     refute_receive({:classify_job_ran, _}, 200)

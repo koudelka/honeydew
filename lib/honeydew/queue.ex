@@ -23,8 +23,11 @@ defmodule Honeydew.Queue do
   @type private :: term
   @type name :: Honeydew.queue_name
   @type filter :: Honeydew.filter()
+  @type args :: list
 
-  @callback init(name, arg :: term) :: {:ok, private}
+  @callback validate_args!(args) :: {module :: atom, args}
+  @callback rewrite_opts(args) :: args
+  @callback init(name, args) :: {:ok, private}
   @callback enqueue(job, private) :: {private, job}
   @callback reserve(private) :: {job, private}
   @callback ack(job, private) :: private
@@ -55,7 +58,7 @@ defmodule Honeydew.Queue do
               | {:stop, reason :: term, new_state}
             when new_state: private
 
-  @optional_callbacks handle_call: 3, handle_cast: 2, handle_info: 2
+  @optional_callbacks rewrite_opts: 1, handle_call: 3, handle_cast: 2, handle_info: 2
 
   @spec child_spec([name | any()]) :: Supervisor.child_spec()
   def child_spec([name | _] = opts) do

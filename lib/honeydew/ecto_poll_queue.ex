@@ -32,39 +32,46 @@ defmodule Honeydew.EctoPollQueue do
   - `{Honeydew.Queues, [:classify_photos, repo: MyApp.Repo, schema: MyApp.Photo, failure_mode: {Honeydew.Retry, times: 3}]}`
 
   """
-  @spec child_spec([queue_name | ecto_poll_queue_spec_opt]) :: Supervisor.child_spec()
-  def child_spec([queue_name | opts]) do
-    {poll_interval, opts} = Keyword.pop(opts, :poll_interval)
-    {stale_timeout, opts} = Keyword.pop(opts, :stale_timeout)
-    {database_override, opts} = Keyword.pop(opts, :database)
 
-    if opts[:queue] do
-      raise ArgumentError, cant_specify_queue_type_error(opts[:queue])
-    end
-
-    schema = Keyword.fetch!(opts, :schema)
-    repo = Keyword.fetch!(opts, :repo)
-    sql = EctoSource.SQL.module(repo, database_override)
-
-    ecto_source_args =
-      [schema: schema,
-       repo: repo,
-       sql: sql,
-       poll_interval: poll_interval || 10,
-       stale_timeout: stale_timeout || 300]
-
-    opts =
-      opts
-      |> Keyword.delete(:schema)
-      |> Keyword.delete(:repo)
-      |> Keyword.put(:queue, {PollQueue, [EctoSource, ecto_source_args]})
-
-    Honeydew.Queues.child_spec([queue_name | opts])
+  def validate_args!(args) do
+    PollQueue.validate_args!(args)
+    validate_module_loaded!(args, :schema)
+    validate_module_loaded!(args, :repo)
+    validate_stale_timeout!(args[:stale_timeout])
   end
 
-  @doc false
-  def cant_specify_queue_type_error(argument) do
-    "you can't provide the :queue argument for Ecto Poll Queues, it's already a `PollQueue` with the `EctoSource`. You gave #{inspect argument}"
+  defp validate_module_loaded!(args, type) do
+    module = Keyword.get(args, type)
+
+    unless Code.ensure_loaded?(module) do
+      raise module_not_loaded_error(module, type)
+    end
+  end
+
+  defp validate_stale_timeout!(interval) when is_integer(interval), do: :ok
+  defp validate_stale_timeout!(nil), do: :ok
+  defp validate_stale_timeout!(arg), do: raise invalid_stale_timeout_error(arg)
+
+  defp invalid_stale_timeout_error(argument) do
+    "Stale timeout must be an integer number of seconds. You gave #{inspect argument}"
+  end
+
+  defp module_not_loaded_error(module, type) do
+    "The #{type} module you provided, #{inspect module} couldn't be found"
+  end
+
+  def rewrite_opts([name, __MODULE__, args | rest]) do
+    {database_override, args} = Keyword.pop(args, :database)
+
+    sql = EctoSource.SQL.module(args[:repo], database_override)
+
+    ecto_source_args =
+      args
+      |> Keyword.put(:sql, sql)
+      |> Keyword.put(:poll_interval, args[:poll_interval] || 10)
+      |> Keyword.put(:stale_timeout, args[:stale_timeout] || 300)
+
+    [name, PollQueue, [EctoSource, ecto_source_args] | rest]
   end
 
   defmodule Schema do

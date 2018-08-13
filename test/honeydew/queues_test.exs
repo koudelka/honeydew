@@ -3,12 +3,9 @@ defmodule Honeydew.QueuesTest do
   import Helper
   alias Honeydew.Queues
   alias Honeydew.Queue.State
-  alias Honeydew.Queue.ErlangQueue
-  alias Honeydew.Queue.Mnesia
-  alias Honeydew.Dispatcher.LRU
-  alias Honeydew.Dispatcher.MRU
-  alias Honeydew.FailureMode.Abandon
-  alias Honeydew.FailureMode.Retry
+  alias Honeydew.Queue.{ErlangQueue, Mnesia}
+  alias Honeydew.Dispatcher.{LRU, MRU}
+  alias Honeydew.FailureMode.{Abandon, Retry}
   alias Honeydew.SuccessMode.Log
 
   setup :restart_honeydew

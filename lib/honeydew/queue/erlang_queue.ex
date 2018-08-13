@@ -8,10 +8,14 @@ defmodule Honeydew.Queue.ErlangQueue do
   alias Honeydew.Job
   alias Honeydew.Queue
 
-  @behaviour Honeydew.Queue
+  @behaviour Queue
 
   @impl true
-  def init(_queue_name, []) do
+  def validate_args!([]), do: :ok
+  def validate_args!(args), do: raise ArgumentError, "You provided arguments (#{inspect args}) to the #{__MODULE__} queue, it's expecting an empty list, or just the bare module."
+
+  @impl true
+  def init(_name, []) do
     # {pending, in_progress}
     {:ok, {:queue.new, Map.new}}
   end

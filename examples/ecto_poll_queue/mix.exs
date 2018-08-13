@@ -8,7 +8,7 @@ defmodule EctoPollQueueExample.MixProject do
       elixir: "~> 1.5",
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps(),
+      deps: deps(Mix.env),
       dialyzer: [
         flags: [
           :unmatched_returns,
@@ -28,14 +28,20 @@ defmodule EctoPollQueueExample.MixProject do
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:honeydew, path: "../../.."},
+      {:honeydew, path: "../.."},
       {:ecto, "~> 2.0"},
-      {:postgrex, "~> 0.13"},
       {:dialyxir, "~> 0.5", only: :test, runtime: false}
     ]
+  end
+
+  defp deps(:cockroach) do
+    [{:postgrex, "~> 0.13", hex: :postgrex_cdb, override: true} | deps()]
+  end
+
+  defp deps(:postgres) do
+    [{:postgrex, "~> 0.13"} | deps()]
   end
 
   defp aliases do
