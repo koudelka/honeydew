@@ -1,5 +1,5 @@
 defmodule Honeydew.QueuesTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false # restarts honeydew app
   import Helper
   alias Honeydew.Queues
   alias Honeydew.Queue.State

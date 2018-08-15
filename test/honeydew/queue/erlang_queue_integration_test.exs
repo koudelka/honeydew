@@ -319,7 +319,12 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
   defp start_doctest_env(_) do
     queue = :my_queue
     start_queue(queue)
-    Honeydew.start_workers(queue, DocTestWorker)
+    :ok = Honeydew.start_workers(queue, DocTestWorker)
+
+    on_exit fn ->
+      :ok = Honeydew.stop_queue(queue)
+      :ok = Honeydew.stop_workers(queue)
+    end
 
     :ok
   end

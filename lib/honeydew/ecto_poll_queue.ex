@@ -1,20 +1,6 @@
 defmodule Honeydew.EctoPollQueue do
-  alias Honeydew.PollQueue
-  alias Honeydew.EctoSource
-
-  @type queue_name :: Honeydew.queue_name()
-
-  @type ecto_poll_queue_spec_opt ::
-    Honeydew.queue_spec_opt |
-    {:schema, module} |
-    {:repo, module} |
-    {:poll_interval, pos_integer} |
-    {:stale_timeout, pos_integer}
-
-  @doc """
-  Creates a supervision spec for an Ecto Poll Queue.
-
-  In addition to the arguments from `queue_spec/4`:
+  @moduledoc """
+  The following arguments can be provided when selecting the Ecto Poll Queue module:
 
   You *must* provide:
 
@@ -28,10 +14,22 @@ defmodule Honeydew.EctoPollQueue do
 
   For example:
 
-  - `{Honeydew.Queues, [:classify_photos, repo: MyApp.Repo, schema: MyApp.Photo]}`
-  - `{Honeydew.Queues, [:classify_photos, repo: MyApp.Repo, schema: MyApp.Photo, failure_mode: {Honeydew.Retry, times: 3}]}`
+  - `Honeydew.start_queue(:classify_photos, {Honeydew.EctoPollQueue, repo: MyApp.Repo, schema: MyApp.Photo})`
+  - `Honeydew.start_queue(:classify_photos, {Honeydew.EctoPollQueue, repo: MyApp.Repo, schema: MyApp.Photo}, failure_mode: {Honeydew.Retry, times: 3})`
 
   """
+
+  alias Honeydew.PollQueue
+  alias Honeydew.EctoSource
+
+  @type queue_name :: Honeydew.queue_name()
+
+  @type ecto_poll_queue_spec_opt ::
+    Honeydew.queue_spec_opt |
+    {:schema, module} |
+    {:repo, module} |
+    {:poll_interval, pos_integer} |
+    {:stale_timeout, pos_integer}
 
   def validate_args!(args) do
     PollQueue.validate_args!(args)
@@ -43,17 +41,25 @@ defmodule Honeydew.EctoPollQueue do
   defp validate_module_loaded!(args, type) do
     module = Keyword.get(args, type)
 
+    unless module do
+      raise ArgumentError, argument_not_given_error(args, type)
+    end
+
     unless Code.ensure_loaded?(module) do
-      raise module_not_loaded_error(module, type)
+      raise ArgumentError, module_not_loaded_error(module, type)
     end
   end
 
-  defp validate_stale_timeout!(interval) when is_integer(interval), do: :ok
+  defp validate_stale_timeout!(interval) when is_integer(interval) and interval > 0, do: :ok
   defp validate_stale_timeout!(nil), do: :ok
-  defp validate_stale_timeout!(arg), do: raise invalid_stale_timeout_error(arg)
+  defp validate_stale_timeout!(arg), do: raise ArgumentError, invalid_stale_timeout_error(arg)
 
   defp invalid_stale_timeout_error(argument) do
     "Stale timeout must be an integer number of seconds. You gave #{inspect argument}"
+  end
+
+  defp argument_not_given_error(args, key) do
+    "You didn't provide a required argument, #{inspect key}, you gave: #{inspect args}"
   end
 
   defp module_not_loaded_error(module, type) do

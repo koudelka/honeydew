@@ -1,6 +1,5 @@
 defmodule Honeydew.MnesiaQueueIntegrationTest do
-  use ExUnit.Case, async: true
-  import Helper
+  use ExUnit.Case, async: false # shares doctest queue name with ErlangQueue test
   alias Honeydew.Job
 
   @moduletag :capture_log
@@ -8,7 +7,6 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
   @num_workers 5
 
   setup [
-    :restart_honeydew,
     :setup_queue_name,
     :setup_queue,
     :setup_worker_pool]
@@ -343,7 +341,7 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
   end
 
   defp generate_queue_name do
-    "#{:erlang.monotonic_time}_#{:erlang.unique_integer}"
+    :erlang.unique_integer |> to_string
   end
 
   defp start_queue(queue, opts \\ []) do
@@ -364,7 +362,12 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
   defp start_doctest_env(_) do
     queue = :my_queue
     start_queue(queue)
-    Honeydew.start_workers(queue, DocTestWorker)
+    :ok = Honeydew.start_workers(queue, DocTestWorker)
+
+    on_exit fn ->
+      :ok = Honeydew.stop_queue(queue)
+      :ok = Honeydew.stop_workers(queue)
+    end
 
     :ok
   end
