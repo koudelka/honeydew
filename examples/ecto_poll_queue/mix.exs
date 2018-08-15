@@ -23,7 +23,7 @@ defmodule EctoPollQueueExample.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :mix],
       mod: {EctoPollQueueExample.Application, []}
     ]
   end
@@ -32,7 +32,7 @@ defmodule EctoPollQueueExample.MixProject do
     [
       {:honeydew, path: "../.."},
       {:ecto, "~> 2.0"},
-      {:dialyxir, "~> 0.5", only: :test, runtime: false}
+      {:dialyxir, "~> 0.5", only: [:cockroach, :postgres], runtime: false}
     ]
   end
 
