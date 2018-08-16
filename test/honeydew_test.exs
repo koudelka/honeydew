@@ -5,6 +5,8 @@ defmodule HoneydewTest do
   alias Honeydew.WorkerGroupSupervisor
   alias Honeydew.Workers
 
+  @moduletag :capture_log
+
   setup :restart_honeydew
 
   test "queues/0 + stop_queue/1" do
@@ -83,4 +85,28 @@ defmodule HoneydewTest do
     assert status == {:running, "doing thing 1/2"}
   end
 
+  test "rapidly failing jobs don't crash the queue process and leave the system operational" do
+    queue = :erlang.unique_integer
+
+    :ok = Honeydew.start_queue(queue)
+    :ok = Honeydew.start_workers(queue, Stateless, num: 5)
+
+    queue_pid = Honeydew.get_queue(queue)
+
+    Honeydew.suspend(queue)
+    Enum.each(0..100, fn _ ->
+      fn -> raise "intentional crash" end |> Honeydew.async(queue)
+    end)
+    me = self()
+    fn -> send(me, :done) end |> Honeydew.async(queue)
+    Honeydew.resume(queue)
+
+    receive do
+      :done ->
+        Process.sleep(50) # let remaining jobs fail so :capture_log can dispose of their logs
+        :ok
+    end
+
+    assert queue_pid == Honeydew.get_queue(queue)
+  end
 end

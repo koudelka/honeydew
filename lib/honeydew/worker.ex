@@ -123,7 +123,7 @@ defmodule Honeydew.Worker do
   #
   # the job monitor's timer will nack the job, since we're not going to claim it
   #
-  defp do_run(%Job{task: task, from: from, job_monitor: job_monitor} = job, %State{ready: true, queue_pid: queue_pid, module: module, private: private}) do
+  defp do_run(%Job{task: task, from: from, job_monitor: job_monitor} = job, %State{ready: true, queue_pid: queue_pid, module: module, private: private} = state) do
     job = %{job | by: node()}
 
     :ok = GenServer.call(job_monitor, {:claim, job})
@@ -135,22 +135,36 @@ defmodule Honeydew.Worker do
         :no_state   -> []
       end
 
-    result =
-      case task do
-        f when is_function(f) -> apply(f, private_args)
-        f when is_atom(f)     -> apply(module, f, private_args)
-        {f, a}                -> apply(module, f, a ++ private_args)
-      end
+    try do
+      result =
+        case task do
+          f when is_function(f) -> apply(f, private_args)
+          f when is_atom(f)     -> apply(module, f, private_args)
+          {f, a}                -> apply(module, f, a ++ private_args)
+        end
+      {:ok, result}
+    rescue e ->
+        {:error, {e, __STACKTRACE__}}
+    end
+    |> case do
+         {:ok, result} ->
+           job = %{job | result: {:ok, result}}
 
-    job = %{job | result: {:ok, result}}
+           with {owner, _ref} <- from,
+             do: send(owner, job)
 
-    with {owner, _ref} <- from,
-      do: send(owner, job)
+           :ok = GenServer.call(job_monitor, :ack)
+           Process.delete(:job_monitor)
 
-    :ok = GenServer.call(job_monitor, :ack)
-    Process.delete(:job_monitor)
+           GenServer.cast(queue_pid, {:worker_ready, self()})
 
-    GenServer.cast(queue_pid, {:worker_ready, self()})
+           state
+
+         {:error, e} ->
+           :ok = GenServer.call(job_monitor, {:failed, e})
+           Process.delete(:job_monitor)
+           do_module_init(state)
+       end
   end
 
 
@@ -160,8 +174,7 @@ defmodule Honeydew.Worker do
   end
 
   def handle_cast({:run, job}, state) do
-    do_run(job, state)
-    {:noreply, state}
+    {:noreply, do_run(job, state)}
   end
 
   #

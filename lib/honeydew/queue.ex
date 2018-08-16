@@ -60,10 +60,10 @@ defmodule Honeydew.Queue do
 
   @optional_callbacks rewrite_opts: 1, handle_call: 3, handle_cast: 2, handle_info: 2
 
-  @spec child_spec([name | any()]) :: Supervisor.child_spec()
-  def child_spec([name | _] = opts) do
-    opts
-    |> super
+  @spec child_spec(name, [any()]) :: Supervisor.child_spec()
+  def child_spec(name, args) do
+    args
+    |> child_spec
     |> Map.put(:id, name)
   end
 

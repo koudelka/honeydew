@@ -79,7 +79,7 @@ defmodule Honeydew.Queues do
         opts
       end
 
-    {:ok, _} = Supervisor.start_child(__MODULE__, {Queue, opts})
+    {:ok, _} = Supervisor.start_child(__MODULE__, Queue.child_spec(name, opts))
     :ok
   end
 

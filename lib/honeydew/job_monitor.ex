@@ -1,5 +1,5 @@
 defmodule Honeydew.JobMonitor do
-  use GenServer
+  use GenServer, restart: :transient
   require Logger
   require Honeydew
   alias Honeydew.Queue
@@ -54,6 +54,12 @@ defmodule Honeydew.JobMonitor do
     {:stop, :normal, :ok, reset(state)}
   end
 
+  def handle_call({:failed, reason}, {worker, _ref}, %State{worker: worker} = state) do
+    execute_failure_mode(reason, state)
+
+    {:stop, :normal, :ok, reset(state)}
+  end
+
   # no worker has claimed the job, return it
   def handle_info(:return_job, %State{job: job, queue_pid: queue_pid, worker: nil} = state) do
     Queue.nack(queue_pid, job)
@@ -63,8 +69,8 @@ defmodule Honeydew.JobMonitor do
   def handle_info(:return_job, state), do: {:noreply, state}
 
   # worker died while busy
-  def handle_info({:DOWN, _ref, :process, worker, reason}, %State{worker: worker, job: job, failure_mode: {failure_mode, failure_mode_args}} = state) do
-    failure_mode.handle_failure(job, reason, failure_mode_args)
+  def handle_info({:DOWN, _ref, :process, worker, reason}, %State{worker: worker} = state) do
+    execute_failure_mode(reason, state)
 
     {:stop, :normal, reset(state)}
   end
@@ -76,5 +82,9 @@ defmodule Honeydew.JobMonitor do
 
   defp reset(state) do
    %{state | job: nil, progress: :about_to_die}
+  end
+
+  defp execute_failure_mode(reason, %State{job: job, failure_mode: {failure_mode, failure_mode_args}}) do
+    failure_mode.handle_failure(job, reason, failure_mode_args)
   end
 end

@@ -28,6 +28,6 @@ defmodule Honeydew.WorkerTest do
   end
 
   defp generate_queue_name do
-    "#{:erlang.monotonic_time}_#{:erlang.unique_integer}"
+    :erlang.unique_integer |> to_string
   end
 end
