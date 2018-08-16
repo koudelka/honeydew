@@ -1,6 +1,11 @@
 defmodule Honeydew.Progress do
+  alias Honeydew.JobMonitor
+
   def progress(update) do
-    monitor = Process.get(:job_monitor)
-    :ok = GenServer.call(monitor, {:progress, update})
+    :ok =
+      :job_monitor
+      |> Process.get
+      |> JobMonitor.progress(update)
   end
+
 end

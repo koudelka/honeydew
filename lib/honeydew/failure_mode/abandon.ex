@@ -9,6 +9,7 @@ defmodule Honeydew.FailureMode.Abandon do
   """
   require Logger
   alias Honeydew.Job
+  alias Honeydew.Queue
 
   @behaviour Honeydew.FailureMode
 
@@ -23,7 +24,7 @@ defmodule Honeydew.FailureMode.Abandon do
     # tell the queue that that job can be removed.
     queue
     |> Honeydew.get_queue
-    |> GenServer.cast({:ack, job})
+    |> Queue.ack(job)
 
     # send the error to the awaiting process, if necessary
     with {owner, _ref} <- from,

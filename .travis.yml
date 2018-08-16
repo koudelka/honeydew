@@ -5,6 +5,10 @@ elixir:
 otp_release:
   - 20.3
   - 21.0
+matrix:
+  exclude:
+    - otp_release: 20.3
+      elixir: 1.7
 
 services:
   - postgresql

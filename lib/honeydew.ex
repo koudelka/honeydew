@@ -4,6 +4,7 @@ defmodule Honeydew do
   """
 
   alias Honeydew.Job
+  alias Honeydew.JobMonitor
   alias Honeydew.WorkerGroupSupervisor
   alias Honeydew.WorkerStarter
   alias Honeydew.Queue
@@ -140,7 +141,7 @@ defmodule Honeydew do
       |> Map.get(:job_monitors)
       |> Enum.map(fn monitor ->
            try do
-             GenServer.call(monitor, :status)
+             JobMonitor.status(monitor)
            catch
              # the monitor may have shut down
              :exit, _ -> nil

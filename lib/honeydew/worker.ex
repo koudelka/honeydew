@@ -3,6 +3,7 @@ defmodule Honeydew.Worker do
   require Logger
   require Honeydew
   alias Honeydew.Job
+  alias Honeydew.JobMonitor
   alias Honeydew.Queue
   alias Honeydew.Workers
 
@@ -66,11 +67,11 @@ defmodule Honeydew.Worker do
                  has_init_fcn: has_init_fcn}}
   end
 
+  #
+  # Internal API
+  #
 
-  def run(worker, job, job_monitor) do
-    GenServer.cast(worker, {:run, %{job | job_monitor: job_monitor}})
-  end
-
+  def run(worker, job, job_monitor), do: GenServer.cast(worker, {:run, %{job | job_monitor: job_monitor}})
   def module_init(me \\ self()), do: GenServer.cast(me, :module_init)
   def ready(ready), do: GenServer.cast(self(), {:ready, ready})
 
@@ -126,7 +127,7 @@ defmodule Honeydew.Worker do
   defp do_run(%Job{task: task, from: from, job_monitor: job_monitor} = job, %State{ready: true, queue_pid: queue_pid, module: module, private: private} = state) do
     job = %{job | by: node()}
 
-    :ok = GenServer.call(job_monitor, {:claim, job})
+    :ok = JobMonitor.claim(job_monitor, job)
     Process.put(:job_monitor, job_monitor)
 
     private_args =
@@ -144,7 +145,7 @@ defmodule Honeydew.Worker do
         end
       {:ok, result}
     rescue e ->
-        {:error, {e, __STACKTRACE__}}
+        {:error, {e, System.stacktrace()}}
     end
     |> case do
          {:ok, result} ->
@@ -153,15 +154,15 @@ defmodule Honeydew.Worker do
            with {owner, _ref} <- from,
              do: send(owner, job)
 
-           :ok = GenServer.call(job_monitor, :ack)
+           :ok = JobMonitor.job_succeeded(job_monitor)
            Process.delete(:job_monitor)
 
-           GenServer.cast(queue_pid, {:worker_ready, self()})
+           Queue.worker_ready(queue_pid)
 
            state
 
          {:error, e} ->
-           :ok = GenServer.call(job_monitor, {:failed, e})
+           :ok = JobMonitor.job_failed(job_monitor, e)
            Process.delete(:job_monitor)
            do_module_init(state)
        end

@@ -5,7 +5,6 @@ defmodule Honeydew.GlobalTest do
   setup [:setup_queue_name]
 
   describe "simple global queue" do
-
     setup %{queue: queue} do
       {:ok, %{node: _queue_node}} = ClusterSetups.start_queue_node(queue)
       {:ok, %{node: _worker_node}} = ClusterSetups.start_worker_node(queue)

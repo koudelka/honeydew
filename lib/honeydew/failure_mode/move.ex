@@ -10,6 +10,7 @@ defmodule Honeydew.FailureMode.Move do
   """
 
   alias Honeydew.Job
+  alias Honeydew.Queue
 
   require Logger
 
@@ -27,7 +28,7 @@ defmodule Honeydew.FailureMode.Move do
     # tell the queue that that job can be removed.
     queue
     |> Honeydew.get_queue
-    |> GenServer.cast({:ack, job})
+    |> Queue.ack(job)
 
     {:ok, job} =
       %{job | queue: to_queue}

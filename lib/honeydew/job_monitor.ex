@@ -28,6 +28,18 @@ defmodule Honeydew.JobMonitor do
                  progress: :awaiting_claim}}
   end
 
+
+  #
+  # Internal API
+  #
+
+  def claim(job_monitor, job), do: GenServer.call(job_monitor, {:claim, job})
+  def job_succeeded(job_monitor), do: GenServer.call(job_monitor, :job_succeeded)
+  def job_failed(job_monitor, reason), do: GenServer.call(job_monitor, {:job_failed, reason})
+  def status(job_monitor), do: GenServer.call(job_monitor, :status)
+  def progress(job_monitor, progress), do: GenServer.call(job_monitor, {:progress, progress})
+
+
   def handle_call({:claim, job}, {worker, _ref}, state) do
     Honeydew.debug "[Honeydew] Monitor #{inspect self()} had job #{inspect job.private} claimed by worker #{inspect worker}"
     Process.monitor(worker)
@@ -43,7 +55,7 @@ defmodule Honeydew.JobMonitor do
     {:reply, :ok, %{state | progress: {:running, progress}}}
   end
 
-  def handle_call(:ack, {worker, _ref}, %State{job: job, queue_pid: queue_pid, worker: worker, success_mode: success_mode} = state) do
+  def handle_call(:job_succeeded, {worker, _ref}, %State{job: job, queue_pid: queue_pid, worker: worker, success_mode: success_mode} = state) do
     job = %{job | completed_at: System.system_time(:millisecond)}
 
     Queue.ack(queue_pid, job)
@@ -54,7 +66,7 @@ defmodule Honeydew.JobMonitor do
     {:stop, :normal, :ok, reset(state)}
   end
 
-  def handle_call({:failed, reason}, {worker, _ref}, %State{worker: worker} = state) do
+  def handle_call({:job_failed, reason}, {worker, _ref}, %State{worker: worker} = state) do
     execute_failure_mode(reason, state)
 
     {:stop, :normal, :ok, reset(state)}
