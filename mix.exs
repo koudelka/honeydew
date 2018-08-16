@@ -41,7 +41,8 @@ defmodule Honeydew.Mixfile do
       {:ecto, "~> 2.0", optional: true, only: [:dev, :prod]},
       {:riakc, ">= 2.4.1", only: :dev},
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
+      # {:eflame, git: "git@github.com:slfritchie/eflame", only: :dev},
     ]
   end
 

@@ -25,7 +25,7 @@ defmodule Honeydew.Queue do
   @type filter :: Honeydew.filter()
   @type args :: list
 
-  @callback validate_args!(args) :: {module :: atom, args}
+  @callback validate_args!(args) :: :ok
   @callback rewrite_opts(args) :: args
   @callback init(name, args) :: {:ok, private}
   @callback enqueue(job, private) :: {private, job}

@@ -342,11 +342,6 @@ defmodule Honeydew do
   @spec start_queue(queue_name, [queue_spec_opt]) :: :ok
   defdelegate start_queue(name, opts \\ []), to: Queues
 
-  @deprecated "Honeydew now supervises your worker processes, please use `Honeydew.start_workers/3 instead.`"
-  def worker_spec(_queue, _module_and_args, _opts \\ []) do
-    raise "Honeydew now supervises your worker processes, please use `Honeydew.start_workers/3 instead.`"
-  end
-
   @doc """
   Stops the local instance of the provided queue name.
   """
@@ -387,6 +382,11 @@ defmodule Honeydew do
   - `Honeydew.start_workers({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
   """
   defdelegate start_workers(name, module_and_args, opts \\ []), to: Honeydew.Workers
+
+  @deprecated "Honeydew now supervises your worker processes, please use `Honeydew.start_workers/3 instead.`"
+  def worker_spec(_queue, _module_and_args, _opts) do
+    raise "Honeydew now supervises your worker processes, please use `Honeydew.start_workers/3 instead.`"
+  end
 
   @doc """
   Stops the local workers for the provided queue name.

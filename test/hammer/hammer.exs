@@ -10,7 +10,7 @@ end
 
 defmodule Honeydew.Hammer do
 
-  @num_jobs 5_00_000
+  @num_jobs 1_000_000
 
   def run(func) do
     :ok = Honeydew.start_queue(:queue)
