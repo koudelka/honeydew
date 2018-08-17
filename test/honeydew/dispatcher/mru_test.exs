@@ -45,4 +45,9 @@ defmodule Honeydew.Dispatcher.MRUTest do
     {worker, _state} = MRU.check_out(nil, state)
     assert worker == nil
   end
+
+  test "known?/2", %{state: state} do
+    assert MRU.known?("a", state)
+    refute MRU.known?("z", state)
+  end
 end

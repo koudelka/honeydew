@@ -7,6 +7,7 @@ defmodule Honeydew.Mixfile do
     [app: :honeydew,
      version: @version,
      elixir: "~> 1.6",
+     start_permanent: Mix.env() == :prod,
      docs: docs(),
      deps: deps(),
      package: package(),
@@ -31,7 +32,8 @@ defmodule Honeydew.Mixfile do
   #
   # Type `mix help compile.app` for more information
   def application do
-    [extra_applications: [:logger]]
+    [extra_applications: [:logger],
+     mod: {Honeydew.Application, []}]
   end
 
   defp deps do
@@ -39,14 +41,15 @@ defmodule Honeydew.Mixfile do
       {:ecto, "~> 2.0", optional: true, only: [:dev, :prod]},
       {:riakc, ">= 2.4.1", only: :dev},
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
+      # {:eflame, git: "git@github.com:slfritchie/eflame", only: :dev},
     ]
   end
 
   defp package do
     [maintainers: ["Michael Shapiro"],
      licenses: ["MIT"],
-     links: %{"GitHub": "https://github.com/koudelka/elixir-honeydew"}]
+     links: %{"GitHub": "https://github.com/koudelka/honeydew"}]
   end
 
   defp docs do

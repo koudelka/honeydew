@@ -13,7 +13,7 @@ defmodule Honeydew.Queue.Mnesia do
   alias Honeydew.Job
   alias Honeydew.Queue
 
-  @behaviour Honeydew.Queue
+  @behaviour Queue
 
   # private queue state
   defmodule PState do
@@ -24,6 +24,26 @@ defmodule Honeydew.Queue.Mnesia do
   # TODO: document. :(
   @pending_match_spec [{Job.job(private: {false, :_}, _: :_) |> Job.to_record(:_), [], [:"$_"]}]
 
+  @access_contexts [:transaction, :sync_transaction, :async_dirty, :sync_dirty, :ets]
+
+  @impl true
+  def validate_args!([_nodes, _table_opts, [access_context: access_context]]) when access_context not in @access_contexts do
+    raise ArgumentError, "You provided an invalid access context, `#{inspect access_context}`,` to the #{__MODULE__} queue, mnesia supports any of #{inspect @access_contexts}."
+  end
+
+  def validate_args!([[], _table_opts, _opts]) do
+    raise ArgumentError, "You must provide at least one node to #{__MODULE__}, for instance `[#{inspect node()}]`."
+  end
+
+  def validate_args!([nodes, _table_opts, _opts]) do
+    Enum.each(nodes, fn
+      node when not is_atom(node) ->
+        raise ArgumentError, "You provided node name `#{inspect node}` to the #{__MODULE__} queue, valid node names are atoms."
+      _ -> :ok
+    end)
+
+    :ok
+  end
 
   @impl true
   def init(queue_name, [nodes, table_opts, opts]) do
@@ -193,12 +213,6 @@ defmodule Honeydew.Queue.Mnesia do
       end)
 
     {reply, state}
-  end
-
-  @impl true
-  def handle_info(msg, state) do
-    Logger.warn "[Honeydew] Queue #{inspect self()} received unexpected message #{inspect msg}"
-    {:noreply, state}
   end
 
   defp reset_after_crash(table, access_context) do

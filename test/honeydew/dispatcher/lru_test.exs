@@ -45,4 +45,9 @@ defmodule Honeydew.Dispatcher.LRUTest do
     {worker, _state} = LRU.check_out(nil, state)
     assert worker == nil
   end
+
+  test "known?/2", %{state: state} do
+    assert LRU.known?("a", state)
+    refute LRU.known?("z", state)
+  end
 end

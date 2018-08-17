@@ -68,4 +68,9 @@ defmodule Honeydew.Dispatcher.LRUNodeTest do
 
     refute LRUNode.available?(state)
   end
+
+  test "known?/2", %{state: state} do
+    assert LRUNode.known?({"a", :a}, state)
+    refute LRUNode.known?({"z", :z}, state)
+  end
 end

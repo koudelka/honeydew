@@ -1,29 +1,14 @@
 defmodule Honeydew.Dispatcher.MRU do
+  alias Honeydew.Dispatcher.LRU
   # TODO: docs
-  # TODO: abstract common LRU/MRU functionality?
 
-  def init do
-    {:ok, :queue.new}
-  end
+  defdelegate init, to: LRU
+  defdelegate available?(state), to: LRU
+  defdelegate check_out(job, state), to: LRU
+  defdelegate remove(worker, state), to: LRU
+  defdelegate known?(worker, state), to: LRU
 
-  def available?(free) do
-    !:queue.is_empty(free)
-  end
-
-  def check_in(worker, free) do
-    :queue.in_r(worker, free)
-  end
-
-  def check_out(_job, free) do
-    case :queue.out(free) do
-      {{:value, worker}, free} ->
-        {worker, free}
-      {:empty, _free} ->
-        {nil, free}
-    end
-  end
-
-  def remove(worker, free) do
-    :queue.filter(&(&1 != worker), free)
+  def check_in(worker, {free, busy}) do
+    {:queue.in_r(worker, free), MapSet.delete(busy, worker)}
   end
 end

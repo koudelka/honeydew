@@ -1,6 +1,5 @@
 defmodule Honeydew.MnesiaQueueIntegrationTest do
-  use ExUnit.Case, async: true
-
+  use ExUnit.Case, async: false # shares doctest queue name with ErlangQueue test
   alias Honeydew.Job
 
   @moduletag :capture_log
@@ -202,39 +201,21 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     assert Enum.count(monitors) < 20
   end
 
-  test "resets in-progress jobs after crashing", %{queue: queue, queue_sup: queue_sup, worker_sup: worker_sup} do
+  test "resets in-progress jobs after crashing", %{queue: queue} do
     Enum.each(1..10, fn _ ->
       Honeydew.async(fn -> Process.sleep(20_000) end, queue)
     end)
 
-    %{queue: %{count: total, in_progress: in_progress}, workers: workers} = Honeydew.status(queue)
+    %{queue: %{count: total, in_progress: in_progress}} = Honeydew.status(queue)
 
     assert total == 10
     assert in_progress == @num_workers
 
-    queue_process = Honeydew.get_queue(queue)
-
-    Process.flag(:trap_exit, true)
-
-    Process.exit(queue_sup, :normal)
-    Process.sleep(100)
-    assert not Process.alive?(queue_process)
-    assert nil == Honeydew.get_queue(queue)
-
-    Process.exit(worker_sup, :kill)
-
-    workers
-    |> Map.keys
-    |> Enum.each(fn worker ->
-      Process.exit(worker, :kill)
-      assert not Process.alive?(worker)
-    end)
-    Process.sleep(100) # let monitors die
-
-    Process.flag(:trap_exit, false)
+    :ok = Honeydew.stop_queue(queue)
+    :ok = Honeydew.stop_workers(queue)
 
     nodes = [node()]
-    {:ok, _} = Helper.start_queue_link(queue, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
+    :ok = Honeydew.start_queue(queue, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
 
     %{queue: %{count: total, in_progress: in_progress}} = Honeydew.status(queue)
 
@@ -279,8 +260,8 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     job = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
 
     other_queue = generate_queue_name()
-    {:ok, _} = start_queue(other_queue)
-    {:ok, _} = start_worker_pool(other_queue)
+    :ok = start_queue(other_queue)
+    :ok = start_worker_pool(other_queue)
 
     assert %Job{queue: ^other_queue} =
       Honeydew.move(job, other_queue)
@@ -293,8 +274,8 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     job = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
 
     other_queue = generate_queue_name()
-    {:ok, _} = start_queue(other_queue)
-    {:ok, _} = start_worker_pool(other_queue)
+    :ok = start_queue(other_queue)
+    :ok = start_worker_pool(other_queue)
 
     assert %Job{queue: ^other_queue} =
       Honeydew.move(job, other_queue)
@@ -311,8 +292,8 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     job = Honeydew.async({:return, [:pong]}, queue, reply: true)
 
     other_queue = generate_queue_name()
-    {:ok, _} = start_queue(other_queue)
-    {:ok, _} = start_worker_pool(other_queue)
+    :ok = start_queue(other_queue)
+    :ok = start_worker_pool(other_queue)
 
     assert %Job{queue: ^other_queue} = Honeydew.move(job, other_queue)
     assert 0 = queue |> Honeydew.status |> get_in([:queue, :count])
@@ -326,8 +307,8 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     job = Honeydew.async({:return, [:pong]}, queue, reply: true)
 
     other_queue = generate_queue_name()
-    {:ok, _} = start_queue(other_queue)
-    {:ok, _} = start_worker_pool(other_queue)
+    :ok = start_queue(other_queue)
+    :ok = start_worker_pool(other_queue)
 
     assert %Job{queue: ^other_queue} =
       Honeydew.move(job, other_queue)
@@ -351,18 +332,16 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
 
   defp setup_worker_pool(%{skip_worker_pool: true}), do: :ok
   defp setup_worker_pool(%{queue: queue}) do
-    {:ok, worker_sup} = start_worker_pool(queue)
-    {:ok, [worker_sup: worker_sup]}
+    :ok = start_worker_pool(queue)
   end
 
   defp setup_queue(%{queue: queue} = context) do
     suspended = Map.get(context, :start_suspended, false)
-    {:ok, queue_sup} = start_queue(queue, suspended: suspended)
-    {:ok, [queue_sup: queue_sup]}
+    :ok = start_queue(queue, suspended: suspended)
   end
 
   defp generate_queue_name do
-    "#{:erlang.monotonic_time}_#{:erlang.unique_integer}"
+    :erlang.unique_integer |> to_string
   end
 
   defp start_queue(queue, opts \\ []) do
@@ -373,17 +352,22 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
         opts
       )
 
-    Helper.start_queue_link(queue, queue_opts)
+    Honeydew.start_queue(queue, queue_opts)
   end
 
   defp start_worker_pool(queue) do
-    Helper.start_worker_link(queue, Stateless, num: @num_workers)
+    Honeydew.start_workers(queue, Stateless, num: @num_workers)
   end
 
   defp start_doctest_env(_) do
     queue = :my_queue
     start_queue(queue)
-    Helper.start_worker_link(queue, DocTestWorker, num: @num_workers)
+    :ok = Honeydew.start_workers(queue, DocTestWorker)
+
+    on_exit fn ->
+      :ok = Honeydew.stop_queue(queue)
+      :ok = Honeydew.stop_workers(queue)
+    end
 
     :ok
   end

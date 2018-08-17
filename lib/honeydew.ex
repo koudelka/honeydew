@@ -4,6 +4,12 @@ defmodule Honeydew do
   """
 
   alias Honeydew.Job
+  alias Honeydew.JobMonitor
+  alias Honeydew.Worker
+  alias Honeydew.WorkerStarter
+  alias Honeydew.WorkerGroupSupervisor
+  alias Honeydew.Queue
+  alias Honeydew.{Queues, Workers}
   require Logger
 
   @type mod_or_mod_args :: module | {module, args :: term}
@@ -41,7 +47,7 @@ defmodule Honeydew do
       Honeydew.yield(job)
 
       # With pipes
-      result =
+      :pong =
         {:ping, ["127.0.0.1"]}
         |> Honeydew.async(:my_queue, reply: true)
         |> Honeydew.yield()
@@ -111,8 +117,8 @@ defmodule Honeydew do
   @spec suspend(queue_name) :: :ok
   def suspend(queue) do
     queue
-    |> get_all_members(:queues)
-    |> Enum.each(&GenServer.cast(&1, :suspend))
+    |> get_all_members(Queues)
+    |> Enum.each(&Queue.suspend/1)
   end
 
   @doc """
@@ -121,22 +127,22 @@ defmodule Honeydew do
   @spec resume(queue_name) :: :ok
   def resume(queue) do
     queue
-    |> get_all_members(:queues)
-    |> Enum.each(&GenServer.cast(&1, :resume))
+    |> get_all_members(Queues)
+    |> Enum.each(&Queue.resume/1)
   end
 
   def status(queue) do
     queue_status =
       queue
       |> get_queue
-      |> GenServer.call(:status)
+      |> Queue.status
 
     busy_workers =
       queue_status
-      |> Map.get(:monitors)
+      |> Map.get(:job_monitors)
       |> Enum.map(fn monitor ->
            try do
-             GenServer.call(monitor, :status)
+             JobMonitor.status(monitor)
            catch
              # the monitor may have shut down
              :exit, _ -> nil
@@ -147,12 +153,12 @@ defmodule Honeydew do
 
     workers =
       queue
-      |> get_all_members(:workers)
+      |> get_all_members(Workers)
       |> Enum.map(&{&1, nil})
       |> Enum.into(%{})
       |> Map.merge(busy_workers)
 
-    %{queue: Map.delete(queue_status, :monitors), workers: workers}
+    %{queue: Map.delete(queue_status, :job_monitors), workers: workers}
   end
 
   @doc """
@@ -185,7 +191,7 @@ defmodule Honeydew do
     {:ok, jobs} =
       queue
       |> get_queue
-      |> GenServer.call({:filter, filter})
+      |> Queue.filter(filter)
 
     jobs
   end
@@ -204,7 +210,7 @@ defmodule Honeydew do
   def cancel(%Job{queue: queue} = job) do
     queue
     |> get_queue
-    |> GenServer.call({:cancel, job})
+    |> Queue.cancel(job)
   end
 
   @doc """
@@ -248,13 +254,6 @@ defmodule Honeydew do
     new_job
   end
 
-  # FIXME: remove
-  def state(queue) do
-    queue
-    |> get_all_members(:queues)
-    |> Enum.map(&GenServer.call(&1, :"$honeydew.state"))
-  end
-
   @doc false
   def enqueue(%Job{queue: queue} = job) do
     queue
@@ -263,7 +262,7 @@ defmodule Honeydew do
          nil -> raise RuntimeError, no_queues_running_error(job)
          queue -> queue
        end
-    |> GenServer.call({:enqueue, job})
+    |> Queue.enqueue(job)
   end
 
   @doc false
@@ -278,7 +277,7 @@ defmodule Honeydew do
 
   @doc false
   def no_queues_running_error(%Job{queue: {:global, _} = queue} = job) do
-    "can't enqueue job #{inspect job} because there aren't any queue processes running for the distributed queue `#{inspect queue}, are you connected to the cluster?`"
+    "can't enqueue job because there aren't any queue processes running for the distributed queue `#{inspect queue}, are you connected to the cluster? #{inspect job} `"
   end
 
   @doc false
@@ -286,35 +285,128 @@ defmodule Honeydew do
     "can't enqueue job #{inspect job} because there aren't any queue processes running for `#{inspect queue}`"
   end
 
-  @type queue_spec_opt ::
-    {:queue, mod_or_mod_args} |
-    {:dispatcher, mod_or_mod_args} |
-    {:failure_mode, mod_or_mod_args | nil} |
-    {:success_mode, mod_or_mod_args | nil} |
-    {:supervisor_opts, supervisor_opts} |
-    {:suspended, boolean}
-
-  @deprecated "Use module based child specs with Honeydew.Queues instead"
-  @spec queue_spec(queue_name, [queue_spec_opt]) :: Supervisor.child_spec()
-  def queue_spec(name, opts \\ []) do
-    Honeydew.Queues.child_spec([name | opts])
+  @deprecated "Honeydew now supervises your queue processes, please use `Honeydew.start_queue/2 instead.`"
+  def queue_spec(_name, _opts) do
+    raise "Honeydew now supervises your queue processes, please use `Honeydew.start_queue/2 instead.`"
   end
+
+  @doc """
+  Returns a list of queues running on this node.
+  """
+  @spec queues() :: [queue_name]
+  defdelegate queues(), to: Queues
+
+  @doc """
+  Returns a list of queues that have workers are running on this node.
+  """
+  @spec workers() :: [queue_name]
+  defdelegate workers(), to: Workers
+
+  @type queue_spec_opt ::
+  {:queue, mod_or_mod_args} |
+  {:dispatcher, mod_or_mod_args} |
+  {:failure_mode, mod_or_mod_args | nil} |
+  {:success_mode, mod_or_mod_args | nil} |
+  {:supervisor_opts, supervisor_opts} |
+  {:suspended, boolean}
+
+  @doc """
+  Starts a queue under Honeydew's supervision tree.
+
+  `name` is how you'll refer to the queue to add a task.
+
+  You can provide any of the following `opts`:
+
+  - `queue`: is the module that queue will use. Defaults to
+    `Honeydew.Queue.ErlangQueue`. You may also provide args to the queue's
+    `c:Honeydew.Queue.init/2` callback using the following format:
+    `{module, args}`.
+  - `dispatcher`: the job dispatching strategy, `{module, init_args}`.
+
+  - `failure_mode`: the way that failed jobs should be handled. You can pass
+    either a module, or `{module, args}`. The module must implement the
+    `Honeydew.FailureMode` behaviour. Defaults to
+    `{Honeydew.FailureMode.Abandon, []}`.
+
+  - `success_mode`: a callback that runs when a job successfully completes. You
+     can pass either a module, or `{module, args}`. The module must implement
+     the `Honeydew.SuccessMode` behaviour. Defaults to `nil`.
+
+  - `suspended`: Start queue in suspended state. Defaults to `false`.
+
+  For example:
+
+  - `Honeydew.start_queue("my_awesome_queue")`
+
+  - `Honeydew.start_queue("my_awesome_queue", queue: {MyQueueModule, [ip: "localhost"]},
+                                              dispatcher: {Honeydew.Dispatcher.MRU, []})`
+  """
+  @spec start_queue(queue_name, [queue_spec_opt]) :: :ok
+  defdelegate start_queue(name, opts \\ []), to: Queues
+
+  @doc """
+  Stops the local instance of the provided queue name.
+  """
+  @spec stop_queue(queue_name) :: :ok | {:error, :not_running}
+  defdelegate stop_queue(name), to: Queues
 
   @type worker_spec_opt ::
-    {:num, non_neg_integer} |
-    {:init_retry, non_neg_integer} |
-    {:supervisor_opts, supervisor_opts} |
-    {:nodes, [node]}
+  {:num, non_neg_integer} |
+  {:supervisor_opts, supervisor_opts} |
+  {:nodes, [node]}
 
-  @deprecated "Use module based child specs with Honeydew.Workers instead"
-  @spec worker_spec(queue_name, mod_or_mod_args, [worker_spec_opt]) :: Supervisor.child_spec()
-  def worker_spec(queue, module_and_args, opts \\ []) do
-    Honeydew.Workers.child_spec([queue, module_and_args | opts])
+  @doc """
+  Starts workers under Honeydew's supervision tree.
+
+  `name` is the name of the queue that the workers pull jobs from.
+
+  `module` is the module that the workers in your queue will use. You may also
+  provide `c:Honeydew.Worker.init/1` args with `{module, args}`.
+
+  You can provide any of the following `opts`:
+
+  - `num`: the number of workers to start. Defaults to `10`.
+
+  - `shutdown`: if a worker is in the middle of a job, the amount of time, in
+     milliseconds, to wait before brutally killing it. Defaults to `10_000`.
+
+  - `supervisor_opts` options accepted by `Supervisor.child_spec()`.
+
+  - `nodes`: for :global queues, you can provide a list of nodes to stay
+     connected to (your queue node and enqueuing nodes). Defaults to `[]`.
+
+  For example:
+
+  - `Honeydew.start_workers("my_awesome_queue", MyJobModule)`
+
+  - `Honeydew.start_workers("my_awesome_queue", {MyJobModule, [key: "secret key"]}, num: 3)`
+
+  - `Honeydew.start_workers({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
+  """
+  defdelegate start_workers(name, module_and_args, opts \\ []), to: Honeydew.Workers
+
+  @deprecated "Honeydew now supervises your worker processes, please use `Honeydew.start_workers/3 instead.`"
+  def worker_spec(_queue, _module_and_args, _opts) do
+    raise "Honeydew now supervises your worker processes, please use `Honeydew.start_workers/3 instead.`"
   end
 
-  @groups [:workers,
-           :monitors,
-           :queues]
+  @doc """
+  Stops the local workers for the provided queue name.
+  """
+  @spec stop_workers(queue_name) :: :ok | {:error, :not_running}
+  defdelegate stop_workers(name), to: Workers
+
+  @doc """
+  Re-initializes the given worker, this is intended to be used from
+  within a worker's `failed_init/0` callback. Using it otherwise
+  may cause undefined behavior, at present, don't do it.
+  """
+  @spec reinitialize_worker() :: :ok
+  def reinitialize_worker do
+    Worker.module_init(self())
+  end
+
+  @groups [Workers, Queues]
 
   Enum.each(@groups, fn group ->
     @doc false
@@ -323,26 +415,12 @@ defmodule Honeydew do
     end
   end)
 
-  @supervisors [:worker_root,
-                :worker_groups,
-                :worker_group,
-                :worker,
-                :node_monitor,
-                :queue]
-
-  Enum.each(@supervisors, fn supervisor ->
-    @doc false
-    def supervisor(queue, unquote(supervisor)) do
-      name(queue, "#{unquote(supervisor)}_supervisor")
-    end
-  end)
-
-  @processes [:worker_starter]
+  @processes [WorkerGroupSupervisor, WorkerStarter]
 
   Enum.each(@processes, fn process ->
     @doc false
     def process(queue, unquote(process)) do
-      name(queue, "#{unquote(process)}_process")
+      name(queue, unquote(process))
     end
   end)
 
@@ -392,14 +470,14 @@ defmodule Honeydew do
   @doc false
   def get_all_queues({:global, _name} = queue) do
     queue
-    |> group(:queues)
+    |> group(Queues)
     |> :pg2.get_members
   end
 
   @doc false
   def get_all_queues(queue) do
     queue
-    |> group(:queues)
+    |> group(Queues)
     |> :pg2.get_local_members
   end
 
@@ -418,7 +496,7 @@ defmodule Honeydew do
   end
 
   defp name(queue, component) do
-    ["honeydew", component, queue] |> List.flatten |> Enum.join(".") |> String.to_atom
+    [component, queue] |> List.flatten |> Enum.join(".") |> String.to_atom
   end
 
   @doc false

@@ -2,26 +2,21 @@ defmodule Honeydew.EctoPollQueueIntegrationTest do
   use ExUnit.Case, async: false
   @tag timeout: 2 * 60 * 1_000
   @examples_root "./examples/ecto_poll_queue"
+  @databases ~w(postgres cockroach)
 
-  File.cwd!
-  |> Path.join(@examples_root)
-  |> File.ls!
-  |> Enum.filter(& [File.cwd!, @examples_root, &1] |> Path.join |> File.dir?)
-  |> Enum.each(fn database ->
+  Enum.each(@databases, fn database ->
     test "ecto poll queue external project test: #{database}" do
+      database = unquote(database)
       IO.puts("\n")
-      IO.puts("------- Ecto Poll Queue: #{unquote(database)} -------")
-      cd = Path.join(@examples_root, unquote(database))
-      mix "deps.get", cd
-      mix "test", cd
+      IO.puts("------- Ecto Poll Queue: #{database} -------")
+      mix "deps.get", database
+      mix "test", database
       IO.puts("-------------------------------")
     end
   end)
 
-
-  defp mix(task, cd) do
-    {_, exit_code} = System.cmd("mix", [task], cd: cd, into: IO.stream(:stdio, 1))
+  defp mix(task, database) do
+    {_, exit_code} = System.cmd("mix", [task], cd: @examples_root, into: IO.stream(:stdio, 1), env: [{"MIX_ENV", database}])
     assert exit_code == 0
   end
-
 end

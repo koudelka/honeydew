@@ -18,8 +18,9 @@ defmodule Honeydew.FailureMode.Retry do
         }]
       }
   """
-  alias Honeydew.FailureMode.Abandon
   alias Honeydew.Job
+  alias Honeydew.Queue
+  alias Honeydew.FailureMode.Abandon
 
   require Logger
 
@@ -55,7 +56,7 @@ defmodule Honeydew.FailureMode.Retry do
 
     queue
     |> Honeydew.get_queue
-    |> GenServer.cast({:nack, job})
+    |> Queue.nack(job)
 
     # send the error to the awaiting process, if necessary
     with {owner, _ref} <- from,
