@@ -114,37 +114,6 @@ When a job completes successfully, the monitoring process runs the `handle_succe
 
 See `Honeydew.queue_spec/2` to select a success mode.
 
-## The Dungeon
-
-### Job Lifecycle
-In general, a job goes through the following stages:
-
-```
-- The requesting process calls `async/2`, which packages the task tuple/fn up into a "job" then sends
-  it to a member of the queue group.
-
-- The queue process will enqueue the job, then take one of the following actions:
-  ├─ If there is a worker available, the queue will dispatch the job immediately to the waiting
-  |  worker via the selected dispatch strategy.
-  └─ If there aren't any workers available, the job will remain in the queue until a worker announces
-     that it's ready
-
-- Upon dispatch, the queue "reserves" the job (marks it as in-progress), then spawns a local Monitor
-  process to watch the worker. The monitor starts a timer after which the job will be returned to the queue.
-  This is done to avoid blocking the queue waiting for confirmation from a worker that it has received the job.
-  └─ When the worker receives the job, it informs the monitor associated with the job. The monitor
-     then watches the worker in case the job crashes.
-     ├─ When the job succeeds:
-     |  ├─ If the job was enqueued with `reply: true`, the result is sent.
-     |  ├─ The worker sends an acknowledgement message to the monitor.
-     |  |─ The monitor sends an acknowledgement to the queue to remove the job.
-     |  |─ The monitor executes the selected success mode
-     |  └─ The worker informs the queue that it's ready for a new job. The queue checks the worker in with the
-     |     dispatcher.
-     └─ If the worker crashes, the monitor executes the selected failure mode and terminates.
-```
-
-
 ### Queues
 Queues are the most critical location of state in Honeydew, a job will not be removed from the queue unless it has either been successfully executed, or been dealt with by the configured failure mode.
 
@@ -158,26 +127,12 @@ Honeydew includes a few basic queue modules:
 
 If you want to implement your own queue, check out the included queues as a guide. Try to keep in mind where exactly your queue state lives, is your queue process(es) where jobs live, or is it a completely stateless connector for some external broker? Or a hybrid? I'm excited to see what you come up with, please open a PR! <3
 
-### Dispatchers
-Honeydew provides the following dispatchers:
-
-- `Honeydew.Dispatcher.LRUNode` - Least Recently Used Node (sends jobs to the least recently used worker on the least recently used node, the default for global queues)
-- `Honeydew.Dispatcher.LRU` - Least Recently Used Worker (FIFO, the default for local queues)
-- `Honeydew.Dispatcher.MRU` - Most Recently Used Worker (LIFO)
-
-You can also use your own dispatching strategy by passing it to `Honeydew.queue_spec/2`. Check out the [built-in dispatchers](https://github.com/koudelka/honeydew/tree/master/lib/honeydew/dispatcher) for reference.
-
 ### Worker State
 Worker state is immutable, the only way to change it is to cause the worker to crash and let the supervisor restart it.
 
 Your worker module's `init/1` function must return `{:ok, state}`. If anything else is returned or the function raises an error, the worker will die and restart after a given time interval (by default, five seconds).
 
 ### TODO:
-- let the user decide if they want to `:ignore` during their init/1, to allow errors to bubble up the supervision tree.
 - statistics?
 - `yield_many/2` support?
 - benchmark mnesia queue's dual filter implementations, discard one?
-
-### Acknowledgements
-
-Thanks to Marcelo Gornstein (@marcelo), for his [failing worker restart strategy](https://web.archive.org/web/20170929101642/http://inaka.net/blog/2012/11/29/every-day-erlang/).
