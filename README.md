@@ -34,7 +34,7 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 
 
 ### tl;dr
-- Check out the [examples](https://github.com/koudelka/honeydew/examples).
+- Check out the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
 - Enqueue jobs with `Honeydew.async/3`.
 - Receive responses with `Honeydew.yield/2`.
 - Emit job progress with `progress/1`
@@ -48,7 +48,7 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 
 The Ecto Poll Queue is designed to painlessly turn an already-existing Ecto schema into a queue, using your repo as the backing store. This eliminates the possiblity of your database and work queue becoming out of sync, as well as eliminating the need to run a separate queue node.
 
-Check out the included [example project](https://github.com/koudelka/honeydew/examples/ecto_poll_queue), and its README.
+Check out the included [example project](https://github.com/koudelka/honeydew/tree/master/examples/ecto_poll_queue), and its README.
 
 ## Getting Started
 
@@ -61,9 +61,9 @@ end
 ```
 
 ### README
-The rest of the README is broken out into slightly more digestable [sections](https://github.com/koudelka/honeydew/README).
+The rest of the README is broken out into slightly more digestable [sections](https://github.com/koudelka/honeydew/tree/master/README).
 
-Also check out the README files included with the [examples](https://github.com/koudelka/honeydew/examples).
+Also check out the README files included with the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
 
 ## TODO:
 - statistics?

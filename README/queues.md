@@ -12,7 +12,7 @@ Honeydew includes a few basic queue modules:
 If you want to implement your own queue, check out the included queues as a guide. Try to keep in mind where exactly your queue state lives, is your queue process(es) where jobs live, or is it a completely stateless connector for some external broker? A mix of the two?
 
 ### Queue Options
-There are various options you can pass to `start_queue/2`, see the [Honeydew](https://github.com/koudelka/honeydew/blob/master/lib/honeydew.ex) module.
+There are various options you can pass to `start_queue/2`, see the [Honeydew](https://hexdocs.pm/honeydew/Honeydew.html) module docs.
 
 ### Queue API Support
 |                        | async/3 + yield/2 |       filter/2     |    status/1    |     cancel/2   | suspend/1 + resume/1 |
