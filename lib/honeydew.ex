@@ -5,8 +5,9 @@ defmodule Honeydew do
 
   alias Honeydew.Job
   alias Honeydew.JobMonitor
-  alias Honeydew.WorkerGroupSupervisor
+  alias Honeydew.Worker
   alias Honeydew.WorkerStarter
+  alias Honeydew.WorkerGroupSupervisor
   alias Honeydew.Queue
   alias Honeydew.{Queues, Workers}
   require Logger
@@ -394,6 +395,16 @@ defmodule Honeydew do
   """
   @spec stop_workers(queue_name) :: :ok | {:error, :not_running}
   defdelegate stop_workers(name), to: Workers
+
+  @doc """
+  Re-initializes the given worker, this is intended to be used from
+  within a worker's `failed_init/0` callback. Using it otherwise
+  may cause undefined behavior, at present, don't do it.
+  """
+  @spec reinitialize_worker() :: :ok
+  def reinitialize_worker do
+    Worker.module_init(self())
+  end
 
   @groups [Workers, Queues]
 

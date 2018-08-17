@@ -144,8 +144,6 @@ defmodule HoneydewTest do
     Process.register(self(), :failed_init_test_process)
 
     defmodule FailedInitWorker do
-      alias Honeydew.Worker
-
       def init(_) do
         send :failed_init_test_process, {:init, self()}
         receive do
@@ -158,7 +156,7 @@ defmodule HoneydewTest do
 
       def failed_init do
         send :failed_init_test_process, :failed_init_ran
-        Worker.module_init(self())
+        Honeydew.reinitialize_worker()
       end
     end
 

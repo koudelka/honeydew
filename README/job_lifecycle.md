@@ -2,7 +2,7 @@
 In general, a job goes through the following stages:
 
 ```
-- The requesting process calls `async/2`, which packages the task tuple/fn up into a Job and sends
+- The requesting process calls `async/3`, which packages the task tuple/fn up into a Job and sends
   it to a member of the queue group.
 
 - The queue process will enqueue the job, then take one of the following actions:
