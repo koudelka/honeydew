@@ -29,5 +29,4 @@ defmodule Honeydew.WorkerStarter do
 
     {:noreply, queue}
   end
-
 end

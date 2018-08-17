@@ -85,7 +85,7 @@ defmodule HoneydewTest do
     assert status == {:running, "doing thing 1/2"}
   end
 
-  test "rapidly failing jobs don't crash the queue process and leave the system operational" do
+  test "rapidly failing jobs don't crash the queue process" do
     queue = :erlang.unique_integer
 
     :ok = Honeydew.start_queue(queue)
@@ -108,5 +108,85 @@ defmodule HoneydewTest do
     end
 
     assert queue_pid == Honeydew.get_queue(queue)
+  end
+
+  test "workers don't restart after a successful job" do
+    queue = :erlang.unique_integer
+
+    :ok = Honeydew.start_queue(queue)
+    :ok = Honeydew.start_workers(queue, Stateless, num: 1)
+
+    [worker] = workers(queue)
+
+    fn -> :ok end |> Honeydew.async(queue)
+    Process.sleep(100)
+
+    assert [worker] == workers(queue)
+  end
+
+  test "workers restart after a job crashes" do
+    queue = :erlang.unique_integer
+
+    :ok = Honeydew.start_queue(queue)
+    :ok = Honeydew.start_workers(queue, Stateless, num: 1)
+
+    [worker] = workers(queue)
+
+    fn -> raise "intentional crash" end |> Honeydew.async(queue)
+    Process.sleep(100)
+
+    [new_worker] = workers(queue)
+
+    assert worker != new_worker
+  end
+
+  test "stateful workers don't take work until their module init succeeds" do
+    Process.register(self(), :failed_init_test_process)
+
+    defmodule FailedInitWorker do
+      alias Honeydew.Worker
+
+      def init(_) do
+        send :failed_init_test_process, {:init, self()}
+        receive do
+          :fail ->
+            raise "init failed"
+          :ok ->
+            {:ok, nil}
+        end
+      end
+
+      def failed_init do
+        send :failed_init_test_process, :failed_init_ran
+        Worker.module_init(self())
+      end
+    end
+
+    queue = :erlang.unique_integer
+
+    :ok = Honeydew.start_queue(queue)
+    :ok = Honeydew.start_workers(queue, FailedInitWorker, num: 1)
+
+    fn _ -> send :failed_init_test_process, :job_ran end |> Honeydew.async(queue)
+
+    receive do
+      {:init, worker} -> send worker, :fail
+    end
+
+    assert_receive :failed_init_ran
+
+    refute_receive :job_ran
+
+    receive do
+      {:init, worker} -> send worker, :ok
+    end
+
+    assert_receive :job_ran
+
+    Process.unregister(:failed_init_test_process)
+  end
+
+  defp workers(queue) do
+    Honeydew.status(queue) |> Map.get(:workers) |> Map.keys
   end
 end

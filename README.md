@@ -5,6 +5,21 @@ Honeydew 💪🏻🍈
 
 Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a pluggable job queue + worker pool for Elixir.
 
+```elixir
+defmodule MyWorker do
+  def do_a_thing do
+    IO.puts "doing a thing!"
+  end
+end
+
+:ok = Honeydew.start_queue(:my_queue)
+:ok = Honeydew.start_workers(:my_queue, MyWorker)
+
+:do_a_thing |> Honeydew.async(:my_queue)
+
+# => "doing a thing!"
+```
+
 - Workers are permanent and hold immutable state (a database connection, for example).
 - Workers are issued only one job at a time, a job is only ever removed from the queue when it succeeds.
 - Queues can exist locally, on another node in the cluster, in your Ecto database, or on a remote queue server (rabbitmq, etc...).
@@ -15,7 +30,7 @@ Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a plug
 
 Honeydew attempts to provide "at least once" job execution, it's possible that circumstances could conspire to execute a job, and prevent Honeydew from reporting that success back to the queue. I encourage you to write your jobs idempotently.
 
-Honeydew isn't intended as a simple resource pool, the user's code isn't executed in the requesting process. Though you may use it as such, there are likely other alternatives that would fit your situation better.
+Honeydew isn't intended as a simple resource pool, the user's code isn't executed in the requesting process. Though you may use it as such, there are likely other alternatives that would fit your situation better, perhaps try [sbroker](https://github.com/fishcakez/sbroker).
 
 
 ### tl;dr

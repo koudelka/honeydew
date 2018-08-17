@@ -6,6 +6,7 @@ defmodule Honeydew.Worker do
   alias Honeydew.JobMonitor
   alias Honeydew.Queue
   alias Honeydew.Workers
+  alias Honeydew.WorkerSupervisor
 
   @init_retry_secs 5
 
@@ -29,24 +30,27 @@ defmodule Honeydew.Worker do
                :module,
                :has_init_fcn,
                :init_args,
+               :start_opts,
                {:ready, false},
                {:private, :no_state}]
   end
 
-  def child_spec(args, shutdown) do
-    args
-    |> child_spec
-    |> Map.put(:restart, :transient)
-    |> Map.put(:shutdown, shutdown)
+  def child_spec([_supervisor, _queue, %{shutdown: shutdown}, _queue_pid] = opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      restart: :transient,
+      shutdown: shutdown
+    }
   end
 
   @doc false
-  def start_link([queue, %{ma: {module, init_args}}, queue_pid]) do
-    GenServer.start_link(__MODULE__, [queue, queue_pid, module, init_args,])
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts)
   end
 
   @impl true
-  def init([queue, queue_pid, module, init_args]) do
+  def init([_supervisor, queue, %{ma: {module, init_args}}, queue_pid] = start_opts) do
     Process.flag(:trap_exit, true)
 
     queue
@@ -64,6 +68,7 @@ defmodule Honeydew.Worker do
                  queue_pid: queue_pid,
                  module: module,
                  init_args: init_args,
+                 start_opts: start_opts,
                  has_init_fcn: has_init_fcn}}
   end
 
@@ -124,7 +129,11 @@ defmodule Honeydew.Worker do
   #
   # the job monitor's timer will nack the job, since we're not going to claim it
   #
-  defp do_run(%Job{task: task, from: from, job_monitor: job_monitor} = job, %State{ready: true, queue_pid: queue_pid, module: module, private: private} = state) do
+  defp do_run(%Job{task: task, from: from, job_monitor: job_monitor} = job, %State{ready: true,
+                                                                                   queue_pid: queue_pid,
+                                                                                   module: module,
+                                                                                   private: private,
+                                                                                   start_opts: start_opts}) do
     job = %{job | by: node()}
 
     :ok = JobMonitor.claim(job_monitor, job)
@@ -159,12 +168,15 @@ defmodule Honeydew.Worker do
 
            Queue.worker_ready(queue_pid)
 
-           state
+           :ok
 
          {:error, e} ->
            :ok = JobMonitor.job_failed(job_monitor, e)
            Process.delete(:job_monitor)
-           do_module_init(state)
+
+           WorkerSupervisor.start_worker(start_opts)
+
+           :error
        end
   end
 
@@ -175,7 +187,12 @@ defmodule Honeydew.Worker do
   end
 
   def handle_cast({:run, job}, state) do
-    {:noreply, do_run(job, state)}
+    case do_run(job, state) do
+      :ok ->
+        {:noreply, state}
+      :error ->
+        {:stop, :normal, state}
+    end
   end
 
   #
