@@ -1,7 +1,7 @@
 defmodule Honeydew.Mixfile do
   use Mix.Project
 
-  @version "1.1.6"
+  @version "1.2.0"
 
   def project do
     [app: :honeydew,
@@ -53,7 +53,7 @@ defmodule Honeydew.Mixfile do
   end
 
   defp docs do
-    [extras: ["README.md"],
+    [extras: ["README.md", "README/*"],
      source_url: "https://github.com/koudelka/honeydew",
      source_ref: @version,
      assets: "assets",

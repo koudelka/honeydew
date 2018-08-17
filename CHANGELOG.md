@@ -1,4 +1,25 @@
-## Unreleased
+## 1.2.0 (2018-8-11)
+
+Honeydew now supervises your queues and workers for you, you no longer need to
+add them to your supervision trees.
+
+### Breaking Changes
+* `Honeydew.queue_spec/2` and `Honeydew.worker_spec/3` are now hard deprecated
+  in favor of `Honeydew.start_queue/2` and `Honeydew.start_workers/3`
+
+### Bug fixes
+* Rapidly failing jobs no longer have a chance to take down the worker supervisor.
+
+### Enhancements
+* `Honeydew.queues/0` and `Honeydew.workers/0` to list queues and workers running
+  on the local node.
+* `Honeydew.stop_queue/1` and `Honeydew.stop_workers/1` to stop local queues and
+  workers
+* Workers can now use the `failed_init/0` callback in combination with
+  `Honeydew.reinitialize_worker` to re-init workers if their init fails.
+* Many other things I'm forgetting...
+  
+## ?
 
 ### Breaking Changes
 
