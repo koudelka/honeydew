@@ -140,32 +140,24 @@ defmodule HoneydewTest do
     assert worker != new_worker
   end
 
-  test "stateful workers don't take work until their module init succeeds" do
-    Process.register(self(), :failed_init_test_process)
-
-    defmodule FailedInitWorker do
-      def init(_) do
-        send :failed_init_test_process, {:init, self()}
-        receive do
-          :fail ->
-            raise "init failed"
-          :ok ->
-            {:ok, nil}
-        end
-      end
-
-      def failed_init do
-        send :failed_init_test_process, :failed_init_ran
-        Honeydew.reinitialize_worker()
-      end
-    end
-
+  test "stateful workers reinitialize by default" do
     queue = :erlang.unique_integer
+    :ok = Honeydew.start_queue(queue)
+    :ok = Honeydew.start_workers(queue, {FailInitOnceWorker, self()}, num: 1, init_retry_secs: 1)
+
+    assert_receive :init_ran
+    Process.sleep(1_000)
+    assert_receive :init_ran
+  end
+
+  test "stateful workers don't take work until their module init succeeds" do
+    queue = :erlang.unique_integer
+    test_process = self()
 
     :ok = Honeydew.start_queue(queue)
-    :ok = Honeydew.start_workers(queue, FailedInitWorker, num: 1)
+    :ok = Honeydew.start_workers(queue, {FailedInitWorker, test_process}, num: 1)
 
-    fn _ -> send :failed_init_test_process, :job_ran end |> Honeydew.async(queue)
+    fn _ -> send test_process, :job_ran end |> Honeydew.async(queue)
 
     receive do
       {:init, worker} -> send worker, :fail
@@ -180,8 +172,6 @@ defmodule HoneydewTest do
     end
 
     assert_receive :job_ran
-
-    Process.unregister(:failed_init_test_process)
   end
 
   defp workers(queue) do

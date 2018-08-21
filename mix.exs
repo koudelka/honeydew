@@ -53,7 +53,7 @@ defmodule Honeydew.Mixfile do
   end
 
   defp docs do
-    [extras: ["README.md", "README/*"],
+    [extras: ["README.md"],
      source_url: "https://github.com/koudelka/honeydew",
      source_ref: @version,
      assets: "assets",

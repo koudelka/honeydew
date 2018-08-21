@@ -350,10 +350,13 @@ defmodule Honeydew do
   @spec stop_queue(queue_name) :: :ok | {:error, :not_running}
   defdelegate stop_queue(name), to: Queues
 
-  @type worker_spec_opt ::
-  {:num, non_neg_integer} |
-  {:supervisor_opts, supervisor_opts} |
-  {:nodes, [node]}
+  @type worker_opt ::
+    {:num, non_neg_integer} |
+    {:init_retry_secs, pos_integer} |
+    {:shutdown, non_neg_integer} |
+    {:nodes, [node]}
+
+  @type worker_opts :: [worker_opt]
 
   @doc """
   Starts workers under Honeydew's supervision tree.
@@ -367,10 +370,13 @@ defmodule Honeydew do
 
   - `num`: the number of workers to start. Defaults to `10`.
 
-  - `shutdown`: if a worker is in the middle of a job, the amount of time, in
-     milliseconds, to wait before brutally killing it. Defaults to `10_000`.
+  - `init_retry_secs`: the amount of time, in seconds, a stateful worker waits
+  before trying to re-initialize after its `c:Honeydew.Worker.init/1` function
+  fails. You can also override this behavior by implementing the
+  `c:Honeydew.Worker.failed_init/0` callback, see `README/workers.md`.
 
-  - `supervisor_opts` options accepted by `Supervisor.child_spec()`.
+  - `shutdown`: if a worker is in the middle of a job, the amount of time, in
+  milliseconds, to wait before brutally killing it. Defaults to `10_000`.
 
   - `nodes`: for :global queues, you can provide a list of nodes to stay
      connected to (your queue node and enqueuing nodes). Defaults to `[]`.
@@ -398,7 +404,7 @@ defmodule Honeydew do
 
   @doc """
   Re-initializes the given worker, this is intended to be used from
-  within a worker's `failed_init/0` callback. Using it otherwise
+  within a worker's `c:Honeydew.Worker.failed_init/0` callback. Using it otherwise
   may cause undefined behavior, at present, don't do it.
   """
   @spec reinitialize_worker() :: :ok

@@ -8,8 +8,6 @@ defmodule Honeydew.Worker do
   alias Honeydew.Workers
   alias Honeydew.WorkerSupervisor
 
-  @init_retry_secs 5
-
   @type private :: term
 
   @doc """
@@ -30,6 +28,7 @@ defmodule Honeydew.Worker do
                :module,
                :has_init_fcn,
                :init_args,
+               :init_retry_secs,
                :start_opts,
                {:ready, false},
                {:private, :no_state}]
@@ -50,7 +49,8 @@ defmodule Honeydew.Worker do
   end
 
   @impl true
-  def init([_supervisor, queue, %{ma: {module, init_args}}, queue_pid] = start_opts) do
+  def init([_supervisor, queue, %{ma: {module, init_args},
+                                  init_retry_secs: init_retry_secs}, queue_pid] = start_opts) do
     Process.flag(:trap_exit, true)
 
     queue
@@ -68,6 +68,7 @@ defmodule Honeydew.Worker do
                  queue_pid: queue_pid,
                  module: module,
                  init_args: init_args,
+                 init_retry_secs: init_retry_secs,
                  start_opts: start_opts,
                  has_init_fcn: has_init_fcn}}
   end
@@ -111,15 +112,15 @@ defmodule Honeydew.Worker do
     state
   end
 
-  defp send_ready_or_callback(%State{module: module} = state) do
+  defp send_ready_or_callback(%State{module: module, init_retry_secs: init_retry_secs} = state) do
     :functions
     |> module.__info__
     |> Enum.member?({:failed_init, 0})
     |> if do
       module.failed_init
     else
-      Logger.info "[Honeydew] Worker #{inspect self()} re-initing in #{@init_retry_secs}s"
-      :timer.apply_after(@init_retry_secs * 1_000, __MODULE__, :module_init, [self()])
+      Logger.info "[Honeydew] Worker #{inspect self()} re-initing in #{init_retry_secs}s"
+      :timer.apply_after(init_retry_secs * 1_000, __MODULE__, :module_init, [self()])
     end
 
     state

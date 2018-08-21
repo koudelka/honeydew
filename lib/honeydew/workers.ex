@@ -4,7 +4,7 @@ defmodule Honeydew.Workers do
 
   @type name :: Honeydew.queue_name()
   @type mod_or_mod_args :: Honeydew.mod_or_mod_args()
-  @type worker_spec_opt :: Honeydew.worker_spec_opt()
+  @type worker_opts :: Honeydew.worker_opts()
 
   @spec workers() :: [name]
   def workers do
@@ -21,6 +21,7 @@ defmodule Honeydew.Workers do
     end
   end
 
+  @spec start_workers(name, mod_or_mod_args, worker_opts) :: :ok
   def start_workers(name, module_and_args, opts \\ []) do
     {module, args} =
       case module_and_args do
@@ -31,7 +32,7 @@ defmodule Honeydew.Workers do
     opts = %{
       ma: {module, args},
       num: opts[:num] || 10,
-      init_retry: opts[:init_retry] || 5,
+      init_retry_secs: opts[:init_retry_secs] || 5,
       shutdown: opts[:shutdown] || 10_000,
       nodes: opts[:nodes] || []
     }
