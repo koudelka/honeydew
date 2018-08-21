@@ -1,4 +1,11 @@
-## 1.2.0 (2018-8-11)
+## 1.2.1 (2018-8-20)
+
+### Bug fixes
+* Stop ignoring `init_retry_secs` worker option
+* Fixed `Honeydew.worker_opts` typespecs.
+* Fixed `Honeydew.start_workers` specs.
+
+## 1.2.0 (2018-8-17)
 
 Honeydew now supervises your queues and workers for you, you no longer need to
 add them to your supervision trees.
