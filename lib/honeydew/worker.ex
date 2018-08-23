@@ -133,8 +133,7 @@ defmodule Honeydew.Worker do
   defp do_run(%Job{task: task, from: from, job_monitor: job_monitor} = job, %State{ready: true,
                                                                                    queue_pid: queue_pid,
                                                                                    module: module,
-                                                                                   private: private,
-                                                                                   start_opts: start_opts}) do
+                                                                                   private: private}) do
     job = %{job | by: node()}
 
     :ok = JobMonitor.claim(job_monitor, job)
@@ -172,15 +171,11 @@ defmodule Honeydew.Worker do
            Process.delete(:job_monitor)
 
            Queue.worker_ready(queue_pid)
-
            :ok
 
          {:error, e} ->
            :ok = JobMonitor.job_failed(job_monitor, e)
            Process.delete(:job_monitor)
-
-           WorkerSupervisor.start_worker(start_opts)
-
            :error
        end
   end
@@ -196,7 +191,7 @@ defmodule Honeydew.Worker do
       :ok ->
         {:noreply, state}
       :error ->
-        {:stop, :normal, state}
+        restart_worker(state)
     end
   end
 
@@ -204,13 +199,14 @@ defmodule Honeydew.Worker do
   # Our Queue died, our QueueMonitor will stop us soon.
   #
   @impl true
-  def handle_info({:EXIT, queue_pid, _reason}, %State{queue_pid: queue_pid} = state) do
-    {:noreply, state}
+  def handle_info({:EXIT, queue_pid, _reason}, %State{queue: queue, queue_pid: queue_pid} = state) do
+    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) saw its queue die, stopping..."
+    restart_worker(state)
   end
 
   def handle_info(msg, %State{queue: queue} = state) do
-    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}"
-    {:noreply, state}
+    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}, stopping..."
+    restart_worker(state)
   end
 
   @impl true
@@ -219,5 +215,10 @@ defmodule Honeydew.Worker do
   def terminate({:shutdown, _}, _state), do: :ok
   def terminate(reason, _state) do
     Logger.info "[Honeydew] Worker #{inspect self()} stopped because #{inspect reason}"
+  end
+
+  defp restart_worker(%State{start_opts: start_opts} = state) do
+    WorkerSupervisor.start_worker(start_opts)
+    {:stop, :normal, state}
   end
 end

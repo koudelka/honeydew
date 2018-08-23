@@ -85,7 +85,7 @@ defmodule HoneydewTest do
     assert status == {:running, "doing thing 1/2"}
   end
 
-  test "rapidly failing jobs don't crash the queue process" do
+  test "remains operational during chaos" do
     queue = :erlang.unique_integer
 
     :ok = Honeydew.start_queue(queue)
@@ -94,16 +94,19 @@ defmodule HoneydewTest do
     queue_pid = Honeydew.get_queue(queue)
 
     Honeydew.suspend(queue)
-    Enum.each(0..100, fn _ ->
+    Enum.each(0..200, fn _ ->
+      # different kinds of failing jobs
       fn -> raise "intentional crash" end |> Honeydew.async(queue)
       fn -> throw "intentional crash" end |> Honeydew.async(queue)
+      # unhandled messages
+      fn -> send self(), :rubbish end |> Honeydew.async(queue)
     end)
     me = self()
-    fn -> send(me, :done) end |> Honeydew.async(queue)
+    fn -> send(me, :still_here) end |> Honeydew.async(queue)
     Honeydew.resume(queue)
 
     receive do
-      :done ->
+      :still_here ->
         Process.sleep(50) # let remaining jobs fail so :capture_log can dispose of their logs
         :ok
     end
