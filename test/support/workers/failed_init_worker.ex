@@ -4,8 +4,10 @@ defmodule FailedInitWorker do
     send test_process, {:init, self()}
 
     receive do
-      :fail ->
+      :raise ->
         raise "init failed"
+      :throw ->
+        throw "init failed"
       :ok ->
         {:ok, nil}
     end

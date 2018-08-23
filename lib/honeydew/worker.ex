@@ -49,8 +49,7 @@ defmodule Honeydew.Worker do
   end
 
   @impl true
-  def init([_supervisor, queue, %{ma: {module, init_args},
-                                  init_retry_secs: init_retry_secs}, queue_pid] = start_opts) do
+  def init([_supervisor, queue, %{ma: {module, init_args}, init_retry_secs: init_retry_secs}, queue_pid] = start_opts) do
     Process.flag(:trap_exit, true)
 
     queue
@@ -97,8 +96,11 @@ defmodule Honeydew.Worker do
           %{state | ready: false}
       end
     rescue e ->
-        Logger.warn("#{module}.init/1 must return {:ok, state :: any()}, but raised #{inspect e}")
-        %{state | ready: false}
+      Logger.warn("#{module}.init/1 must return {:ok, state :: any()}, but raised #{inspect e}")
+      %{state | ready: false}
+    catch e ->
+      Logger.warn("#{module}.init/1 must return {:ok, state :: any()}, but threw #{inspect e}")
+      %{state | ready: false}
     end
     |> send_ready_or_callback
   end

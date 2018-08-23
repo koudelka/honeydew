@@ -6,7 +6,7 @@ defmodule FailInitOnceWorker do
       {:ok, :state}
     else
       Process.put(:already_failed, true)
-      raise "intentional init failure"
+      throw "intentional init failure"
     end
   end
 end

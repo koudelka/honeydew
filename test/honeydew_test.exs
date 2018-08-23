@@ -164,17 +164,20 @@ defmodule HoneydewTest do
     fn _ -> send test_process, :job_ran end |> Honeydew.async(queue)
 
     receive do
-      {:init, worker} -> send worker, :fail
+      {:init, worker} -> send worker, :raise
     end
-
     assert_receive :failed_init_ran
+    refute_receive :job_ran
 
+    receive do
+      {:init, worker} -> send worker, :throw
+    end
+    assert_receive :failed_init_ran
     refute_receive :job_ran
 
     receive do
       {:init, worker} -> send worker, :ok
     end
-
     assert_receive :job_ran
   end
 
