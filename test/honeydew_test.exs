@@ -96,6 +96,7 @@ defmodule HoneydewTest do
     Honeydew.suspend(queue)
     Enum.each(0..100, fn _ ->
       fn -> raise "intentional crash" end |> Honeydew.async(queue)
+      fn -> throw "intentional crash" end |> Honeydew.async(queue)
     end)
     me = self()
     fn -> send(me, :done) end |> Honeydew.async(queue)

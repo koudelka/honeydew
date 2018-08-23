@@ -156,6 +156,10 @@ defmodule Honeydew.Worker do
       {:ok, result}
     rescue e ->
         {:error, {e, System.stacktrace()}}
+    catch e ->
+        # this will catch exit signals too, which is ok, we just need to shut down in a
+        # controlled manner due to a problem with a process that the user linked to
+        {:error, {e, System.stacktrace()}}
     end
     |> case do
          {:ok, result} ->
