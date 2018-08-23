@@ -19,6 +19,8 @@ addons:
 cache:
   directories:
     - _build
+    - examples/ecto_poll_queue/_build
+    - examples/ecto_poll_queue/deps
     - deps
 
 before_install:
