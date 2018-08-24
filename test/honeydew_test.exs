@@ -128,6 +128,34 @@ defmodule HoneydewTest do
     assert [worker] == workers(queue)
   end
 
+  test "workers don't restart when a linked process terminates normally" do
+    queue = :erlang.unique_integer
+
+    :ok = Honeydew.start_queue(queue)
+    :ok = Honeydew.start_workers(queue, Stateless, num: 1)
+
+    [worker] = workers(queue)
+
+    fn -> spawn_link(fn -> :ok end); Process.sleep(100) end |> Honeydew.async(queue)
+    Process.sleep(200)
+
+    assert [worker] == workers(queue)
+  end
+
+  test "workers restart when a linked process terminates abnormally" do
+    queue = :erlang.unique_integer
+
+    :ok = Honeydew.start_queue(queue)
+    :ok = Honeydew.start_workers(queue, Stateless, num: 1)
+
+    [worker] = workers(queue)
+
+    fn -> spawn_link(fn -> raise "intentional crash" end) end |> Honeydew.async(queue)
+    Process.sleep(200)
+
+    assert [worker] != workers(queue)
+  end
+
   test "workers restart after a job crashes" do
     queue = :erlang.unique_integer
 

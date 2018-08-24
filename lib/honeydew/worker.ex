@@ -203,6 +203,14 @@ defmodule Honeydew.Worker do
   @impl true
   def handle_info({:EXIT, queue_pid, _reason}, %State{queue: queue, queue_pid: queue_pid} = state) do
     Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) saw its queue die, stopping..."
+    {:noreply, state}
+  end
+
+  def handle_info({:EXIT, _pid, :normal}, state), do: {:noreply, state}
+  def handle_info({:EXIT, _pid, :shutdown}, state), do: {:noreply, state}
+  def handle_info({:EXIT, _pid, {:shutdown, _}}, state), do: {:noreply, state}
+  def handle_info({:EXIT, pid, reason}, %State{queue: queue} = state) do
+    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) saw a linked process, #{inspect pid} die abnormally with reason #{inspect reason}, stopping..."
     restart_worker(state)
   end
 
