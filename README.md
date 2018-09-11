@@ -24,7 +24,7 @@ end
 - Workers are issued only one job at a time, a job is only ever removed from the queue when it succeeds or is instructed to abandon it.
 - Queues can exist locally, on another node in the cluster, in your Ecto database, or on a remote queue server (rabbitmq, etc...).
 - If a worker crashes while processing a job, the job is recovered and a "failure mode" (abandon, move, retry, etc) is executed.
-- Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](http://elixir-lang.org/docs/stable/elixir/Task.html).
+- Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](https://hexdocs.pm/elixir/Task.html).
 - Queues, workers, dispatch strategies and failure/success modes are all plugable with user modules.
 - Can optionally heal your cluster after a disconnect or downed node.
 
