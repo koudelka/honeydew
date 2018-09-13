@@ -50,4 +50,17 @@ defmodule Honeydew.FailureMode.AbandonTest do
     assert {"intentional crash", stacktrace} = reason
     assert is_list(stacktrace)
   end
+
+  test "should inform the awaiting process when the linked process terminates abnormally", %{queue: queue} do
+    {:error, reason} =
+      fn ->
+        spawn_link(fn -> raise "intentional crash" end)
+        Process.sleep(100)
+      end
+      |> Honeydew.async(queue, reply: true)
+      |> Honeydew.yield
+
+    assert {%RuntimeError{message: "intentional crash"}, stacktrace} = reason
+    assert is_list(stacktrace)
+  end
 end

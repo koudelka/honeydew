@@ -76,4 +76,23 @@ defmodule Honeydew.FailureMode.RetryTest do
     # job ran in the failure queue
     assert {:error, {"intentional crash", _stacktrace}} = Honeydew.yield(job)
   end
+
+  test "should inform the awaiting process when the linked process terminates abnormally", %{queue: queue, failure_queue: failure_queue} do
+    job =
+      fn ->
+        spawn_link(fn -> throw "intentional crash" end)
+        Process.sleep(100)
+      end
+      |> Honeydew.async(queue, reply: true)
+
+    assert {:retrying, {%RuntimeError{message: "intentional crash"}, _stacktrace}} = Honeydew.yield(job)
+    assert {:retrying, {%RuntimeError{message: "intentional crash"}, _stacktrace}} = Honeydew.yield(job)
+    assert {:retrying, {%RuntimeError{message: "intentional crash"}, _stacktrace}} = Honeydew.yield(job)
+    assert {:moved, {%RuntimeError{message: "intentional crash"}, _stacktrace}} = Honeydew.yield(job)
+
+    :ok = Honeydew.start_workers(failure_queue, Stateless)
+
+    # # job ran in the failure queue
+    assert {:error, {%RuntimeError{message: "intentional crash"}, _stacktrace}} = Honeydew.yield(job)
+  end
 end
