@@ -49,7 +49,7 @@ defmodule Honeydew.FailureMode.RetryTest do
     assert Honeydew.status(failure_queue) |> get_in([:queue, :count]) == 1
   end
 
-  test "should inform the awaiting process of the error", %{queue: queue, failure_queue: failure_queue} do
+  test "should inform the awaiting process of the exception", %{queue: queue, failure_queue: failure_queue} do
     job = {:crash, [self()]} |> Honeydew.async(queue, reply: true)
 
     assert {:retrying, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
@@ -59,7 +59,21 @@ defmodule Honeydew.FailureMode.RetryTest do
 
     :ok = Honeydew.start_workers(failure_queue, Stateless)
 
-    # # job ran in the failure queue
+    # job ran in the failure queue
     assert {:error, {%RuntimeError{message: "ignore this crash"}, _stacktrace}} = Honeydew.yield(job)
+  end
+
+  test "should inform the awaiting process of an uncaught throw", %{queue: queue, failure_queue: failure_queue} do
+    job = fn -> throw "intentional crash" end |> Honeydew.async(queue, reply: true)
+
+    assert {:retrying, {"intentional crash", _stacktrace}} = Honeydew.yield(job)
+    assert {:retrying, {"intentional crash", _stacktrace}} = Honeydew.yield(job)
+    assert {:retrying, {"intentional crash", _stacktrace}} = Honeydew.yield(job)
+    assert {:moved, {"intentional crash", _stacktrace}} = Honeydew.yield(job)
+
+    :ok = Honeydew.start_workers(failure_queue, Stateless)
+
+    # job ran in the failure queue
+    assert {:error, {"intentional crash", _stacktrace}} = Honeydew.yield(job)
   end
 end

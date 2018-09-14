@@ -31,8 +31,23 @@ defmodule Honeydew.FailureMode.AbandonTest do
     refute_receive :job_ran
   end
 
-  test "should inform the awaiting process of the error", %{queue: queue} do
-    {:error, reason} = {:crash, [self()]} |> Honeydew.async(queue, reply: true) |> Honeydew.yield
-    assert {%RuntimeError{message: "ignore this crash"}, _stacktrace} = reason
+  test "should inform the awaiting process of the exception", %{queue: queue} do
+    {:error, reason} =
+      {:crash, [self()]}
+      |> Honeydew.async(queue, reply: true)
+      |> Honeydew.yield
+
+    assert {%RuntimeError{message: "ignore this crash"}, stacktrace} = reason
+    assert is_list(stacktrace)
+  end
+
+  test "should inform the awaiting process of an uncaught throw", %{queue: queue} do
+    {:error, reason} =
+      fn -> throw "intentional crash" end
+      |> Honeydew.async(queue, reply: true)
+      |> Honeydew.yield
+
+    assert {"intentional crash", stacktrace} = reason
+    assert is_list(stacktrace)
   end
 end
