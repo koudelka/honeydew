@@ -9,6 +9,32 @@ defmodule HoneydewTest do
 
   setup :restart_honeydew
 
+  defmodule EchoingFailureMode do
+    alias Honeydew.Job
+    alias Honeydew.Queue
+    @behaviour Honeydew.FailureMode
+
+    def validate_args!([test_pid]) when is_pid(test_pid), do: :ok
+
+    def handle_failure(%Job{queue: queue, from: from} = job, reason, [test_pid]) do
+      send test_pid, {:job_failed, reason}
+
+      # tell the queue that that job can be removed.
+      queue
+      |> Honeydew.get_queue
+      |> Queue.ack(job)
+
+      # send the error to the awaiting process, if necessary
+      with {owner, _ref} <- from,
+        do: send(owner, %{job | result: {:error, reason}})
+    end
+
+    def await_job_failure_reason do
+      assert_receive({:job_failed, reason})
+      reason
+    end
+  end
+
   test "queues/0 + stop_queue/1" do
     assert Enum.empty?(Honeydew.queues)
 
@@ -142,34 +168,93 @@ defmodule HoneydewTest do
     assert [worker] == workers(queue)
   end
 
-  test "workers restart when a linked process terminates abnormally" do
+  test "when a job crashes with an exception" do
     queue = :erlang.unique_integer
 
-    :ok = Honeydew.start_queue(queue)
+    :ok = Honeydew.start_queue(queue, failure_mode: {EchoingFailureMode, [self()]})
     :ok = Honeydew.start_workers(queue, Stateless, num: 1)
 
     [worker] = workers(queue)
 
-    fn -> spawn_link(fn -> raise "intentional crash" end) end |> Honeydew.async(queue)
-    Process.sleep(200)
+    fn -> raise "intentional crash" end
+    |> Honeydew.async(queue)
 
-    assert [worker] != workers(queue)
-  end
+    assert {%RuntimeError{message: "intentional crash"}, stacktrace} =
+      EchoingFailureMode.await_job_failure_reason()
+    assert is_list(stacktrace)
 
-  test "workers restart after a job crashes" do
-    queue = :erlang.unique_integer
-
-    :ok = Honeydew.start_queue(queue)
-    :ok = Honeydew.start_workers(queue, Stateless, num: 1)
-
-    [worker] = workers(queue)
-
-    fn -> raise "intentional crash" end |> Honeydew.async(queue)
     Process.sleep(100)
 
-    [new_worker] = workers(queue)
+    assert_worker_restarted(queue, worker)
+  end
 
-    assert worker != new_worker
+  test "when a job crashes with an uncaught throw" do
+    queue = :erlang.unique_integer
+    thrown = :ice_cream_cone
+
+    :ok = Honeydew.start_queue(queue, failure_mode: {EchoingFailureMode, [self()]})
+    :ok = Honeydew.start_workers(queue, Stateless, num: 1)
+
+    [worker] = workers(queue)
+
+    fn -> throw(thrown) end
+    |> Honeydew.async(queue)
+
+    assert {^thrown, stacktrace} =
+      EchoingFailureMode.await_job_failure_reason()
+    assert is_list(stacktrace)
+
+    Process.sleep(100)
+
+    assert_worker_restarted(queue, worker)
+  end
+
+  test "when a job is terminated" do
+    queue = :erlang.unique_integer
+
+    :ok = Honeydew.start_queue(queue, failure_mode: {EchoingFailureMode, [self()]})
+    :ok = Honeydew.start_workers(queue, Stateless, num: 1)
+
+    [worker] = workers(queue)
+
+    fn ->
+      Process.sleep(:infinity)
+    end
+    |> Honeydew.async(queue)
+
+    # Without Process.sleep, the failure reason becomes :noproc because the
+    # worker is killed before the job monitor can monitor it
+    Process.sleep(100)
+
+    Process.exit(worker, :kill)
+
+    assert :killed = EchoingFailureMode.await_job_failure_reason()
+
+    Process.sleep(100)
+
+    assert_worker_restarted(queue, worker)
+  end
+
+  test "when a linked process terminates abnormally" do
+    queue = :erlang.unique_integer
+
+    :ok = Honeydew.start_queue(queue, failure_mode: {EchoingFailureMode, [self()]})
+    :ok = Honeydew.start_workers(queue, Stateless, num: 1)
+
+    [worker] = workers(queue)
+
+    fn -> spawn_link(fn -> raise "intentional crash" end) end
+    |> Honeydew.async(queue)
+
+    # # TODO: enable this when https://github.com/koudelka/honeydew/pull/56 is
+    # # fixed
+    # assert {%RuntimeError{message: "intentional crash"}, stacktrace} =
+    #   EchoingFailureMode.await_job_failure_reason()
+    # assert is_list(stacktrace)
+
+    Process.sleep(100)
+
+    assert_worker_restarted(queue, worker)
   end
 
   test "stateful workers reinitialize by default" do
@@ -212,4 +297,11 @@ defmodule HoneydewTest do
   defp workers(queue) do
     Honeydew.status(queue) |> Map.get(:workers) |> Map.keys
   end
+
+  defp assert_worker_restarted(queue, worker) do
+    [new_worker] = workers(queue)
+
+    assert worker != new_worker
+  end
+
 end
