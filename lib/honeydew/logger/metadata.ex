@@ -14,4 +14,8 @@ defmodule Honeydew.Logger.Metadata do
   def build_crash_reason(%Crash{type: :bad_return_value, reason: value, stacktrace: stacktrace}) do
     {{:bad_return_value, value}, stacktrace}
   end
+
+  def build_crash_reason(%Crash{type: :exit, reason: value, stacktrace: stacktrace}) do
+    {{:exit, value}, stacktrace}
+  end
 end

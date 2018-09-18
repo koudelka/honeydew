@@ -1,13 +1,16 @@
 defmodule HoneydewTest do
   use ExUnit.Case, async: false
+
   import Helper
+  import Honeydew.CrashLoggerHelpers
+
   alias Honeydew.Job
   alias Honeydew.WorkerGroupSupervisor
   alias Honeydew.Workers
 
   @moduletag :capture_log
 
-  setup :restart_honeydew
+  setup [:restart_honeydew, :setup_echoing_error_logger]
 
   defmodule EchoingFailureMode do
     alias Honeydew.Job
@@ -176,12 +179,12 @@ defmodule HoneydewTest do
 
     [worker] = workers(queue)
 
-    fn -> raise "intentional crash" end
-    |> Honeydew.async(queue)
+    job = fn -> raise "intentional crash" end |> Honeydew.async(queue)
 
     assert {%RuntimeError{message: "intentional crash"}, stacktrace} =
       EchoingFailureMode.await_job_failure_reason()
     assert is_list(stacktrace)
+    assert_crash_logged(job)
 
     Process.sleep(100)
 
@@ -197,12 +200,12 @@ defmodule HoneydewTest do
 
     [worker] = workers(queue)
 
-    fn -> throw(thrown) end
-    |> Honeydew.async(queue)
+    job = fn -> throw(thrown) end |> Honeydew.async(queue)
 
     assert {^thrown, stacktrace} =
       EchoingFailureMode.await_job_failure_reason()
     assert is_list(stacktrace)
+    assert_crash_logged(job)
 
     Process.sleep(100)
 
@@ -217,10 +220,11 @@ defmodule HoneydewTest do
 
     [worker] = workers(queue)
 
-    fn ->
-      Process.sleep(:infinity)
-    end
-    |> Honeydew.async(queue)
+    job =
+      fn ->
+        Process.sleep(:infinity)
+      end
+      |> Honeydew.async(queue)
 
     # Without Process.sleep, the failure reason becomes :noproc because the
     # worker is killed before the job monitor can monitor it
@@ -229,6 +233,7 @@ defmodule HoneydewTest do
     Process.exit(worker, :kill)
 
     assert :killed = EchoingFailureMode.await_job_failure_reason()
+    assert_crash_logged(job)
 
     Process.sleep(100)
 
@@ -304,4 +309,10 @@ defmodule HoneydewTest do
     assert worker != new_worker
   end
 
+  defp assert_crash_logged(%Job{private: private}) do
+    assert_receive {:honeydew_crash_log, {level, pid, {_mod, _msg, _ts, metadata}}}
+
+    assert Keyword.has_key?(metadata, :honeydew_crash_reason)
+    assert ^private = Keyword.fetch!(metadata, :honeydew_job) |> Map.fetch!(:private)
+  end
 end

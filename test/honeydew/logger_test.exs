@@ -65,6 +65,7 @@ defmodule Honeydew.LoggerTest do
     assert {:warn, _, {Logger, msg, _timestamp, metadata}} = event
     assert msg =~ ~r/job failed due to exception/i
     assert Keyword.fetch!(metadata, :honeydew_crash_reason) == Metadata.build_crash_reason(crash)
+    assert %Job{} = Keyword.fetch!(metadata, :honeydew_job)
   end
 
   test "job_failed/1 with an uncaught throw crash" do
@@ -79,5 +80,20 @@ defmodule Honeydew.LoggerTest do
     assert {:warn, _, {Logger, msg, _timestamp, metadata}} = event
     assert msg =~ ~r/job failed due to uncaught throw/i
     assert Keyword.fetch!(metadata, :honeydew_crash_reason) == Metadata.build_crash_reason(crash)
+    assert %Job{} = Keyword.fetch!(metadata, :honeydew_job)
+  end
+
+  test "job_failed/1 with an unexpecetd exit" do
+    job = %Job{}
+    exit_reason = :didnt_want_to_run_anymore
+    crash = Crash.new(:exit, exit_reason)
+
+    :ok = HoneydewLogger.job_failed(job, crash)
+
+    assert_receive {:honeydew_crash_log, event}
+    assert {:warn, _, {Logger, msg, _timestamp, metadata}} = event
+    assert msg =~ ~r/unexpected exit/i
+    assert Keyword.fetch!(metadata, :honeydew_crash_reason) == Metadata.build_crash_reason(crash)
+    assert %Job{} = Keyword.fetch!(metadata, :honeydew_job)
   end
 end

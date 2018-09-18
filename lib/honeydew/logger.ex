@@ -41,7 +41,8 @@ defmodule Honeydew.Logger do
         Job failed due to exception. #{inspect(job)}
         #{format_crash_for_log(crash)}
         """,
-        honeydew_crash_reason: Metadata.build_crash_reason(crash)
+        honeydew_crash_reason: Metadata.build_crash_reason(crash),
+        honeydew_job: job
       }
     end)
   end
@@ -53,7 +54,21 @@ defmodule Honeydew.Logger do
         Job failed due to uncaught throw. #{inspect job}",
         #{format_crash_for_log(crash)}
         """,
-        honeydew_crash_reason: Metadata.build_crash_reason(crash)
+        honeydew_crash_reason: Metadata.build_crash_reason(crash),
+        honeydew_job: job
+      }
+    end)
+  end
+
+  def job_failed(%Job{} = job, %Crash{type: :exit} = crash) do
+    Logger.warn(fn ->
+      {
+        """
+        Job failed due unexpected exit. #{inspect job}",
+        #{format_crash_for_log(crash)}
+        """,
+        honeydew_crash_reason: Metadata.build_crash_reason(crash),
+        honeydew_job: job
       }
     end)
   end
@@ -64,5 +79,9 @@ defmodule Honeydew.Logger do
 
   defp format_crash_for_log(%Crash{type: :throw, reason: exception, stacktrace: stacktrace}) do
     Exception.format(:throw, exception, stacktrace)
+  end
+
+  defp format_crash_for_log(%Crash{type: :exit, reason: reason, stacktrace: []}) do
+    Exception.format(:exit, reason, [])
   end
 end

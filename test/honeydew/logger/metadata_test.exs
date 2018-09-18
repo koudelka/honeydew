@@ -26,4 +26,11 @@ defmodule Honeydew.Logger.MetadataTest do
 
     assert {{:bad_return_value, ^value}, []} = Metadata.build_crash_reason(crash)
   end
+
+  test "build_crash_reason/1 with an unexpected exit" do
+    value = :boom
+    crash = Crash.new(:exit, value)
+
+    assert {{:exit, ^value}, []} = Metadata.build_crash_reason(crash)
+  end
 end

@@ -2,6 +2,7 @@ defmodule Honeydew.JobMonitor do
   use GenServer, restart: :transient
 
   alias Honeydew.Crash
+  alias Honeydew.Logger, as: HoneydewLogger
   alias Honeydew.Queue
 
   require Logger
@@ -84,8 +85,9 @@ defmodule Honeydew.JobMonitor do
   def handle_info(:return_job, state), do: {:noreply, state}
 
   # worker died while busy
-  def handle_info({:DOWN, _ref, :process, worker, reason}, %State{worker: worker} = state) do
+  def handle_info({:DOWN, _ref, :process, worker, reason}, %State{worker: worker, job: job} = state) do
     crash = Crash.new(:exit, reason)
+    HoneydewLogger.job_failed(job, crash)
     execute_failure_mode(crash, state)
 
     {:stop, :normal, reset(state)}
