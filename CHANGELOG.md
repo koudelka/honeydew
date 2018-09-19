@@ -1,3 +1,23 @@
+## 1.2.5 (2018-8-24)
+
+### Bug fixes
+* Don't restart workers when linked process terminates normally
+
+## 1.2.4 (2018-8-23)
+
+### Bug fixes
+* Catch thrown signals on user's init/1
+
+## 1.2.3 (2018-8-23)
+
+### Bug fixes
+* Gracefully restart workers when an unhandled message is received.
+
+## 1.2.2 (2018-8-23)
+
+### Bug fixes
+* Catch thrown signals from user's job code
+
 ## 1.2.1 (2018-8-20)
 
 ### Bug fixes
