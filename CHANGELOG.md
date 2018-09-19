@@ -1,3 +1,11 @@
+## 1.2.6 (2018-9-19)
+
+### Enhancements
+* Honeydew crash log statements now include the following metadata
+  `:honeydew_crash_reason` and `:honeydew_job`. These metadata entries
+  can be used for building a LoggerBackend that could forward failures
+  to an error logger integration like Honeybadger or Bugsnag.
+
 ## 1.2.5 (2018-8-24)
 
 ### Bug fixes
