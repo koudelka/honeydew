@@ -2,8 +2,11 @@ defmodule Honeydew.Worker do
   use GenServer
   require Logger
   require Honeydew
+
+  alias Honeydew.Crash
   alias Honeydew.Job
   alias Honeydew.JobMonitor
+  alias Honeydew.Logger, as: HoneydewLogger
   alias Honeydew.Queue
   alias Honeydew.Workers
   alias Honeydew.WorkerSupervisor
@@ -92,14 +95,14 @@ defmodule Honeydew.Worker do
         {:ok, private} ->
           %{state | private: {:state, private}, ready: true}
         bad ->
-          Logger.warn("#{module}.init/1 must return {:ok, state :: any()}, got: #{inspect bad}")
+          HoneydewLogger.worker_init_crashed(module, Crash.new(:bad_return_value, bad))
           %{state | ready: false}
       end
     rescue e ->
-      Logger.warn("#{module}.init/1 must return {:ok, state :: any()}, but raised #{inspect e}")
+      HoneydewLogger.worker_init_crashed(module, Crash.new(:exception, e, System.stacktrace()))
       %{state | ready: false}
     catch e ->
-      Logger.warn("#{module}.init/1 must return {:ok, state :: any()}, but threw #{inspect e}")
+      HoneydewLogger.worker_init_crashed(module, Crash.new(:throw, e, System.stacktrace()))
       %{state | ready: false}
     end
     |> send_ready_or_callback
@@ -156,11 +159,11 @@ defmodule Honeydew.Worker do
         end
       {:ok, result}
     rescue e ->
-        {:error, {e, System.stacktrace()}}
+      {:error, Crash.new(:exception, e, System.stacktrace())}
     catch e ->
-        # this will catch exit signals too, which is ok, we just need to shut down in a
-        # controlled manner due to a problem with a process that the user linked to
-        {:error, {e, System.stacktrace()}}
+      # this will catch exit signals too, which is ok, we just need to shut down in a
+      # controlled manner due to a problem with a process that the user linked to
+      {:error, Crash.new(:throw, e, System.stacktrace())}
     end
     |> case do
          {:ok, result} ->
@@ -175,8 +178,9 @@ defmodule Honeydew.Worker do
            Queue.worker_ready(queue_pid)
            :ok
 
-         {:error, e} ->
-           :ok = JobMonitor.job_failed(job_monitor, e)
+         {:error, %Crash{} = crash} ->
+           HoneydewLogger.job_failed(job, crash)
+           :ok = JobMonitor.job_failed(job_monitor, crash)
            Process.delete(:job_monitor)
            :error
        end
