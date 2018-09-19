@@ -1,11 +1,8 @@
 defmodule Honeydew.JobMonitor do
   use GenServer, restart: :transient
-
-  alias Honeydew.Crash
-  alias Honeydew.Queue
-
   require Logger
   require Honeydew
+  alias Honeydew.Queue
 
   # when the queue casts a job to a worker, it spawns a local JobMonitor with the job as state,
   # the JobMonitor watches the worker, if the worker dies (or its node is disconnected), the JobMonitor returns the
@@ -38,7 +35,7 @@ defmodule Honeydew.JobMonitor do
 
   def claim(job_monitor, job), do: GenServer.call(job_monitor, {:claim, job})
   def job_succeeded(job_monitor), do: GenServer.call(job_monitor, :job_succeeded)
-  def job_failed(job_monitor, %Crash{} = reason), do: GenServer.call(job_monitor, {:job_failed, reason})
+  def job_failed(job_monitor, reason), do: GenServer.call(job_monitor, {:job_failed, reason})
   def status(job_monitor), do: GenServer.call(job_monitor, :status)
   def progress(job_monitor, progress), do: GenServer.call(job_monitor, {:progress, progress})
 
@@ -85,8 +82,7 @@ defmodule Honeydew.JobMonitor do
 
   # worker died while busy
   def handle_info({:DOWN, _ref, :process, worker, reason}, %State{worker: worker} = state) do
-    crash = Crash.new(:exit, reason)
-    execute_failure_mode(crash, state)
+    execute_failure_mode(reason, state)
 
     {:stop, :normal, reset(state)}
   end
@@ -100,17 +96,7 @@ defmodule Honeydew.JobMonitor do
    %{state | job: nil, progress: :about_to_die}
   end
 
-  defp execute_failure_mode(%Crash{} = crash, %State{job: job, failure_mode: {failure_mode, failure_mode_args}}) do
-    failure_mode.handle_failure(job, format_failure_reason(crash), failure_mode_args)
+  defp execute_failure_mode(reason, %State{job: job, failure_mode: {failure_mode, failure_mode_args}}) do
+    failure_mode.handle_failure(job, reason, failure_mode_args)
   end
-
-  defp format_failure_reason(%Crash{type: :exception, reason: exception, stacktrace: stacktrace}) do
-    {exception, stacktrace}
-  end
-
-  defp format_failure_reason(%Crash{type: :throw, reason: thrown, stacktrace: stacktrace}) do
-    {thrown, stacktrace}
-  end
-
-  defp format_failure_reason(%Crash{type: :exit, reason: reason}), do: reason
 end

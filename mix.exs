@@ -14,7 +14,7 @@ defmodule Honeydew.Mixfile do
      elixirc_paths: elixirc_paths(Mix.env),
      description: "Pluggable local/remote job queue + worker pool with permanent workers.",
      dialyzer: [
-       plt_add_apps: [:mnesia, :ex_unit],
+       plt_add_apps: [:mnesia],
        flags: [
          # :unmatched_returns,
          # :error_handling,
