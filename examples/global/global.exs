@@ -29,11 +29,11 @@ end
 #
 # - Change nodes above to your hostname.
 #
-# iex --sname queue -S mix run examples/distributed/distributed.exs
+# iex --sname queue -S mix run examples/global/global.exs
 # QueueApp.start
 #
-# iex --sname worker -S mix run examples/distributed/distributed.exs
+# iex --sname worker -S mix run examples/global/global.exs
 # WorkerApp.start
 #
-# iex --sname clientfacing -S mix run examples/distributed/distributed.exs
+# iex --sname clientfacing -S mix run examples/global/global.exs
 # {:work_really_hard, [2]} |> Honeydew.async({:global, :my_queue})
