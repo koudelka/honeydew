@@ -1,5 +1,4 @@
 if Code.ensure_loaded?(Ecto) do
-
   defmodule Honeydew.EctoSource.SQL.Cockroach do
     alias Honeydew.EctoSource
     alias Honeydew.EctoSource.SQL
@@ -9,6 +8,11 @@ if Code.ensure_loaded?(Ecto) do
     @impl true
     def integer_type do
       :bigint
+    end
+
+    @impl true
+    def table_name(schema) do
+      schema.__schema__(:source)
     end
 
     @impl true
@@ -63,5 +67,4 @@ if Code.ensure_loaded?(Ecto) do
       "(EXTRACT('millisecond', (#{time})) + CAST((#{time}) AS INT) * 1000)"
     end
   end
-
 end

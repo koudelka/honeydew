@@ -38,7 +38,6 @@
 # This module is tested and dialyzed via the included test project in examples/ecto_poll_queue
 #
 if Code.ensure_loaded?(Ecto) do
-
   defmodule Honeydew.EctoSource do
     require Logger
     alias Honeydew.Job
@@ -57,7 +56,8 @@ if Code.ensure_loaded?(Ecto) do
       sql = Keyword.fetch!(args, :sql)
       stale_timeout = args[:stale_timeout] * 1_000
 
-      table = schema.__schema__(:source)
+      table = sql.table_name(schema)
+
       key_field = schema.__schema__(:primary_key) |> List.first()
 
       task_fn =

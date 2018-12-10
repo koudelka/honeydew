@@ -1,5 +1,4 @@
 if Code.ensure_loaded?(Ecto) do
-
   defmodule Honeydew.EctoSource.SQL.Postgres do
     alias Honeydew.EctoSource
     alias Honeydew.EctoSource.SQL
@@ -9,6 +8,18 @@ if Code.ensure_loaded?(Ecto) do
     @impl true
     def integer_type do
       :bigint
+    end
+
+    @impl true
+    def table_name(schema) do
+      source = schema.__schema__(:source)
+      prefix = schema.__schema__(:prefix)
+
+      if prefix do
+        prefix <> "." <> source
+      else
+        source
+      end
     end
 
     @impl true
@@ -67,7 +78,5 @@ if Code.ensure_loaded?(Ecto) do
     defp time_in_msecs(time) do
       "(CAST(EXTRACT(epoch from timestamp '#{time}') * 1000 AS BIGINT))"
     end
-
   end
-
 end
