@@ -57,7 +57,15 @@ if Code.ensure_loaded?(Ecto) do
       sql = Keyword.fetch!(args, :sql)
       stale_timeout = args[:stale_timeout] * 1_000
 
-      table = schema.__schema__(:source)
+      source = schema.__schema__(:source)
+      prefix = schema.__schema__(:prefix)
+        table =
+          if prefix do
+            prefix <> "." <> source
+          else
+            source
+          end
+
       key_field = schema.__schema__(:primary_key) |> List.first()
 
       task_fn =
