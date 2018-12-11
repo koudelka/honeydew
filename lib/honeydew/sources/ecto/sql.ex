@@ -21,6 +21,7 @@ defmodule Honeydew.EctoSource.SQL do
   @callback ready :: sql
   @callback status(State.t()) :: sql
   @callback filter(State.t(), filter) :: sql
+  @callback table_name(Ecto.Schema.t()) :: String.t()
 
   @spec module(repo, override) :: sql_module | no_return
   def module(repo, override) do
@@ -32,6 +33,7 @@ defmodule Honeydew.EctoSource.SQL do
         case repo.__adapter__() do
           Ecto.Adapters.Postgres ->
             Postgres
+
           unsupported ->
             raise ArgumentError, unsupported_adapter_error(unsupported)
         end
@@ -47,7 +49,7 @@ defmodule Honeydew.EctoSource.SQL do
 
   @doc false
   defp unsupported_adapter_error(adapter) do
-    "your repo's ecto adapter, #{inspect adapter}, isn't currently supported, but it's probably not hard to implement, open an issue and we'll chat!"
+    "your repo's ecto adapter, #{inspect(adapter)}, isn't currently supported, but it's probably not hard to implement, open an issue and we'll chat!"
   end
 
   # "I left in love, in laughter, and in truth. And wherever truth, love and laughter abide, I am there in spirit."
@@ -55,5 +57,4 @@ defmodule Honeydew.EctoSource.SQL do
   def far_in_the_past do
     ~N[1994-03-26 04:20:00]
   end
-
 end
