@@ -12,14 +12,7 @@ if Code.ensure_loaded?(Ecto) do
 
     @impl true
     def table_name(schema) do
-      source = schema.__schema__(:source)
-      prefix = schema.__schema__(:prefix)
-
-      if prefix do
-        prefix <> "." <> source
-      else
-        source
-      end
+      schema.__schema__(:source)
     end
 
     @impl true

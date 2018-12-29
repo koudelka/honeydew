@@ -10,6 +10,10 @@ defmodule EctoPollQueueExample.User do
     @primary_key {:id, :binary_id, autogenerate: true}
   end
 
+  if System.get_env("prefixed_tables") do
+    @schema_prefix "theprefix"
+  end
+
   @notify_queue :notify_user
 
   schema "users" do
