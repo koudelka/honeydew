@@ -21,7 +21,7 @@ defmodule Honeydew.EctoSource.SQL do
   @callback ready :: sql
   @callback status(State.t()) :: sql
   @callback filter(State.t(), filter) :: sql
-  @callback table_name(Ecto.Schema.t()) :: String.t()
+  @callback table_name(module()) :: String.t()
 
   @spec module(repo, override) :: sql_module | no_return
   def module(repo, override) do
