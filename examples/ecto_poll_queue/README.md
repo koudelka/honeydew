@@ -82,7 +82,7 @@ This kind of queue process doesn't store any job data, if a queue process crashe
 
 ```
 
-3. On your worker nodes, specify your schema and repo modules in the queue spec, and the job module in the worker spec.
+4. On your worker nodes, specify your schema and repo modules in the queue spec, and the job module in the worker spec.
 
   ```elixir
   defmodule MyApp.Application do
@@ -107,7 +107,7 @@ This kind of queue process doesn't store any job data, if a queue process crashe
   end
   ```
 
-4. Try inserting an instance of your schema from any of your nodes. The job will be picked up and executed by one of your worker nodes.
+5. Try inserting an instance of your schema from any of your nodes. The job will be picked up and executed by one of your worker nodes.
 ```elixir
 iex(1)> {:ok, _photo} = %MyApp.Photo{} |> MyApp.Repo.insert
 
