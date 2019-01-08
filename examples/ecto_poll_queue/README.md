@@ -89,20 +89,19 @@ This kind of queue process doesn't store any job data, if a queue process crashe
     use Application
 
     alias Honeydew.EctoPollQueue
-    alias Honeydew.Workers
     alias EctoPollQueue.Repo
     alias EctoPollQueue.Photo
     alias EctoPollQueue.ClassifyPhoto
 
     def start(_type, _args) do
-      children = [
-        Repo,
-        {EctoPollQueue, [:classify_photos, schema: Photo, repo: Repo]},
-        {Workers, [:classify_photos, ClassifyPhoto]},
-      ]
-
+      children = [Repo]
       opts = [strategy: :one_for_one, name: MyApp.Supervisor]
-      Supervisor.start_link(children, opts)
+      {:ok, supervisor} = Supervisor.start_link(children, opts)
+
+      :ok = Honeydew.start_queue(:classify_photos, queue: {EctoPollQueue, [schema: Photo, repo: Repo]})
+      :ok = Honeydew.start_workers(:classify_photos, ClassifyPhoto)
+
+      {:ok, supervisor}
     end
   end
   ```
