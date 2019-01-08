@@ -1,3 +1,8 @@
+## 1.2.7 (2019-1-8)
+
+### Enhancements
+* Adding table prefixes to Ecto Poll Queue (thanks @jfornoff!)
+
 ## 1.2.6 (2018-9-19)
 
 ### Enhancements

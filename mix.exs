@@ -1,7 +1,7 @@
 defmodule Honeydew.Mixfile do
   use Mix.Project
 
-  @version "1.2.6"
+  @version "1.2.7"
 
   def project do
     [app: :honeydew,
