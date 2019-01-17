@@ -64,15 +64,13 @@ defmodule Honeydew.Worker do
       |> module.__info__
       |> Enum.member?({:init, 1})
 
-    module_init()
-
     {:ok, %State{queue: queue,
                  queue_pid: queue_pid,
                  module: module,
                  init_args: init_args,
                  init_retry_secs: init_retry_secs,
                  start_opts: start_opts,
-                 has_init_fcn: has_init_fcn}}
+                 has_init_fcn: has_init_fcn}, {:continue, :module_init}}
   end
 
   #
@@ -184,6 +182,11 @@ defmodule Honeydew.Worker do
            Process.delete(:job_monitor)
            :error
        end
+  end
+
+  @impl true
+  def handle_continue(:module_init, state) do
+    {:noreply, do_module_init(state)}
   end
 
 
