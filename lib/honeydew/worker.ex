@@ -212,11 +212,6 @@ defmodule Honeydew.Worker do
     {:noreply, state, {:continue, {:job_finished, job}}}
   end
 
-  # def handle_info({:EXIT, pid, reason}, %State{queue: queue} = state) do
-  #   Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) saw a linked process, #{inspect pid} die abnormally with reason #{inspect reason}, stopping..."
-  #   restart(state)
-  # end
-
   def handle_info(msg, %State{queue: queue} = state) do
     Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}, restarting..."
     restart(state)

@@ -1,4 +1,6 @@
 defmodule Honeydew.JobRunner do
+  @moduledoc false
+
   use GenServer
   require Logger
   require Honeydew
@@ -74,7 +76,9 @@ defmodule Honeydew.JobRunner do
 
   @impl true
   def handle_continue(:run, state) do
-    {:stop, :normal, do_run(state)}
+    state = do_run(state)
+
+    {:stop, :normal, state}
   end
 
   @impl true
