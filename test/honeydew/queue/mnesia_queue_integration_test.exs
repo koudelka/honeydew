@@ -341,7 +341,7 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
   end
 
   defp generate_queue_name do
-    :erlang.unique_integer |> to_string
+    :erlang.monotonic_time |> to_string
   end
 
   defp start_queue(queue, opts \\ []) do

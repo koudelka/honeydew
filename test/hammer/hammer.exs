@@ -14,7 +14,7 @@ defmodule Honeydew.Hammer do
 
   def run(func) do
     :ok = Honeydew.start_queue(:queue)
-    :ok = Honeydew.start_workers(:queue, Worker, num_workers: 10)
+    :ok = Honeydew.start_workers(:queue, Worker, num: 10)
 
     {microsecs, :ok} = :timer.tc(__MODULE__, func, [])
     secs = microsecs/:math.pow(10, 6)

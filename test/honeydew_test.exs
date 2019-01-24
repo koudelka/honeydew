@@ -127,6 +127,8 @@ defmodule HoneydewTest do
       # different kinds of failing jobs
       fn -> raise "intentional crash" end |> Honeydew.async(queue)
       fn -> throw "intentional crash" end |> Honeydew.async(queue)
+      fn -> Process.exit(self(), :kill) end |> Honeydew.async(queue)
+      fn -> spawn_link(fn -> :ok end); Process.sleep(200) end |> Honeydew.async(queue)
       # unhandled messages
       fn -> send self(), :rubbish end |> Honeydew.async(queue)
     end)
@@ -157,7 +159,7 @@ defmodule HoneydewTest do
     assert [worker] == workers(queue)
   end
 
-  test "workers don't restart when a linked process terminates normally" do
+  test "job runners don't die when a linked process terminates normally" do
     queue = :erlang.unique_integer
 
     :ok = Honeydew.start_queue(queue)
@@ -212,7 +214,62 @@ defmodule HoneydewTest do
     assert_worker_restarted(queue, worker)
   end
 
-  test "when a job is terminated" do
+  test "when a job calls :erlang.raise(:exit, reason, stacktrace) directly" do
+    queue = :erlang.unique_integer
+
+    :ok = Honeydew.start_queue(queue, failure_mode: {EchoingFailureMode, [self()]})
+    :ok = Honeydew.start_workers(queue, Stateless, num: 1)
+
+    [worker] = workers(queue)
+
+    job = fn ->
+      :erlang.raise(:exit, :eject, [])
+      Process.sleep(:infinity)
+    end |> Honeydew.async(queue)
+
+    assert :eject = EchoingFailureMode.await_job_failure_reason()
+    assert_crash_logged(job)
+
+    Process.sleep(100)
+
+    assert_worker_restarted(queue, worker)
+  end
+
+  test "when a job's Task times out" do
+    queue = :erlang.unique_integer
+
+    :ok = Honeydew.start_queue(queue, failure_mode: {EchoingFailureMode, [self()]})
+    :ok = Honeydew.start_workers(queue, Stateless, num: 1)
+
+    [worker] = workers(queue)
+
+    me = self()
+
+    job = fn ->
+      task =
+        Task.async(fn ->
+          Process.sleep(:infinity)
+        end)
+
+      send(me, {:task, task})
+
+      Task.await(task, 1)
+    end |> Honeydew.async(queue)
+
+    task =
+      receive do
+        {:task, task} -> task
+      end
+
+    assert {:timeout, {Task, :await, [^task, 1]}} = EchoingFailureMode.await_job_failure_reason()
+    assert_crash_logged(job)
+
+    Process.sleep(100)
+
+    assert_worker_restarted(queue, worker)
+  end
+
+  test "when a job is terminated externally" do
     queue = :erlang.unique_integer
 
     :ok = Honeydew.start_queue(queue, failure_mode: {EchoingFailureMode, [self()]})
@@ -248,7 +305,10 @@ defmodule HoneydewTest do
 
     [worker] = workers(queue)
 
-    fn -> spawn_link(fn -> raise "intentional crash" end) end
+    fn ->
+      spawn_link(fn -> raise "intentional crash" end)
+      Process.sleep(200)
+    end
     |> Honeydew.async(queue)
 
     # # TODO: enable this when https://github.com/koudelka/honeydew/pull/56 is
@@ -256,6 +316,23 @@ defmodule HoneydewTest do
     # assert {%RuntimeError{message: "intentional crash"}, stacktrace} =
     #   EchoingFailureMode.await_job_failure_reason()
     # assert is_list(stacktrace)
+
+    Process.sleep(100)
+
+    assert_worker_restarted(queue, worker)
+  end
+
+  test "when a job exits" do
+    queue = :erlang.unique_integer
+
+    :ok = Honeydew.start_queue(queue, failure_mode: {EchoingFailureMode, [self()]})
+    :ok = Honeydew.start_workers(queue, Stateless, num: 1)
+
+    [worker] = workers(queue)
+
+    fn ->
+      Process.exit(self(), :eject)
+    end |> Honeydew.async(queue)
 
     Process.sleep(100)
 
@@ -289,6 +366,12 @@ defmodule HoneydewTest do
 
     receive do
       {:init, worker} -> send worker, :throw
+    end
+    assert_receive :failed_init_ran
+    refute_receive :job_ran
+
+    receive do
+      {:init, worker} -> send worker, :exit
     end
     assert_receive :failed_init_ran
     refute_receive :job_ran
