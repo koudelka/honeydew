@@ -8,6 +8,7 @@ defmodule Honeydew.Worker do
   alias Honeydew.JobMonitor
   alias Honeydew.Logger, as: HoneydewLogger
   alias Honeydew.Queue
+  alias Honeydew.JobRunner
   alias Honeydew.Workers
   alias Honeydew.WorkerSupervisor
 
@@ -33,6 +34,8 @@ defmodule Honeydew.Worker do
                :init_args,
                :init_retry_secs,
                :start_opts,
+               :job_runner,
+               :job,
                {:ready, false},
                {:private, :no_state}]
   end
@@ -80,14 +83,15 @@ defmodule Honeydew.Worker do
   def run(worker, job, job_monitor), do: GenServer.cast(worker, {:run, %{job | job_monitor: job_monitor}})
   def module_init(me \\ self()), do: GenServer.cast(me, :module_init)
   def ready(ready), do: GenServer.cast(self(), {:ready, ready})
+  def job_finished(worker, job), do: GenServer.call(worker, {:job_finished, job})
 
 
   @doc false
-  def do_module_init(%State{has_init_fcn: false} = state) do
+  defp do_module_init(%State{has_init_fcn: false} = state) do
     %{state | ready: true} |> send_ready_or_callback
   end
 
-  def do_module_init(%State{module: module, init_args: init_args} = state) do
+  defp do_module_init(%State{module: module, init_args: init_args} = state) do
     try do
       case apply(module, :init, [init_args]) do
         {:ok, private} ->
@@ -99,9 +103,13 @@ defmodule Honeydew.Worker do
     rescue e ->
       HoneydewLogger.worker_init_crashed(module, Crash.new(:exception, e, System.stacktrace()))
       %{state | ready: false}
-    catch e ->
-      HoneydewLogger.worker_init_crashed(module, Crash.new(:throw, e, System.stacktrace()))
-      %{state | ready: false}
+    catch
+      :exit, reason ->
+        HoneydewLogger.worker_init_crashed(module, Crash.new(:exit, reason))
+        %{state | ready: false}
+      e ->
+        HoneydewLogger.worker_init_crashed(module, Crash.new(:throw, e, System.stacktrace()))
+        %{state | ready: false}
     end
     |> send_ready_or_callback
   end
@@ -129,59 +137,36 @@ defmodule Honeydew.Worker do
     state
   end
 
-
-  #
-  # the job monitor's timer will nack the job, since we're not going to claim it
-  #
-  defp do_run(%Job{task: task, from: from, job_monitor: job_monitor} = job, %State{ready: true,
-                                                                                   queue_pid: queue_pid,
-                                                                                   module: module,
-                                                                                   private: private}) do
+  defp do_run(%Job{job_monitor: job_monitor} = job, %State{module: module, private: private} = state) do
     job = %{job | by: node()}
 
     :ok = JobMonitor.claim(job_monitor, job)
-    Process.put(:job_monitor, job_monitor)
 
-    private_args =
-      case private do
-        {:state, s} -> [s]
-        :no_state   -> []
-      end
+    {:ok, job_runner} = JobRunner.run_link(job, module, private)
 
-    try do
-      result =
-        case task do
-          f when is_function(f) -> apply(f, private_args)
-          f when is_atom(f)     -> apply(module, f, private_args)
-          {f, a}                -> apply(module, f, a ++ private_args)
-        end
-      {:ok, result}
-    rescue e ->
-      {:error, Crash.new(:exception, e, System.stacktrace())}
-    catch e ->
-      # this will catch exit signals too, which is ok, we just need to shut down in a
-      # controlled manner due to a problem with a process that the user linked to
-      {:error, Crash.new(:throw, e, System.stacktrace())}
-    end
-    |> case do
-         {:ok, result} ->
-           job = %{job | result: {:ok, result}}
+    %{state | job_runner: job_runner, job: job}
+  end
 
-           with {owner, _ref} <- from,
-             do: send(owner, job)
+  defp do_job_finished(%Job{result: {:ok, result}, from: from, job_monitor: job_monitor} = job, %State{queue_pid: queue_pid}) do
+    job = %{job | result: {:ok, result}}
 
-           :ok = JobMonitor.job_succeeded(job_monitor)
-           Process.delete(:job_monitor)
+    with {owner, _ref} <- from,
+      do: send(owner, job)
 
-           Queue.worker_ready(queue_pid)
-           :ok
+    :ok = JobMonitor.job_succeeded(job_monitor)
 
-         {:error, %Crash{} = crash} ->
-           HoneydewLogger.job_failed(job, crash)
-           :ok = JobMonitor.job_failed(job_monitor, crash)
-           Process.delete(:job_monitor)
-           :error
-       end
+    Process.delete(:job_monitor)
+    Queue.worker_ready(queue_pid)
+
+    :ok
+  end
+
+  defp do_job_finished(%Job{result: {:error, %Crash{} = crash}, job_monitor: job_monitor} = job, _state) do
+    HoneydewLogger.job_failed(job, crash)
+    :ok = JobMonitor.job_failed(job_monitor, crash)
+    Process.delete(:job_monitor)
+
+    :error
   end
 
   @impl true
@@ -189,19 +174,23 @@ defmodule Honeydew.Worker do
     {:noreply, do_module_init(state)}
   end
 
-
-  @impl true
-  def handle_cast(:module_init, state) do
-    {:noreply, do_module_init(state)}
-  end
-
-  def handle_cast({:run, job}, state) do
-    case do_run(job, state) do
+  def handle_continue({:job_finished, job}, state) do
+    case do_job_finished(job, state) do
       :ok ->
         {:noreply, state}
       :error ->
-        restart_worker(state)
+        restart(state)
     end
+  end
+
+  @impl true
+  def handle_cast(:module_init, state), do: {:noreply, do_module_init(state)}
+  def handle_cast({:run, job}, state), do: {:noreply, do_run(job, state)}
+
+  @impl true
+  def handle_call({:job_finished, job}, {job_runner, _ref}, %State{job_runner: job_runner} = state) do
+    Process.unlink(job_runner)
+    {:reply, :ok, %{state | job_runner: nil, job: nil}, {:continue, {:job_finished, job}}}
   end
 
   #
@@ -213,28 +202,23 @@ defmodule Honeydew.Worker do
     {:noreply, state}
   end
 
-  def handle_info({:EXIT, _pid, :normal}, state), do: {:noreply, state}
-  def handle_info({:EXIT, _pid, :shutdown}, state), do: {:noreply, state}
-  def handle_info({:EXIT, _pid, {:shutdown, _}}, state), do: {:noreply, state}
-  def handle_info({:EXIT, pid, reason}, %State{queue: queue} = state) do
-    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) saw a linked process, #{inspect pid} die abnormally with reason #{inspect reason}, stopping..."
-    restart_worker(state)
+  def handle_info({:EXIT, _pid, :normal}, %State{job_runner: nil} = state), do: {:noreply, state}
+  def handle_info({:EXIT, _pid, :shutdown}, %State{job_runner: nil} = state), do: {:noreply, state}
+  def handle_info({:EXIT, _pid, {:shutdown, _}}, %State{job_runner: nil} = state), do: {:noreply, state}
+
+  def handle_info({:EXIT, job_runner, reason}, %State{job_runner: job_runner, queue: queue, job: job} = state) do
+    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) saw its job runner (#{inspect job_runner}) die during a job, restarting..."
+    job = %{job | result: {:error, Crash.new(:exit, reason)}}
+    {:noreply, state, {:continue, {:job_finished, job}}}
   end
 
   def handle_info(msg, %State{queue: queue} = state) do
-    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}, stopping..."
-    restart_worker(state)
+    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}, restarting..."
+    restart(state)
   end
 
-  @impl true
-  def terminate(:normal, _state), do: :ok
-  def terminate(:shutdown, _state), do: :ok
-  def terminate({:shutdown, _}, _state), do: :ok
-  def terminate(reason, _state) do
-    Logger.info "[Honeydew] Worker #{inspect self()} stopped because #{inspect reason}"
-  end
 
-  defp restart_worker(%State{start_opts: start_opts} = state) do
+  defp restart(%State{start_opts: start_opts} = state) do
     WorkerSupervisor.start_worker(start_opts)
     {:stop, :normal, state}
   end

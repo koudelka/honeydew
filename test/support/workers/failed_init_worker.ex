@@ -8,6 +8,8 @@ defmodule FailedInitWorker do
         raise "init failed"
       :throw ->
         throw "init failed"
+      :exit ->
+        Process.exit(self(), :eject)
       :ok ->
         {:ok, nil}
     end
