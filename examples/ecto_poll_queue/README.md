@@ -22,7 +22,7 @@ This kind of queue process doesn't store any job data, if a queue process crashe
 
 2. In order to prevent multiple queues from running the same job, Honeydew uses an expiring lock per job. If a lock has expired, Honeydew assumes that it's because the node processing it has encountered a critical failure and the job needs to be run elsewhere. The lock expiration time is configurable, and should be set to the maximum time that you expect a job to take. Setting it higher is fine, too, it'll just take longer for the job to be re-tried.
 
-3. It touches your domain model. Honeydew is writing data directly to your Ecto schema, there's always the chance that something could go horrifically wrong and the consequences are higher. However, I'm running this code in production.
+3. It touches your domain model. Honeydew is writing data directly to your Ecto schema, there's always the chance that something could go horrifically wrong and the consequences are higher. That being said, this code actively used in a business-critical production environment, and we haven't seen any such issues.
 
 
 ## Getting Started
@@ -117,8 +117,15 @@ iex(1)> {:ok, _photo} = %MyApp.Photo{} |> MyApp.Repo.insert
 
 Honeydew auto-selects the correct set of SQL queries for your database, depending on which Ecto adapter your repository is using. However, since CockroachDB uses the Postgres adapter, Honeydew can't tell it apart. You'll need to tell Honeydew that you're using Cockroach in two places:
 
-- Your supervision specification:
-`{EctoPollQueue, [:classify_photos, schema: Photo, repo: Repo, database: :cockroachdb]},`
+- When you start your queue:
+```elixir
+:ok = Honeydew.start_queue(:classify_photos, queue: {EctoPollQueue, [schema: Photo,
+                                                                     repo: Repo,
+                                                                     database: :cockroachdb]})
+```
 
 - Your migration:
-`honeydew_fields(:classify_photos, database: :cockroachdb)`
+
+```elixir
+honeydew_fields(:classify_photos, database: :cockroachdb)
+```

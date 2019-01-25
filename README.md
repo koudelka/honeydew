@@ -3,7 +3,7 @@ Honeydew 💪🏻🍈
 [![Build Status](https://travis-ci.org/koudelka/honeydew.svg?branch=master)](https://travis-ci.org/koudelka/honeydew)
 [![Hex pm](https://img.shields.io/hexpm/v/honeydew.svg?style=flat)](https://hex.pm/packages/honeydew)
 
-Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a pluggable job queue and worker pool for Elixir.
+Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a pluggable job queue and worker pool for Elixir, focused on at-least-once execution.
 
 ```elixir
 defmodule MyWorker do
@@ -20,18 +20,52 @@ end
 # => "doing a thing!"
 ```
 
-- Workers are permanent and hold immutable state (a database connection, for example).
-- Workers are issued only one job at a time, a job is only ever removed from the queue when it succeeds or is instructed to abandon it.
-- Queues can exist locally, on another node in the cluster, in your Ecto database, or on a remote queue server (rabbitmq, etc...).
-- If a worker crashes while processing a job, the job is recovered and a "failure mode" (abandon, move, retry, etc) is executed.
-- Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](https://hexdocs.pm/elixir/Task.html).
-- Queues, workers, dispatch strategies and failure/success modes are all plugable with user modules.
-- Can optionally heal your cluster after a disconnect or downed node.
+__Isolation__
+  - Jobs are run in isolated one-time-use processes.
+  - Optionally stores immutable state loaned to each worker (a database connection, for example).
+  - [Initialized Worker](https://github.com/koudelka/honeydew/tree/master/examples/initialized_worker)
 
-Honeydew attempts to provide "at least once" job execution, it's possible that circumstances could conspire to execute a job, and prevent Honeydew from reporting that success back to the queue. I encourage you to write your jobs idempotently.
+__Strong Job Custody__ 
+  - Jobs don't leave the queue until either they succeed, are explicitly abandoned or are moved to another queue.
+  - Workers are issued only one job at a time, no batching.
+  - If a worker crashes while processing a job, the job is reset and a "failure mode" (e.g. abandon, move, retry) is executed.
+  - [Job Lifecycle](https://github.com/koudelka/honeydew/blob/master/README/job_lifecycle.md)
 
-Honeydew isn't intended as a simple resource pool, the user's code isn't executed in the requesting process. Though you may use it as such, there are likely other alternatives that would fit your situation better, perhaps try [sbroker](https://github.com/fishcakez/sbroker).
+__Clusterable Components__
+  - Queues, workers and your enqueuing processes can exist anywhere in the BEAM cluster. 
+  - Can optionally heal the cluster after a disconnect or downed node.
+  - [Global Queues](https://github.com/koudelka/honeydew/tree/master/examples/global)
 
+__Plugability__
+  - [Queues](https://github.com/koudelka/honeydew/blob/master/README/queues.md), [workers](https://github.com/koudelka/honeydew/blob/master/README/workers.md), [dispatch strategies](https://github.com/koudelka/honeydew/blob/master/README/dispatchers.md), [failure modes and success modes](https://github.com/koudelka/honeydew/blob/master/README/success_and_failure_modes.md) are all plugable with user modules.
+  - Batteries-included [Ecto Queues](#ecto), using your database as the queue.
+
+__Easy API__
+  - Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](https://hexdocs.pm/elixir/Task.html).
+  - [API](https://github.com/koudelka/honeydew/blob/master/README/api.md)
+
+
+### <a name="ecto">Ecto Queue</a>
+
+The Ecto Queue is designed to painlessly turn your Ecto schema into a queue, using your repo as the backing store.
+
+- You don't need to explicitly enqueue jobs, that's handled for you (for example, sending a welcome email when a new User is inserted).
+- Eliminates the possibility of your database and work queue becoming out of sync
+- As the database is the queue, you don't need to run a separate queue node.
+- You get all of the high-availability, consistency and distribution semantics of your chosen database.
+
+Check out the included [example project](https://github.com/koudelka/honeydew/tree/master/examples/ecto_poll_queue), and its README.
+
+
+## Getting Started
+
+In your mix.exs file:
+
+```elixir
+defp deps do
+  [{:honeydew, "~> 1.2.7"}]
+end
+```
 
 ### tl;dr
 - Check out the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
@@ -44,28 +78,8 @@ Honeydew isn't intended as a simple resource pool, the user's code isn't execute
 - Move jobs with `Honeydew.move/2`
 - Cancel jobs with `Honeydew.cancel/2`
 
-### Ecto Poll Queue
-
-The Ecto Poll Queue is designed to painlessly turn an already-existing Ecto schema into a queue, using your repo as the backing store. This eliminates the possiblity of your database and work queue becoming out of sync, as well as eliminating the need to run a separate queue node.
-
-Check out the included [example project](https://github.com/koudelka/honeydew/tree/master/examples/ecto_poll_queue), and its README.
-
-## Getting Started
-
-In your mix.exs file:
-
-```elixir
-defp deps do
-  [{:honeydew, "~> 1.2.7"}]
-end
-```
 
 ### README
-The rest of the README is broken out into slightly more digestable [sections](https://github.com/koudelka/honeydew/tree/master/README).
+The rest of the README is broken out into slightly more digestible [sections](https://github.com/koudelka/honeydew/tree/master/README).
 
-Also check out the README files included with the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
-
-## TODO:
-- statistics?
-- `yield_many/2` support?
-- benchmark mnesia queue's dual filter implementations, discard one?
+Also, check out the README files included with each of the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
