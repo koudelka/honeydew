@@ -44,7 +44,7 @@ defmodule Honeydew.JobMonitor do
   def progress(job_monitor, progress), do: GenServer.call(job_monitor, {:progress, progress})
 
 
-  def handle_call({:claim, job}, {worker, _ref}, state) do
+  def handle_call({:claim, job}, {worker, _ref}, %State{worker: nil} = state) do
     Honeydew.debug "[Honeydew] Monitor #{inspect self()} had job #{inspect job.private} claimed by worker #{inspect worker}"
     Process.monitor(worker)
     job = %{job | started_at: System.system_time(:millisecond)}
