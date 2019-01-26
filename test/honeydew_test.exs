@@ -269,7 +269,7 @@ defmodule HoneydewTest do
     assert_worker_restarted(queue, worker)
   end
 
-  test "when a job is terminated externally" do
+  test "when a worker is terminated externally" do
     queue = :erlang.unique_integer
 
     :ok = Honeydew.start_queue(queue, failure_mode: {EchoingFailureMode, [self()]})
