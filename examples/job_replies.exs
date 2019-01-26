@@ -9,7 +9,7 @@
 #
 
 #
-# iex -S mix run job_replies.exs
+# iex -S mix run examples/job_replies.exs
 #
 
 defmodule Worker do

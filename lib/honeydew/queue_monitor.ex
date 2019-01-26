@@ -1,9 +1,13 @@
 # when a queue dies, this process hears about it and stops its associated worker group.
 defmodule Honeydew.QueueMonitor do
+  @moduledoc false
+
   use GenServer
   require Logger
 
   defmodule State do
+    @moduledoc false
+
     defstruct [:workers_per_queue_pid, :queue_pid]
   end
 

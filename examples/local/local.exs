@@ -1,5 +1,5 @@
 #
-# iex -S mix run local.exs
+# iex -S mix run examples/local/local.exs
 #
 
 defmodule Worker do

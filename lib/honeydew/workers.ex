@@ -1,4 +1,6 @@
 defmodule Honeydew.Workers do
+  @moduledoc false
+
   use Supervisor
   alias Honeydew.WorkerRootSupervisor
 

@@ -373,7 +373,7 @@ defmodule Honeydew do
   - `init_retry_secs`: the amount of time, in seconds, a stateful worker waits
   before trying to re-initialize after its `c:Honeydew.Worker.init/1` function
   fails. You can also override this behavior by implementing the
-  `c:Honeydew.Worker.failed_init/0` callback, see `README/workers.md`.
+  `c:Honeydew.Worker.init_failed/0` callback, see `README/workers.md`.
 
   - `shutdown`: if a worker is in the middle of a job, the amount of time, in
   milliseconds, to wait before brutally killing it. Defaults to `10_000`.

@@ -4,7 +4,9 @@ defmodule Honeydew.FailureMode.Abandon do
 
   ## Example:
 
-    {Honeydew.Queues, [:my_queue, failure_mode: #{inspect __MODULE__}]}
+  ```elixir
+  Honeydew.start_queue(:my_queue, failure_mode: #{inspect __MODULE__})
+  ```
 
   """
   require Logger

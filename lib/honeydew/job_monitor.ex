@@ -1,4 +1,6 @@
 defmodule Honeydew.JobMonitor do
+  @moduledoc false
+
   use GenServer, restart: :transient
 
   alias Honeydew.Crash
@@ -15,6 +17,8 @@ defmodule Honeydew.JobMonitor do
   @claim_delay 1_000 # ms
 
   defmodule State do
+    @moduledoc false
+
     defstruct [:queue_pid, :worker, :job, :failure_mode, :success_mode, :progress]
   end
 

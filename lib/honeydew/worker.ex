@@ -1,4 +1,7 @@
 defmodule Honeydew.Worker do
+  @moduledoc """
+    A Honeydew Worker, how you specify your jobs.
+  """
   use GenServer
   require Logger
   require Honeydew
@@ -27,6 +30,8 @@ defmodule Honeydew.Worker do
   @optional_callbacks init: 1, init_failed: 0
 
   defmodule State do
+    @moduledoc false
+
     defstruct [:queue,
                :queue_pid,
                :module,
@@ -40,6 +45,7 @@ defmodule Honeydew.Worker do
                {:private, :no_state}]
   end
 
+  @doc false
   def child_spec([_supervisor, _queue, %{shutdown: shutdown}, _queue_pid] = opts) do
     %{
       id: __MODULE__,
@@ -55,6 +61,7 @@ defmodule Honeydew.Worker do
   end
 
   @impl true
+  @doc false
   def init([_supervisor, queue, %{ma: {module, init_args}, init_retry_secs: init_retry_secs}, queue_pid] = start_opts) do
     Process.flag(:trap_exit, true)
 
@@ -80,13 +87,16 @@ defmodule Honeydew.Worker do
   # Internal API
   #
 
+  @doc false
   def run(worker, job, job_monitor), do: GenServer.cast(worker, {:run, %{job | job_monitor: job_monitor}})
+  @doc false
   def module_init(me \\ self()), do: GenServer.cast(me, :module_init)
+  @doc false
   def ready(ready), do: GenServer.cast(self(), {:ready, ready})
+  @doc false
   def job_finished(worker, job), do: GenServer.call(worker, {:job_finished, job})
 
 
-  @doc false
   defp do_module_init(%State{has_init_fcn: false} = state) do
     %{state | ready: true} |> send_ready_or_callback
   end
@@ -170,10 +180,12 @@ defmodule Honeydew.Worker do
   end
 
   @impl true
+  @doc false
   def handle_continue(:module_init, state) do
     {:noreply, do_module_init(state)}
   end
 
+  @doc false
   def handle_continue({:job_finished, job}, state) do
     case do_job_finished(job, state) do
       :ok ->
@@ -184,10 +196,12 @@ defmodule Honeydew.Worker do
   end
 
   @impl true
+  @doc false
   def handle_cast(:module_init, state), do: {:noreply, do_module_init(state)}
   def handle_cast({:run, job}, state), do: {:noreply, do_run(job, state)}
 
   @impl true
+  @doc false
   def handle_call({:job_finished, job}, {job_runner, _ref}, %State{job_runner: job_runner} = state) do
     Process.unlink(job_runner)
     {:reply, :ok, %{state | job_runner: nil, job: nil}, {:continue, {:job_finished, job}}}
@@ -197,6 +211,7 @@ defmodule Honeydew.Worker do
   # Our Queue died, our QueueMonitor will stop us soon.
   #
   @impl true
+  @doc false
   def handle_info({:EXIT, queue_pid, _reason}, %State{queue: queue, queue_pid: queue_pid} = state) do
     Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) saw its queue die, stopping..."
     {:noreply, state}

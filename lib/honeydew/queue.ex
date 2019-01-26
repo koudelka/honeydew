@@ -1,4 +1,6 @@
 defmodule Honeydew.Queue do
+  @moduledoc false
+
   use GenServer, restart: :transient
   require Logger
   require Honeydew
@@ -9,6 +11,8 @@ defmodule Honeydew.Queue do
   alias Honeydew.Queues
 
   defmodule State do
+    @moduledoc false
+
     defstruct [:queue,
                :module,
                :private,

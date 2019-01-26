@@ -1,5 +1,6 @@
 defmodule Honeydew.Application do
   @moduledoc false
+
   alias Honeydew.Queues
   alias Honeydew.Workers
 

@@ -2,6 +2,7 @@ defmodule Honeydew.Job do
   @moduledoc """
   A Honeydew job.
   """
+
   require Record
 
   @type private :: term()

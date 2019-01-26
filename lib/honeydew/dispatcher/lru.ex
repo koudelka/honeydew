@@ -1,4 +1,6 @@
 defmodule Honeydew.Dispatcher.LRU do
+  @moduledoc false
+
   # TODO: docs
 
   def init do

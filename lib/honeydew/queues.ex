@@ -1,4 +1,6 @@
 defmodule Honeydew.Queues do
+  @moduledoc false
+
   use Supervisor
   alias Honeydew.Queue
   alias Honeydew.Queue.ErlangQueue

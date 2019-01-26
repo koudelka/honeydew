@@ -14,8 +14,18 @@ defmodule Honeydew.EctoPollQueue do
 
   For example:
 
-  - `Honeydew.start_queue(:classify_photos, {Honeydew.EctoPollQueue, repo: MyApp.Repo, schema: MyApp.Photo})`
-  - `Honeydew.start_queue(:classify_photos, {Honeydew.EctoPollQueue, repo: MyApp.Repo, schema: MyApp.Photo}, failure_mode: {Honeydew.Retry, times: 3})`
+  ```elixir
+  Honeydew.start_queue(:classify_photos, {Honeydew.EctoPollQueue,
+                                          repo: MyApp.Repo,
+                                          schema: MyApp.Photo})
+  ```
+  ```elixir
+  Honeydew.start_queue(:classify_photos, {Honeydew.EctoPollQueue,
+                                          repo: MyApp.Repo,
+                                          schema: MyApp.Photo},
+                                         failure_mode: {Honeydew.Retry,
+                                                        times: 3})
+  ```
 
   """
 
@@ -66,6 +76,7 @@ defmodule Honeydew.EctoPollQueue do
     "The #{type} module you provided, #{inspect module} couldn't be found"
   end
 
+  @doc false
   def rewrite_opts([name, __MODULE__, args | rest]) do
     {database_override, args} = Keyword.pop(args, :database)
 
@@ -81,6 +92,8 @@ defmodule Honeydew.EctoPollQueue do
   end
 
   defmodule Schema do
+    @moduledoc false
+
     defmacro honeydew_fields(queue) do
       quote do
         alias Honeydew.EctoSource.ErlangTerm
@@ -97,6 +110,8 @@ defmodule Honeydew.EctoPollQueue do
   end
 
   defmodule Migration do
+    @moduledoc false
+
     defmacro honeydew_fields(queue, opts \\ []) do
       quote do
         require unquote(__MODULE__)

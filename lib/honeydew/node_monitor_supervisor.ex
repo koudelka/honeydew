@@ -1,4 +1,6 @@
 defmodule Honeydew.NodeMonitorSupervisor do
+  @moduledoc false
+
   use DynamicSupervisor
   alias Honeydew.NodeMonitor
 

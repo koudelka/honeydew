@@ -1,7 +1,6 @@
 #
 # The goal of this module is to lamprey a queue onto an existing ecto schema with as few requirements and as little
-# disruption as possible. It adds two fields to the schema, a "lock" field and a "private" field. As we don't know
-# which database we're running on, I've tried to keep it vanilla, no special db features are used.
+# disruption as possible. It adds two fields to the schema, a "lock" field and a "private" field.
 #
 # The lock field is an integer overloaded with three jobs:
 #  1. Acts as a lock, to ensure that only one worker is processing the job at a time, no matter how many nodes are running
@@ -10,6 +9,7 @@
 #     - "ready", between zero and the beginning of the stale window
 #     - "in progress", inside of the stale window
 #     - "abandoned", -1
+#     - "finished", nil
 #  3. Indicate the order in which jobs should be processed.
 #
 #
@@ -30,7 +30,7 @@
 #
 # As the main objective is to minimize disruption, I wanted the default values for the additional fields to be set
 # statically in the migration, rather than possibly interfering with the user's schema validations on save etc...
-# The only runtimes configuration the user should set is the `stale_timeout`, which should be the maximum expected
+# The only runtime configuration the user should set is the `stale_timeout`, which should be the maximum expected
 # time that a job will take.
 #
 
@@ -39,6 +39,8 @@
 #
 if Code.ensure_loaded?(Ecto) do
   defmodule Honeydew.EctoSource do
+    @moduledoc false
+
     require Logger
     alias Honeydew.Job
     alias Honeydew.PollQueue

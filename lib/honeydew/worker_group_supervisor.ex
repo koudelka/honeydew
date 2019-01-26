@@ -1,4 +1,6 @@
 defmodule Honeydew.WorkerGroupSupervisor do
+  @moduledoc false
+
   use DynamicSupervisor
   alias Honeydew.WorkersPerQueueSupervisor
 

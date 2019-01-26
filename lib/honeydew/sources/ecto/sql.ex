@@ -1,4 +1,6 @@
 defmodule Honeydew.EctoSource.SQL do
+  @moduledoc false
+
   alias Honeydew.EctoSource.State
   alias Honeydew.EctoSource.SQL.Cockroach
   alias Honeydew.EctoSource.SQL.Postgres

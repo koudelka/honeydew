@@ -1,4 +1,6 @@
 defmodule Honeydew.Progress do
+  @moduledoc false
+
   alias Honeydew.JobMonitor
 
   def progress(update) do

@@ -1,5 +1,7 @@
 # when a queue comes online (or its node connects), it sends a message to this process to start workers.
 defmodule Honeydew.WorkerStarter do
+  @moduledoc false
+
   use GenServer
   alias Honeydew.WorkerGroupSupervisor
   require Logger

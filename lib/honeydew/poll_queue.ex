@@ -1,4 +1,6 @@
 defmodule Honeydew.PollQueue do
+  @moduledoc false
+
   require Logger
   alias Honeydew.Job
   alias Honeydew.Queue
@@ -26,6 +28,8 @@ defmodule Honeydew.PollQueue do
             when new_state: private
 
   defmodule State do
+    @moduledoc false
+
     defstruct [:queue, :source, :poll_interval]
   end
 

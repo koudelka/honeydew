@@ -33,12 +33,17 @@ __Strong Job Custody__
 
 __Clusterable Components__
   - Queues, workers and your enqueuing processes can exist anywhere in the BEAM cluster. 
-  - Can optionally heal the cluster after a disconnect or downed node.
   - [Global Queues](https://github.com/koudelka/honeydew/tree/master/examples/global)
 
 __Plugability__
   - [Queues](https://github.com/koudelka/honeydew/blob/master/README/queues.md), [workers](https://github.com/koudelka/honeydew/blob/master/README/workers.md), [dispatch strategies](https://github.com/koudelka/honeydew/blob/master/README/dispatchers.md), [failure modes and success modes](https://github.com/koudelka/honeydew/blob/master/README/success_and_failure_modes.md) are all plugable with user modules.
-  - Batteries-included [Ecto Queues](#ecto), using your database as the queue.
+  - No forced dependency on external queue services.
+
+__Batteries Included__
+  - [In-Memory Queue](https://github.com/koudelka/honeydew/tree/master/examples/local), for fast processing of recreatable jobs.
+  - [Mnesia Queue](https://github.com/koudelka/honeydew/tree/master/examples/mnesia.exs), for persistence and simple distribution scenarios.
+  - [Ecto Queue](#ecto), to turn an Ecto schema into its own work queue, using your database.
+  - Can optionally heal the cluster after a disconnect or downed node when using a [Global Queue](https://github.com/koudelka/honeydew/tree/master/examples/global).
 
 __Easy API__
   - Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](https://hexdocs.pm/elixir/Task.html).

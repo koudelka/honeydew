@@ -1,4 +1,6 @@
 defmodule Honeydew.EctoSource.State do
+  @moduledoc false
+
   defstruct [
     :schema,
     :repo,

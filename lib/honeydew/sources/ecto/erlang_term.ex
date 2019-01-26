@@ -1,5 +1,7 @@
 if Code.ensure_loaded?(Ecto) do
   defmodule Honeydew.EctoSource.ErlangTerm do
+    @moduledoc false
+
     @behaviour Ecto.Type
 
     @impl true

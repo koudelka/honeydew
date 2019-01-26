@@ -1,4 +1,16 @@
 defmodule Honeydew.SuccessMode.Log do
+  @moduledoc """
+  Instructs Honeydew to log the job when it succeeds.
+
+  This logging might be too verbose for most needs, it's mostly an example of how to write a SuccessMode.
+
+  ## Example
+
+  ```elixir
+  Honeydew.start_queue(:my_queue, success_mode: #{inspect __MODULE__})
+  ```
+  """
+
   require Logger
   alias Honeydew.Job
   @behaviour Honeydew.SuccessMode

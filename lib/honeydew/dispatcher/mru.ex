@@ -1,4 +1,6 @@
 defmodule Honeydew.Dispatcher.MRU do
+  @moduledoc false
+
   alias Honeydew.Dispatcher.LRU
   # TODO: docs
 

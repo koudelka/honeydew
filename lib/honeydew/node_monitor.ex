@@ -1,4 +1,6 @@
 defmodule Honeydew.NodeMonitor do
+  @moduledoc false
+
   use GenServer, restart: :transient
   require Logger
 

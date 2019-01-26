@@ -7,16 +7,20 @@ defmodule Honeydew.FailureMode.Retry do
 
   Retry jobs in this queue 3 times:
 
-      {Honeydew.Queues, [:my_queue, failure_mode: {#{inspect __MODULE__}, [times: 3]]}
+  ```elixir
+  Honeydew.start_queue(:my_queue, failure_mode: {#{inspect __MODULE__},
+                                                 times: 3})
+  ```
 
   Retry jobs in this queue 3 times and then move to another queue:
 
-      {Honeydew.Queues, [:my_queue,
-        failure_mode: {
-          #{inspect __MODULE__},
-          [times: 3, finally: {#{inspect Move}, [queue: :another_queue]}]
-        }]
-      }
+  ```elixir
+  Honeydew.start_queue(:my_queue,
+                       failure_mode: {#{inspect __MODULE__},
+                                      times: 3,
+                                      finally: {#{inspect Move},
+                                                queue: :dead_letters}})
+  ```
   """
   alias Honeydew.Job
   alias Honeydew.Queue

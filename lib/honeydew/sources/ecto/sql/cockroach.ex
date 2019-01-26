@@ -1,5 +1,7 @@
 if Code.ensure_loaded?(Ecto) do
   defmodule Honeydew.EctoSource.SQL.Cockroach do
+    @moduledoc false
+
     alias Honeydew.EctoSource
     alias Honeydew.EctoSource.SQL
 

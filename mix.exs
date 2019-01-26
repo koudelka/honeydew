@@ -12,7 +12,7 @@ defmodule Honeydew.Mixfile do
      deps: deps(),
      package: package(),
      elixirc_paths: elixirc_paths(Mix.env),
-     description: "Pluggable local/remote job queue focused on safety.",
+     description: "Pluggable local/clusterable job queue focused on safety.",
      dialyzer: [
        plt_add_apps: [:mnesia, :ex_unit],
        flags: [

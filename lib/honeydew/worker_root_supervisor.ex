@@ -1,4 +1,6 @@
 defmodule Honeydew.WorkerRootSupervisor do
+  @moduledoc false
+
   use Supervisor, restart: :transient
   alias Honeydew.WorkerGroupSupervisor
   alias Honeydew.WorkerStarter

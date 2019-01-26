@@ -1,4 +1,6 @@
 defmodule Honeydew.WorkersPerQueueSupervisor do
+  @moduledoc false
+
   use Supervisor, restart: :transient
   alias Honeydew.WorkerSupervisor
   alias Honeydew.QueueMonitor
