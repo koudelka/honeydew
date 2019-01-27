@@ -7,21 +7,24 @@ defmodule Honeydew.EctoPollQueueIntegrationTest do
   # Postgres
   test "ecto poll queue external project test: Postgres" do
     announce_test("Postgres (unprefixed)")
-    mix("deps.get", "postgres", prefixed: false)
-    mix("test", "postgres", prefixed: false)
+    mix(["deps.unlock", "--all"], "postgres", prefixed: false)
+    :ok = mix("deps.get", "postgres", prefixed: false)
+    :ok = mix("test", "postgres", prefixed: false)
   end
 
   test "ecto poll queue external project test: Postgres (prefixed)" do
     announce_test("Postgres (prefixed)")
-    mix("deps.get", "postgres", prefixed: true)
-    mix("test", "postgres", prefixed: true)
+    mix(["deps.unlock", "--all"], "postgres", prefixed: true)
+    :ok = mix("deps.get", "postgres", prefixed: true)
+    :ok = mix("test", "postgres", prefixed: true)
   end
 
   # Cockroach
   test "ecto poll queue external project test: Cockroach" do
     announce_test("CockroachDB (unprefixed)")
-    mix("deps.get", "cockroach", prefixed: false)
-    mix("test", "cockroach", prefixed: false)
+    mix(["deps.unlock", "--all"], "cockroach", prefixed: false)
+    :ok = mix("deps.get", "cockroach", prefixed: false)
+    :ok = mix("test", "cockroach", prefixed: false)
   end
 
   defp announce_test(message) do
@@ -30,13 +33,19 @@ defmodule Honeydew.EctoPollQueueIntegrationTest do
     )
   end
 
+  defp mix(task, database, opts) when is_binary(task), do: mix([task], database, opts)
+
   defp mix(task, database, prefixed: prefixed_tables) do
     environment = [{"MIX_ENV", database}] |> add_prefixed_tables_env(prefixed_tables)
 
     {_, exit_code} =
-      System.cmd("mix", [task], cd: @examples_root, into: IO.stream(:stdio, 1), env: environment)
+      System.cmd("mix", task, cd: @examples_root, into: IO.stream(:stdio, 1), env: environment)
 
-    assert exit_code == 0
+    if exit_code == 0 do
+      :ok
+    else
+      {:error, exit_code}
+    end
   end
 
   defp add_prefixed_tables_env(env, true), do: env ++ [{"prefixed_tables", "true"}]

@@ -31,17 +31,22 @@ defmodule EctoPollQueueExample.MixProject do
   defp deps do
     [
       {:honeydew, path: "../.."},
-      {:ecto, "~> 2.0"},
       {:dialyxir, "~> 0.5", only: [:cockroach, :postgres], runtime: false}
     ]
   end
 
   defp deps(:cockroach) do
-    [{:postgrex, "~> 0.13", hex: :postgrex_cdb, override: true} | deps()]
+    [
+     {:ecto, "~> 3.0"},
+     {:postgrex, github: "activeprospect/postgrex", branch: "v0.14.1-cdb", override: true},
+     {:ecto_sql, github: "activeprospect/ecto_sql", branch: "v3.0.5-cdb", override: true},
+     {:jason, "~> 1.0"},
+     ] ++ deps()
   end
 
   defp deps(:postgres) do
-    [{:postgrex, "~> 0.13"} | deps()]
+    [{:ecto_sql, "~> 3.0"},
+     {:postgrex, "~> 0.13"}] ++ deps()
   end
 
   defp aliases do

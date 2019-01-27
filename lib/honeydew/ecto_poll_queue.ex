@@ -122,8 +122,7 @@ defmodule Honeydew.EctoPollQueue do
         database = Keyword.get(unquote(opts), :database, nil)
 
         sql_module =
-          :repo
-          |> Ecto.Migration.Runner.repo_config(nil)
+          Ecto.Migration.Runner.repo()
           |> SQL.module(database)
 
         unquote(queue)
