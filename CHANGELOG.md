@@ -1,3 +1,8 @@
+## 1.3.0 (2019-2-13)
+
+### Enhancements
+* Ecto 3 support
+
 ## 1.2.7 (2019-1-8)
 
 ### Enhancements
