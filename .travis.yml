@@ -32,20 +32,18 @@ before_script:
   - MIX_ENV=test mix compile --warnings-as-errors
   - cd examples/ecto_poll_queue && MIX_ENV=cockroach mix do deps.get, compile --warnings-as-errors && cd -
   - cd examples/ecto_poll_queue && MIX_ENV=cockroach mix dialyzer --plt && cd -
-  - rm examples/ecto_poll_queue/mix.lock
   - cd examples/ecto_poll_queue && MIX_ENV=postgres  mix do deps.get, compile --warnings-as-errors && cd -
   - cd examples/ecto_poll_queue && MIX_ENV=postgres  mix dialyzer --plt && cd -
-  - rm examples/ecto_poll_queue/mix.lock
   - MIX_ENV=test mix dialyzer --plt
   - cd cockroach-v2.0.0.linux-amd64 && ./cockroach sql --insecure --host=localhost --execute "create database postgres" && cd -
   - psql -c 'create database honeydew_test;' -U postgres
+  # Check for changed files like mix.lock
+  - git diff --exit-code
 
 script:
   - mix test
-  - rm examples/ecto_poll_queue/mix.lock
   - cd examples/ecto_poll_queue && MIX_ENV=cockroach mix do deps.get && cd -
   - cd examples/ecto_poll_queue && MIX_ENV=cockroach mix dialyzer --halt-exit-status && cd -
-  - rm examples/ecto_poll_queue/mix.lock
   - cd examples/ecto_poll_queue && MIX_ENV=postgres mix do deps.get && cd -
   - cd examples/ecto_poll_queue && MIX_ENV=postgres mix dialyzer --halt-exit-status && cd -
   - MIX_ENV=test mix dialyzer --halt-exit-status

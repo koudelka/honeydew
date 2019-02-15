@@ -7,14 +7,12 @@ defmodule Honeydew.EctoPollQueueIntegrationTest do
   # Postgres
   test "ecto poll queue external project test: Postgres" do
     announce_test("Postgres (unprefixed)")
-    mix(["deps.unlock", "--all"], "postgres", prefixed: false)
     :ok = mix("deps.get", "postgres", prefixed: false)
     :ok = mix("test", "postgres", prefixed: false)
   end
 
   test "ecto poll queue external project test: Postgres (prefixed)" do
     announce_test("Postgres (prefixed)")
-    mix(["deps.unlock", "--all"], "postgres", prefixed: true)
     :ok = mix("deps.get", "postgres", prefixed: true)
     :ok = mix("test", "postgres", prefixed: true)
   end
@@ -22,7 +20,6 @@ defmodule Honeydew.EctoPollQueueIntegrationTest do
   # Cockroach
   test "ecto poll queue external project test: Cockroach" do
     announce_test("CockroachDB (unprefixed)")
-    mix(["deps.unlock", "--all"], "cockroach", prefixed: false)
     :ok = mix("deps.get", "cockroach", prefixed: false)
     :ok = mix("test", "cockroach", prefixed: false)
   end
