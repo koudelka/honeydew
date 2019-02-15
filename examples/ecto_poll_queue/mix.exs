@@ -5,6 +5,7 @@ defmodule EctoPollQueueExample.MixProject do
     [
       app: :ecto_poll_queue_example,
       version: "0.1.0",
+      lockfile: lockfile(Mix.env()),
       elixir: "~> 1.5",
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
@@ -56,4 +57,9 @@ defmodule EctoPollQueueExample.MixProject do
       test: ["ecto.reset", "test"]
     ]
   end
+
+  defp lockfile(:cockroach), do: "mix.cockroach.lock"
+  defp lockfile(:postgres), do: "mix.postgres.lock"
+  defp lockfile(_), do: "mix.lock"
+
 end
