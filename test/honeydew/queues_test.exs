@@ -3,7 +3,7 @@ defmodule Honeydew.QueuesTest do
   import Helper
   alias Honeydew.Queues
   alias Honeydew.Queue.State
-  alias Honeydew.Queue.{ErlangQueue, Mnesia}
+  alias Honeydew.Queue.Mnesia
   alias Honeydew.Dispatcher.{LRU, MRU}
   alias Honeydew.FailureMode.{Abandon, Retry}
   alias Honeydew.SuccessMode.Log
@@ -23,7 +23,7 @@ defmodule Honeydew.QueuesTest do
       nodes = [node()]
 
       options = [
-        queue: {Mnesia, [nodes, [disc_copies: nodes], []]},
+        queue: {Mnesia, [ram_copies: nodes]},
         dispatcher: {MRU, []},
         failure_mode: {Retry, [times: 5]},
         success_mode: {Log, []},
@@ -34,11 +34,11 @@ defmodule Honeydew.QueuesTest do
       assert [{{:global, :abc}, pid, _, _}] = Supervisor.which_children(Queues)
 
       assert %State{
-        dispatcher: {Honeydew.Dispatcher.MRU, _dispatcher_state},
-        failure_mode: {Honeydew.FailureMode.Retry, [times: 5]},
-        module: Honeydew.Queue.Mnesia,
+        dispatcher: {MRU, _dispatcher_state},
+        failure_mode: {Retry, [times: 5]},
+        module: Mnesia,
         queue: {:global, :abc},
-        success_mode: {Honeydew.SuccessMode.Log, []},
+        success_mode: {Log, []},
         suspended: true
       } = :sys.get_state(pid)
     end
@@ -60,7 +60,7 @@ defmodule Honeydew.QueuesTest do
       assert %State{
         dispatcher: {LRU, _dispatcher_state},
         failure_mode: {Abandon, []},
-        module: ErlangQueue,
+        module: Mnesia,
         queue: :abc,
         success_mode: nil,
         suspended: false
