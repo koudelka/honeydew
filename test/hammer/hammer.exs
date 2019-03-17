@@ -10,10 +10,11 @@ end
 
 defmodule Honeydew.Hammer do
 
-  @num_jobs 1_000_000
+  @num_jobs 1_000_00
 
   def run(func) do
-    :ok = Honeydew.start_queue(:queue)
+    # :ok = Honeydew.start_queue(:queue)
+    :ok = Honeydew.start_queue(:queue, queue: {Honeydew.Queue.Mnesia, [ram_copies: [node()]]})
     :ok = Honeydew.start_workers(:queue, Worker, num: 10)
 
     {microsecs, :ok} = :timer.tc(__MODULE__, func, [])
@@ -41,7 +42,8 @@ defmodule Honeydew.Hammer do
     Honeydew.async(fn -> send me, :done end, :queue)
 
     receive do
-      :done -> :ok
+      :done ->
+        :ok
     end
   end
 end

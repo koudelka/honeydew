@@ -3,7 +3,7 @@ defmodule Honeydew.Queues do
 
   use Supervisor
   alias Honeydew.Queue
-  alias Honeydew.Queue.ErlangQueue
+  alias Honeydew.Queue.Mnesia
   alias Honeydew.Dispatcher.LRUNode
   alias Honeydew.Dispatcher.LRU
   alias Honeydew.FailureMode.Abandon
@@ -30,7 +30,7 @@ defmodule Honeydew.Queues do
   def start_queue(name, opts) do
     {module, args} =
       case opts[:queue] do
-        nil -> {ErlangQueue, []}
+        nil -> {Mnesia, [ram_copies: [node()]]}
         module when is_atom(module) -> {module, []}
         {module, args} -> {module, args}
       end

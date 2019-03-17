@@ -214,8 +214,7 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     :ok = Honeydew.stop_queue(queue)
     :ok = Honeydew.stop_workers(queue)
 
-    nodes = [node()]
-    :ok = Honeydew.start_queue(queue, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
+    :ok = start_queue(queue)
 
     %{queue: %{count: total, in_progress: in_progress}} = Honeydew.status(queue)
 
@@ -345,10 +344,9 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
   end
 
   defp start_queue(queue, opts \\ []) do
-    nodes = [node()]
     queue_opts =
       Keyword.merge(
-        [queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]}],
+        [queue: {Honeydew.Queue.Mnesia, [disc_copies: [node()]]}],
         opts
       )
 

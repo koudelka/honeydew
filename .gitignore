@@ -3,5 +3,5 @@
 /doc
 erl_crash.dump
 *.ez
-Mnesia.*
+/Mnesia.*
 .DS_Store

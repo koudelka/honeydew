@@ -1,15 +1,17 @@
 defmodule Honeydew.FailureMode.RetryTest do
   use ExUnit.Case, async: true
 
+  alias Honeydew.Queue.Mnesia
+
   @moduletag :capture_log
 
   setup do
     queue = :erlang.unique_integer
     failure_queue = "#{queue}_failed"
 
-    :ok = Honeydew.start_queue(queue, failure_mode: {Honeydew.FailureMode.Retry,
+    :ok = Honeydew.start_queue(queue, queue: {Mnesia, ram_copies: [node()]}, failure_mode: {Honeydew.FailureMode.Retry,
                                                      times: 3, finally: {Honeydew.FailureMode.Move, queue: failure_queue}})
-    :ok = Honeydew.start_queue(failure_queue)
+    :ok = Honeydew.start_queue(failure_queue, queue: {Mnesia, [ram_copies: [node()]]})
     :ok = Honeydew.start_workers(queue, Stateless)
 
     [queue: queue, failure_queue: failure_queue]

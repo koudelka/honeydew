@@ -6,39 +6,37 @@ defmodule Honeydew.Queue.Mnesia do
 
   * Run with replication (with queues running on multiple nodes)
   * Persist jobs to disk (dets)
-  * Follow various safety modes ("access contexts")
   """
   require Honeydew.Job
   require Logger
+  require Record
+
   alias Honeydew.Job
   alias Honeydew.Queue
+  alias __MODULE__.WrappedJob
 
   @behaviour Queue
 
   # private queue state
   defmodule PState do
     @moduledoc false
-    defstruct [:table, :access_context]
+
+    defstruct [:table,
+               :in_progress_table,
+               :access_context]
   end
-
-  # TODO: document. :(
-  @pending_match_spec [{Job.job(private: {false, :_}, _: :_) |> Job.to_record(:_), [], [:"$_"]}]
-
-  @access_contexts [:transaction, :sync_transaction, :async_dirty, :sync_dirty, :ets]
 
   @impl true
-  def validate_args!([_nodes, _table_opts, [access_context: access_context]]) when access_context not in @access_contexts do
-    raise ArgumentError, "You provided an invalid access context, `#{inspect access_context}`,` to the #{__MODULE__} queue, mnesia supports any of #{inspect @access_contexts}."
-  end
+  def validate_args!(opts) do
+    nodes_list = nodes_list(opts)
 
-  def validate_args!([[], _table_opts, _opts]) do
-    raise ArgumentError, "You must provide at least one node to #{__MODULE__}, for instance `[#{inspect node()}]`."
-  end
+    if Enum.empty?(nodes_list) do
+      raise ArgumentError, "You must provide either :ram_copies, :disc_copies or :disc_only_copies as to #{__MODULE__}, for instance `[disc_copies: [node()]]`."
+    end
 
-  def validate_args!([nodes, _table_opts, _opts]) do
-    Enum.each(nodes, fn
+    Enum.each(nodes_list, fn
       node when not is_atom(node) ->
-        raise ArgumentError, "You provided node name `#{inspect node}` to the #{__MODULE__} queue, valid node names are atoms."
+        raise ArgumentError, "You provided node name `#{inspect node}` to the #{__MODULE__} queue, node names must be atoms."
       _ -> :ok
     end)
 
@@ -46,35 +44,53 @@ defmodule Honeydew.Queue.Mnesia do
   end
 
   @impl true
-  def init(queue_name, [nodes, table_opts, opts]) do
-    access_context = Keyword.get(opts, :access_context, :sync_transaction)
+  def init(queue_name, opts) do
+    nodes = nodes_list(opts)
 
-    case :mnesia.create_schema(nodes) do
-      :ok -> :ok
-      {:error, {_, {:already_exists, _}}} -> :ok
+    if on_disk?(opts) do
+      case :mnesia.create_schema(nodes) do
+        :ok -> :ok
+        {:error, {_, {:already_exists, _}}} -> :ok
+      end
     end
 
     # assert that mnesia started correctly everywhere?
     :rpc.multicall(nodes, :mnesia, :start, [])
 
-    table_def =
-      table_opts
-      |> Keyword.put(:type, :ordered_set)
-      |> Keyword.put(:attributes, Job.fields)
+    generic_table_def = [attributes: WrappedJob.record_fields(),
+                         record_name: WrappedJob.record_name()]
 
     # inspect/1 here becase queue_name can be of the form {:global, poolname}
     table = ["honeydew", inspect(queue_name)] |> Enum.join("_") |> String.to_atom
+    in_progress_table = ["honeydew", inspect(queue_name), "in_progress"] |> Enum.join("_") |> String.to_atom
 
-    case :mnesia.create_table(table, table_def) do
-      {:atomic, :ok} -> :ok
-      {:aborted, {:already_exists, ^table}} -> :ok
-    end
+    tables = %{table => [type: :ordered_set],
+               in_progress_table => [type: :set]}
 
-    :ok = :mnesia.wait_for_tables([table], 15_000)
+    Enum.each(tables, fn {name, opts} ->
+      table_definition = Keyword.merge(generic_table_def, opts)
 
-    :ok = reset_after_crash(table, access_context)
+      case :mnesia.create_table(name, table_definition) do
+        {:atomic, :ok} ->
+          :ok
 
-    {:ok, %PState{table: table, access_context: access_context}}
+        {:aborted, {:already_exists, ^name}} ->
+          :ok
+      end
+    end)
+
+    :ok =
+      tables
+      |> Map.keys()
+      |> :mnesia.wait_for_tables(15_000)
+
+    state = %PState{table: table,
+                    in_progress_table: in_progress_table,
+                    access_context: access_context(opts)}
+
+    :ok = reset_after_crash(state)
+
+    {:ok, state}
   end
 
   #
@@ -82,36 +98,29 @@ defmodule Honeydew.Queue.Mnesia do
   #
 
   @impl true
-  def enqueue(job, %PState{table: table, access_context: access_context} = state) do
-    job = %{job | private: {false, :erlang.unique_integer([:monotonic])}} # {in_progress, :id}
+  def enqueue(%Job{} = job, %PState{table: table} = state) do
+    wrapped_job = WrappedJob.new(job, DateTime.utc_now())
 
-    :mnesia.activity(access_context, fn ->
-      :ok =
-        job
-        |> Job.to_record(table)
-        |> :mnesia.write
-    end)
+    wrapped_job_record = WrappedJob.to_record(wrapped_job)
+    :ok = :mnesia.dirty_write(table, wrapped_job_record)
 
-    {state, job}
+    {state, wrapped_job.job}
   end
 
-  # should the recursion be outside of the transaction?
   @impl true
   def reserve(%PState{table: table, access_context: access_context} = state) do
     :mnesia.activity(access_context, fn ->
-      case :mnesia.select(table, @pending_match_spec, 1, :read) do
-        :"$end_of_table" -> {:empty, state}
-        {[job], _cont} ->
-          {_, id} = Job.job(job, :private)
+      table
+      |> :mnesia.first
+      |> case do
+           :"$end_of_table" ->
+             {:empty, state}
 
-          :ok = :mnesia.delete_object(job)
+           key ->
+             %WrappedJob{job: job} = move_to_in_progress_table(key, %{}, state)
 
-          job = Job.job(job, private: {node(), id})
-
-          :ok = :mnesia.write(job)
-
-          {Job.from_record(job), state}
-      end
+             {job, state}
+         end
     end)
   end
 
@@ -120,22 +129,17 @@ defmodule Honeydew.Queue.Mnesia do
   #
 
   @impl true
-  def ack(%Job{private: private}, %PState{table: table} = state) do
-    :ok = :mnesia.dirty_delete(table, private)
+  def ack(%Job{private: key}, %PState{in_progress_table: in_progress_table, access_context: access_context} = state) do
+    :mnesia.activity(access_context, fn ->
+      :ok = :mnesia.delete({in_progress_table, key})
+    end)
 
     state
   end
 
   @impl true
-  def nack(%Job{private: {_, id}, failure_private: failure_private} = job, %PState{table: table, access_context: access_context} = state) do
-    :mnesia.activity(access_context, fn ->
-      :ok =
-        %{job | private: {false, id}, failure_private: failure_private}
-        |> Job.to_record(table)
-        |> :mnesia.write
-
-      :ok = :mnesia.delete({table, {node(), id}})
-    end)
+  def nack(%Job{private: key, failure_private: failure_private}, %PState{} = state) do
+    move_to_pending_table(key, %{failure_private: failure_private}, state)
 
     state
   end
@@ -144,94 +148,152 @@ defmodule Honeydew.Queue.Mnesia do
   # Helpers
   #
 
-  # foldl might be too heavy...
   @impl true
-  def status(%PState{table: table}) do
-    {pending, in_progress} =
-      :mnesia.activity(:async_dirty, fn ->
-        :mnesia.foldl(fn job, {pending, in_progress} ->
-          job
-          |> Job.to_record
-          |> case do
-               Job.job(private: {false, _}) ->
-                 {pending + 1, in_progress}
-               Job.job(private: {_node, _}) ->
-                 {pending, in_progress + 1}
-             end
-        end, {0, 0}, table)
-      end)
+  def status(%PState{table: table, in_progress_table: in_progress_table}) do
+    mnesia_info = %{
+      table => :mnesia.table_info(table, :all),
+      in_progress_table => :mnesia.table_info(in_progress_table, :all)
+    }
+
+    num_pending = mnesia_info[table][:size]
+    num_in_progress = mnesia_info[in_progress_table][:size]
 
     %{
-      mnesia: :mnesia.table_info(table, :all),
-      count: pending + in_progress,
-      in_progress: in_progress
+      mnesia: mnesia_info,
+      count: num_pending + num_in_progress,
+      in_progress: num_in_progress
     }
   end
 
   @impl true
   def filter(%PState{table: table, access_context: access_context}, map) when is_map(map) do
     :mnesia.activity(access_context, fn ->
-      map
-      |> Job.match_spec(table)
-      |> :mnesia.match_object
-      |> Enum.map(&Job.from_record/1)
+      pattern = WrappedJob.filter_match_spec(map)
+      table
+      |> :mnesia.match_object(pattern, :read)
+      |> Enum.map(&WrappedJob.from_record/1)
+      |> Enum.map(fn %WrappedJob{job: job} -> job end)
     end)
   end
 
   @impl true
   def filter(%PState{table: table, access_context: access_context}, function) do
     :mnesia.activity(access_context, fn ->
-      :mnesia.foldl(fn job, list ->
+      :mnesia.foldl(fn wrapped_job_record, list ->
+        %WrappedJob{job: job} = WrappedJob.from_record(wrapped_job_record)
+
         job
-        |> Job.from_record
         |> function.()
         |> case do
              true -> [job | list]
              false -> list
            end
       end, [], table)
-      |> Enum.map(&Job.from_record/1)
     end)
   end
 
   @impl true
   @spec cancel(Job.t, Queue.private) :: {:ok | {:error, :in_progress | :not_found}, Queue.private}
-  def cancel(%Job{private: {_, id}, }, %PState{table: table, access_context: access_context} = state) do
+  def cancel(%Job{private: key}, %PState{table: table, in_progress_table: in_progress_table, access_context: access_context} = state) do
     reply =
       :mnesia.activity(access_context, fn ->
-        Job.job(private: {:_, id}, _: :_)
-        |> Job.to_record(table)
-        |> :mnesia.match_object
-        |> Enum.map(&Job.to_record/1)
+        table
+        |> :mnesia.read(key)
         |> case do
-             [] -> {:error, :not_found}
-             [Job.job(private: {false, id})] ->
-               :ok = :mnesia.delete({table, {false, id}})
-             [Job.job(private: {_node, _id})] ->
-               {:error, :in_progress}
+             [_wrapped_job] ->
+               :ok = :mnesia.delete({table, key})
+
+             [] ->
+               in_progress_table
+               |> :mnesia.read(key)
+               |> case do
+                    [] ->
+                      {:error, :not_found}
+                    [_wrapped_job] ->
+                      {:error, :in_progress}
+                  end
            end
       end)
 
     {reply, state}
   end
 
-  defp reset_after_crash(table, access_context) do
+  defp reset_after_crash(%PState{in_progress_table: in_progress_table} = state) do
+    in_progress_table
+    |> :mnesia.dirty_first()
+    |> case do
+         :"$end_of_table" ->
+           :ok
+
+         key ->
+           move_to_pending_table(key, %{}, state)
+
+           reset_after_crash(state)
+       end
+    :ok
+  end
+
+  defp move_to_in_progress_table(key, updates, %PState{table: table, in_progress_table: in_progress_table, access_context: access_context}) do
+    move_to_table(key, updates, table, in_progress_table, access_context)
+  end
+
+  defp move_to_pending_table(key, updates, %PState{table: table, in_progress_table: in_progress_table, access_context: access_context}) do
+    move_to_table(key, updates, in_progress_table, table, access_context)
+  end
+
+  defp move_to_table(key, updates, from_table, to_table, access_context) do
     :mnesia.activity(access_context, fn ->
-      table
-      |> :mnesia.select(in_progress_match_spec(), :read)
-      |> Enum.each(fn job ->
-        {_, id} = Job.job(job, :private)
+      wrapped_job =
+        from_table
+        |> :mnesia.read(key)
+        |> List.first
+        |> WrappedJob.from_record
 
-        :ok = :mnesia.delete_object(job)
+      wrapped_job = %WrappedJob{wrapped_job | job: struct(wrapped_job.job, updates)}
 
-        job = Job.job(job, private: {false, id})
+      wrapped_job_record = WrappedJob.to_record(wrapped_job)
+      :ok = :mnesia.write(to_table, wrapped_job_record, :write)
 
-        :ok = :mnesia.write(job)
-      end)
+      :ok = :mnesia.delete({from_table, key})
+
+      wrapped_job
     end)
   end
 
-  defp in_progress_match_spec do
-    [{Job.job(private: {node(), :_}, _: :_) |> Job.to_record(:_), [], [:"$_"]}]
+  defp access_context(opts) do
+    if nodes_list(opts) == [node()] do
+      if on_disk?(opts) do
+        :async_dirty
+      else
+        :ets
+      end
+    else
+      :sync_transaction
+    end
+  end
+
+  defp nodes(opts) do
+    ram_copies = Keyword.get(opts, :ram_copies, [])
+    disc_copies = Keyword.get(opts, :disc_copies, [])
+    disc_only_copies = Keyword.get(opts, :disc_only_copies, [])
+
+    %{
+      ram: ram_copies,
+      disc: disc_copies,
+      disc_only: disc_only_copies
+    }
+  end
+
+  defp nodes_list(opts) do
+    opts
+    |> nodes
+    |> Map.values
+    |> List.flatten
+  end
+
+  defp on_disk?(opts) do
+    nodes = nodes(opts)
+
+    !Enum.empty?(nodes[:disc]) || !Enum.empty?(nodes[:disc_only])
   end
 end
