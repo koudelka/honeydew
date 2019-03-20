@@ -13,6 +13,7 @@ defmodule Honeydew.Queue.Mnesia do
 
   alias Honeydew.Job
   alias Honeydew.Queue
+  alias Honeydew.Queue.State, as: QueueState
   alias __MODULE__.WrappedJob
 
   @behaviour Queue
@@ -25,6 +26,8 @@ defmodule Honeydew.Queue.Mnesia do
                :in_progress_table,
                :access_context]
   end
+
+  @poll_interval 1_000
 
   @impl true
   def validate_args!(opts) do
@@ -90,6 +93,8 @@ defmodule Honeydew.Queue.Mnesia do
 
     :ok = reset_after_crash(state)
 
+    poll()
+
     {:ok, state}
   end
 
@@ -98,10 +103,10 @@ defmodule Honeydew.Queue.Mnesia do
   #
 
   @impl true
-  def enqueue(%Job{} = job, %PState{table: table} = state) do
-    wrapped_job = WrappedJob.new(job, DateTime.utc_now())
-
+  def enqueue(job, %PState{table: table} = state) do
+    wrapped_job = WrappedJob.new(job)
     wrapped_job_record = WrappedJob.to_record(wrapped_job)
+
     :ok = :mnesia.dirty_write(table, wrapped_job_record)
 
     {state, wrapped_job.job}
@@ -111,14 +116,16 @@ defmodule Honeydew.Queue.Mnesia do
   def reserve(%PState{table: table, access_context: access_context} = state) do
     :mnesia.activity(access_context, fn ->
       table
-      |> :mnesia.first
+      |> :mnesia.select(WrappedJob.reserve_match_spec(), 1, :read)
       |> case do
            :"$end_of_table" ->
              {:empty, state}
 
-           key ->
-             %WrappedJob{job: job} = move_to_in_progress_table(key, %{}, state)
-
+           {[wrapped_job_record], _cont} ->
+             %WrappedJob{job: job} =
+               wrapped_job_record
+               |> WrappedJob.key()
+               |> move_to_in_progress_table(%{}, state)
              {job, state}
          end
     end)
@@ -168,7 +175,8 @@ defmodule Honeydew.Queue.Mnesia do
   @impl true
   def filter(%PState{table: table, access_context: access_context}, map) when is_map(map) do
     :mnesia.activity(access_context, fn ->
-      pattern = WrappedJob.filter_match_spec(map)
+      pattern = WrappedJob.filter_pattern(map)
+
       table
       |> :mnesia.match_object(pattern, :read)
       |> Enum.map(&WrappedJob.from_record/1)
@@ -250,10 +258,9 @@ defmodule Honeydew.Queue.Mnesia do
         |> WrappedJob.from_record
 
       wrapped_job = %WrappedJob{wrapped_job | job: struct(wrapped_job.job, updates)}
-
       wrapped_job_record = WrappedJob.to_record(wrapped_job)
-      :ok = :mnesia.write(to_table, wrapped_job_record, :write)
 
+      :ok = :mnesia.write(to_table, wrapped_job_record, :write)
       :ok = :mnesia.delete({from_table, key})
 
       wrapped_job
@@ -295,5 +302,15 @@ defmodule Honeydew.Queue.Mnesia do
     nodes = nodes(opts)
 
     !Enum.empty?(nodes[:disc]) || !Enum.empty?(nodes[:disc_only])
+  end
+
+  @impl true
+  def handle_info(:__poll__, %QueueState{} = queue_state) do
+    poll()
+    {:noreply, Queue.dispatch(queue_state)}
+  end
+
+  defp poll do
+    {:ok, _} = :timer.send_after(@poll_interval, :__poll__)
   end
 end

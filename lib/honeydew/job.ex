@@ -15,12 +15,14 @@ defmodule Honeydew.Job do
              :job_monitor,
              :enqueued_at,
              :started_at,
-             :completed_at]
+             :completed_at,
+             {:delay_secs, 0}]
 
   @type t :: %__MODULE__{
-    task: Honeydew.task | nil,
+    task: Honeydew.task,
     queue: Honeydew.queue_name,
-    private: private
+    private: private,
+    delay_secs: integer()
   }
 
   @doc false

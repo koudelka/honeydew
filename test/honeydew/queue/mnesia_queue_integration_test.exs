@@ -17,22 +17,40 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     doctest Honeydew
   end
 
-  test "async/3", %{queue: queue} do
-    %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
-    assert_receive :hi
-  end
+  describe "async/3" do
+    test "sanity check", %{queue: queue} do
+      %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+      assert_receive :hi
+    end
 
-  test "hammer async/3", %{queue: queue} do
-    Enum.each(0..10_000, fn i ->
-      %Job{} = {:send_msg, [self(), i]} |> Honeydew.async(queue)
-      assert_receive ^i
-    end)
-  end
+    test "hammer smoke test", %{queue: queue} do
+      num = 10_00
 
-  @tag :skip_worker_pool
-  test "async/3 when queue doesn't exist" do
-    assert_raise RuntimeError, fn ->
-      Honeydew.async({:send_msg, [self(), :hi]}, :nonexistent_queue)
+      me = self()
+      0..num
+      |> Enum.map(fn i ->
+        Task.async(fn ->
+          %Job{} = {:send_msg, [me, i]} |> Honeydew.async(queue)
+        end)
+      end)
+      |> Enum.each(&Task.await/1)
+
+      Enum.each(0..num, fn i ->
+        assert_receive ^i
+      end)
+    end
+
+    @tag :skip_worker_pool
+    test "when queue doesn't exist" do
+      assert_raise RuntimeError, fn ->
+        Honeydew.async({:send_msg, [self(), :hi]}, :nonexistent_queue)
+      end
+    end
+
+    test "delay_secs", %{queue: queue} do
+      %Job{} = {:send_msg, [self(), :delay_test]} |> Honeydew.async(queue, delay_secs: 2)
+      refute_receive :delay_test, 1990
+      assert_receive :delay_test
     end
   end
 
@@ -346,7 +364,7 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
   defp start_queue(queue, opts \\ []) do
     queue_opts =
       Keyword.merge(
-        [queue: {Honeydew.Queue.Mnesia, [disc_copies: [node()]]}],
+        [queue: {Honeydew.Queue.Mnesia, [ram_copies: [node()]]}],
         opts
       )
 
