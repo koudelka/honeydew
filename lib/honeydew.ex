@@ -15,7 +15,7 @@ defmodule Honeydew do
   @type mod_or_mod_args :: module | {module, args :: term}
   @type queue_name :: String.t | atom | {:global, String.t | atom}
   @type supervisor_opts :: Keyword.t
-  @type async_opt :: {:reply, true}
+  @type async_opt :: {:reply, true} | {:delay_secs, pos_integer()}
   @type task :: {atom, [arg :: term]}
   @type filter :: (Job.t -> boolean) | atom
 
@@ -34,13 +34,18 @@ defmodule Honeydew do
 
   Raises a `RuntimeError` if `queue` process is not available.
 
+  You can provide any of the following `opts`:
+
+  - `reply`: returns the result of the job via `yield/1`, see below.
+  - `delay_secs`: delays the execution of the job by the provided number of seconds.
+
   ## Examples
 
-  To run a task asynchronously.
+  To run a task asynchronously:
 
       Honeydew.async({:ping, ["127.0.0.1"]}, :my_queue)
 
-  To run a task asynchronously and wait for result.
+  To run a task asynchronously and wait for result:
 
       # Without pipes
       job = Honeydew.async({:ping, ["127.0.0.1"]}, :my_queue, reply: true)
@@ -51,23 +56,27 @@ defmodule Honeydew do
         {:ping, ["127.0.0.1"]}
         |> Honeydew.async(:my_queue, reply: true)
         |> Honeydew.yield()
+
+  To run a task an hour later:
+
+      Honeydew.async({:ping, ["127.0.0.1"]}, :my_queue, delay_secs: 60*60)
   """
   @spec async(task, queue_name, [async_opt]) :: Job.t | no_return
-  def async(task, queue, opts \\ [])
-  def async(task, queue, reply: true) do
-    {:ok, job} =
-      task
-      |> Job.new(queue)
-      |> struct(from: {self(), make_ref()})
-      |> enqueue
+  def async(task, queue, opts \\ []) do
+    job = Job.new(task, queue)
 
-    job
-  end
-
-  def async(task, queue, _opts) do
     {:ok, job} =
-      task
-      |> Job.new(queue)
+      opts
+      |> Enum.reduce(job, fn
+        {:reply, true}, job ->
+          %Job{job | from: {self(), make_ref()}}
+
+        {:delay_secs, secs}, job when is_integer(secs) and secs >= 0 ->
+          %Job{job | delay_secs: secs}
+
+        {:delay_secs, thing}, job ->
+          raise ArgumentError, invalid_delay_secs_error(job, thing)
+      end)
       |> enqueue
 
     job
@@ -268,6 +277,11 @@ defmodule Honeydew do
   @doc false
   def invalid_owner_error(job) do
     "job #{inspect job} must be queried from the owner but was queried from #{inspect self()}"
+  end
+
+  @doc false
+  def invalid_delay_secs_error(job, secs) do
+    "invalid :delay_secs argument, #{inspect secs}, provided for job #{inspect job}, must be a non-negative integer"
   end
 
   @doc false

@@ -13,26 +13,34 @@ defmodule Honeydew.ErlangQueueIntegrationTest do
     doctest Honeydew
   end
 
-  test "async/3", %{queue: queue} do
-    %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+  describe "async/3" do
+    test "sanity check", %{queue: queue} do
+      %Job{} = {:send_msg, [self(), :hi]} |> Honeydew.async(queue)
+      assert_receive :hi
+    end
 
-    assert_receive :hi
-  end
+    test "hammer smoke test", %{queue: queue} do
+      num = 10_00
 
-  test "hammer async/3", %{queue: queue} do
-    num = 10_000
-    Enum.each(0..num, fn i ->
-      %Job{} = {:send_msg, [self(), i]} |> Honeydew.async(queue)
-    end)
-    Enum.each(0..num, fn i ->
-      assert_receive ^i
-    end)
-  end
+      me = self()
+      0..num
+      |> Enum.map(fn i ->
+        Task.async(fn ->
+          %Job{} = {:send_msg, [me, i]} |> Honeydew.async(queue)
+        end)
+      end)
+      |> Enum.each(&Task.await/1)
 
-  @tag :skip_worker_pool
-  test "async/3 when queue doesn't exist" do
-    assert_raise RuntimeError, fn ->
-      Honeydew.async({:send_msg, [self(), :hi]}, :nonexistent_queue)
+      Enum.each(0..num, fn i ->
+        assert_receive ^i
+      end)
+    end
+
+    @tag :skip_worker_pool
+    test "when queue doesn't exist" do
+      assert_raise RuntimeError, fn ->
+        Honeydew.async({:send_msg, [self(), :hi]}, :nonexistent_queue)
+      end
     end
   end
 
