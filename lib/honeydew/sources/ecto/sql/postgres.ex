@@ -27,18 +27,26 @@ if Code.ensure_loaded?(Ecto) do
     @impl true
     def ready do
       SQL.far_in_the_past()
-      |> time_in_msecs
+      |> timestamp_in_msecs
       |> msecs_ago
+    end
+
+    @impl true
+    def delay_ready(state) do
+      "UPDATE #{state.table}
+      SET #{state.lock_field} = (#{ready()} + $1 * 1000),
+          #{state.private_field} = $2
+      WHERE #{state.key_field} = $3"
     end
 
     @impl true
     def reserve(state) do
       "UPDATE #{state.table}
-      SET #{state.lock_field} = #{now_msecs()}
+      SET #{state.lock_field} = #{reserve_at(state)}
       WHERE id = (
         SELECT id
         FROM #{state.table}
-        WHERE #{state.lock_field} BETWEEN 0 AND #{msecs_ago(state.stale_timeout)}
+        WHERE #{state.lock_field} BETWEEN 0 AND #{ready()}
         ORDER BY #{state.lock_field}, #{state.key_field}
         LIMIT 1
         FOR UPDATE SKIP LOCKED
@@ -52,16 +60,33 @@ if Code.ensure_loaded?(Ecto) do
       SET #{state.lock_field} = NULL
       WHERE
         id = $1
-        AND #{state.lock_field} BETWEEN 0 AND #{msecs_ago(state.stale_timeout)}
       RETURNING #{state.lock_field}"
     end
 
     @impl true
     def status(state) do
-      "SELECT COUNT(CASE WHEN #{state.lock_field} IS NOT NULL THEN 1 ELSE NULL END) AS count,
-              COUNT(CASE WHEN #{state.lock_field} >= #{msecs_ago(state.stale_timeout)} THEN 1 ELSE NULL END) AS in_progress,
-              COUNT(CASE WHEN #{state.lock_field} = #{EctoSource.abandoned()} THEN 1 ELSE NULL END) AS abandoned
+      "SELECT COUNT(#{state.lock_field}) AS count,
+              COUNT(*) FILTER (WHERE #{state.lock_field} = #{EctoSource.abandoned()}) AS abandoned,
+
+              COUNT(*) FILTER (WHERE #{state.lock_field} BETWEEN 0 AND #{ready()}) AS ready,
+
+              COUNT(*) FILTER (WHERE #{ready()} < #{state.lock_field} AND #{state.lock_field} < #{stale_at()}) AS delayed,
+
+              COUNT(*) FILTER (WHERE #{stale_at()} <= #{state.lock_field} AND #{state.lock_field} < #{now()}) AS stale,
+
+              COUNT(*) FILTER (WHERE #{now()} < #{state.lock_field} AND #{state.lock_field} <= #{reserve_at(state)}) AS in_progress
       FROM #{state.table}"
+    end
+
+    @impl true
+    def reset_stale(state) do
+      "UPDATE #{state.table}
+      SET #{state.lock_field} = DEFAULT,
+          #{state.private_field} = DEFAULT
+      WHERE
+          #{stale_at()} < #{state.lock_field}
+          AND
+          #{state.lock_field} < #{now()}"
     end
 
     @impl true
@@ -69,16 +94,28 @@ if Code.ensure_loaded?(Ecto) do
       "SELECT id FROM #{state.table} WHERE #{state.lock_field} = #{EctoSource.abandoned()}"
     end
 
-    defp msecs_ago(msecs) do
-      "#{now_msecs()} - #{msecs}"
+    def reserve_at(state) do
+      "#{now()} + #{state.stale_timeout}"
     end
 
-    defp now_msecs do
-      "(CAST(EXTRACT(epoch FROM NOW()) * 1000 AS BIGINT))"
+    def stale_at do
+      time_in_msecs("(NOW() - INTERVAL '5 year')")
+    end
+
+    defp msecs_ago(msecs) do
+      "#{now()} - #{msecs}"
+    end
+
+    def now do
+      time_in_msecs("NOW()")
+    end
+
+    defp timestamp_in_msecs(time) do
+      time_in_msecs("timestamp '#{time}'")
     end
 
     defp time_in_msecs(time) do
-      "(CAST(EXTRACT(epoch from timestamp '#{time}') * 1000 AS BIGINT))"
+      "(CAST(EXTRACT(epoch from #{time}) * 1000 AS BIGINT))"
     end
   end
 end

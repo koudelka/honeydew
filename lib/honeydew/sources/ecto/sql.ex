@@ -21,8 +21,10 @@ defmodule Honeydew.EctoSource.SQL do
   @callback reserve(State.t()) :: sql
   @callback cancel(State.t()) :: sql
   @callback ready :: sql
+  @callback delay_ready(State.t()) :: sql
   @callback status(State.t()) :: sql
   @callback filter(State.t(), filter) :: sql
+  @callback reset_stale(State.t()) :: sql
   @callback table_name(module()) :: String.t()
 
   @spec module(repo, override) :: sql_module | no_return
