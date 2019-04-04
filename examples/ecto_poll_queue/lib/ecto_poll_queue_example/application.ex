@@ -7,6 +7,7 @@ defmodule EctoPollQueueExample.Application do
 
   alias Honeydew.EctoPollQueue
   alias Honeydew.FailureMode.Retry
+  alias Honeydew.FailureMode.ExponentialRetry
   alias EctoPollQueueExample.Repo
   alias EctoPollQueueExample.Photo
   alias EctoPollQueueExample.User
@@ -21,7 +22,7 @@ defmodule EctoPollQueueExample.Application do
     opts = [strategy: :one_for_one, name: EctoPollQueueExample.Supervisor]
     {:ok, supervisor} = Supervisor.start_link(children, opts)
 
-    :ok = Honeydew.start_queue(notify_queue(), queue: {EctoPollQueue, queue_args(User)})
+    :ok = Honeydew.start_queue(notify_queue(), queue: {EctoPollQueue, queue_args(User)}, failure_mode: {ExponentialRetry, base: 3, times: 3})
     :ok = Honeydew.start_workers(notify_queue(), Notify)
 
     :ok = Honeydew.start_queue(classify_queue(), queue: {EctoPollQueue, queue_args(Photo)}, failure_mode: {Retry, [times: 1]})
