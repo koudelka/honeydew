@@ -122,10 +122,8 @@ defmodule Honeydew.Queue.Mnesia do
              {:empty, state}
 
            {[wrapped_job_record], _cont} ->
-             %WrappedJob{job: job} =
-               wrapped_job_record
-               |> WrappedJob.key()
-               |> move_to_in_progress_table(%{}, state)
+             :ok = move_to_in_progress_table(wrapped_job_record, state)
+             %WrappedJob{job: job} = WrappedJob.from_record(wrapped_job_record)
              {job, state}
          end
     end)
@@ -136,17 +134,20 @@ defmodule Honeydew.Queue.Mnesia do
   #
 
   @impl true
-  def ack(%Job{private: key}, %PState{in_progress_table: in_progress_table, access_context: access_context} = state) do
+  def ack(%Job{private: id}, %PState{in_progress_table: in_progress_table, access_context: access_context} = state) do
+    pattern = WrappedJob.id_pattern(id)
+
     :mnesia.activity(access_context, fn ->
-      :ok = :mnesia.delete({in_progress_table, key})
+      [wrapped_job] = :mnesia.match_object(in_progress_table, pattern, :read)
+      :ok = :mnesia.delete_object(in_progress_table, wrapped_job, :write)
     end)
 
     state
   end
 
   @impl true
-  def nack(%Job{private: key, failure_private: failure_private}, %PState{} = state) do
-    move_to_pending_table(key, %{failure_private: failure_private}, state)
+  def nack(%Job{private: id, failure_private: failure_private, delay_secs: delay_secs}, %PState{} = state) do
+    move_to_pending_table(id, %{failure_private: failure_private, delay_secs: delay_secs}, state)
 
     state
   end
@@ -202,18 +203,20 @@ defmodule Honeydew.Queue.Mnesia do
 
   @impl true
   @spec cancel(Job.t, Queue.private) :: {:ok | {:error, :in_progress | :not_found}, Queue.private}
-  def cancel(%Job{private: key}, %PState{table: table, in_progress_table: in_progress_table, access_context: access_context} = state) do
+  def cancel(%Job{private: id}, %PState{table: table, in_progress_table: in_progress_table, access_context: access_context} = state) do
     reply =
       :mnesia.activity(access_context, fn ->
+        pattern = WrappedJob.id_pattern(id)
+
         table
-        |> :mnesia.read(key)
+        |> :mnesia.match_object(pattern, :read)
         |> case do
-             [_wrapped_job] ->
-               :ok = :mnesia.delete({table, key})
+             [wrapped_job] ->
+               :ok = :mnesia.delete_object(table, wrapped_job, :write)
 
              [] ->
                in_progress_table
-               |> :mnesia.read(key)
+               |> :mnesia.match_object(pattern, :read)
                |> case do
                     [] ->
                       {:error, :not_found}
@@ -234,36 +237,41 @@ defmodule Honeydew.Queue.Mnesia do
            :ok
 
          key ->
-           move_to_pending_table(key, %{}, state)
+           key
+           |> WrappedJob.id_from_key
+           |> move_to_pending_table(%{}, state)
 
            reset_after_crash(state)
        end
     :ok
   end
 
-  defp move_to_in_progress_table(key, updates, %PState{table: table, in_progress_table: in_progress_table, access_context: access_context}) do
-    move_to_table(key, updates, table, in_progress_table, access_context)
-  end
-
-  defp move_to_pending_table(key, updates, %PState{table: table, in_progress_table: in_progress_table, access_context: access_context}) do
-    move_to_table(key, updates, in_progress_table, table, access_context)
-  end
-
-  defp move_to_table(key, updates, from_table, to_table, access_context) do
+  defp move_to_in_progress_table(wrapped_job_record, %PState{table: table, in_progress_table: in_progress_table, access_context: access_context}) do
     :mnesia.activity(access_context, fn ->
-      wrapped_job =
-        from_table
-        |> :mnesia.read(key)
+      :ok = :mnesia.write(in_progress_table, wrapped_job_record, :write)
+      :ok = :mnesia.delete({table, WrappedJob.key(wrapped_job_record)})
+    end)
+  end
+
+  defp move_to_pending_table(id, updates, %PState{table: table, in_progress_table: in_progress_table, access_context: access_context}) do
+    pattern = WrappedJob.id_pattern(id)
+
+    :mnesia.activity(access_context, fn ->
+      wrapped_job_record =
+        in_progress_table
+        |> :mnesia.match_object(pattern, :read)
         |> List.first
-        |> WrappedJob.from_record
 
-      wrapped_job = %WrappedJob{wrapped_job | job: struct(wrapped_job.job, updates)}
-      wrapped_job_record = WrappedJob.to_record(wrapped_job)
+      %WrappedJob{job: job} = WrappedJob.from_record(wrapped_job_record)
 
-      :ok = :mnesia.write(to_table, wrapped_job_record, :write)
-      :ok = :mnesia.delete({from_table, key})
+      updated_wrapped_job_record =
+        job
+        |> struct(updates)
+        |> WrappedJob.new
+        |> WrappedJob.to_record
 
-      wrapped_job
+      :ok = :mnesia.write(table, updated_wrapped_job_record, :write)
+      :ok = :mnesia.delete_object(in_progress_table, wrapped_job_record, :write)
     end)
   end
 

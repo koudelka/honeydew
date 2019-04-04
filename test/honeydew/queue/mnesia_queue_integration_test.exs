@@ -49,8 +49,11 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
 
     test "delay_secs", %{queue: queue} do
       %Job{} = {:send_msg, [self(), :delay_test]} |> Honeydew.async(queue, delay_secs: 2)
-      refute_receive :delay_test, 1990
-      assert_receive :delay_test
+      enqueued_at = DateTime.utc_now()
+      receive do
+        :delay_test ->
+          assert DateTime.diff(DateTime.utc_now(), enqueued_at) == 2
+      end
     end
   end
 
@@ -344,6 +347,28 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
     end
   end
 
+  @tag :exponential_failure
+  test "delay via nack", %{queue: queue} do
+    {:crash, [self()]} |> Honeydew.async(queue)
+
+    delays =
+      Enum.map(0..3, fn _ ->
+        receive do
+          :job_ran ->
+            DateTime.utc_now()
+        end
+      end)
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.map(fn [a, b] -> DateTime.diff(b, a) end)
+
+    # 2^0 - 1 -> 0 sec delay
+    # 2^1 - 1 -> 1 sec delay
+    # 2^2 - 1 -> 3 sec delay
+    assert_in_delta Enum.at(delays, 0), 0, 1
+    assert_in_delta Enum.at(delays, 1), 1, 1
+    assert_in_delta Enum.at(delays, 2), 3, 1
+  end
+
   defp setup_queue_name(%{queue: queue}), do: {:ok, [queue: queue]}
   defp setup_queue_name(_), do: {:ok, [queue: generate_queue_name()]}
 
@@ -354,7 +379,12 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
 
   defp setup_queue(%{queue: queue} = context) do
     suspended = Map.get(context, :start_suspended, false)
-    :ok = start_queue(queue, suspended: suspended)
+    case context do
+      %{exponential_failure: true} ->
+        :ok = start_queue(queue, suspended: suspended, failure_mode: {Honeydew.FailureMode.ExponentialRetry, times: 3})
+      _ ->
+        :ok = start_queue(queue, suspended: suspended)
+    end
   end
 
   defp generate_queue_name do
