@@ -24,7 +24,7 @@ defmodule Honeydew.Queue.Mnesia.WrappedJob do
     id = :erlang.unique_integer()
     run_at = now() + delay_secs
 
-    job = %{job | private: key(run_at, id)}
+    job = %{job | private: id}
 
     %__MODULE__{run_at: run_at,
                 id: id,
@@ -49,6 +49,19 @@ defmodule Honeydew.Queue.Mnesia.WrappedJob do
 
   def key(run_at, id) do
     {run_at, id}
+  end
+
+  def id_from_key({_run_at, id}) do
+    id
+  end
+
+  def id_pattern(id) do
+    %__MODULE__{
+      id: id,
+      run_at: :_,
+      job: :_
+    }
+    |> to_record
   end
 
   def filter_pattern(map) do
