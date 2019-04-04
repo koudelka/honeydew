@@ -40,10 +40,13 @@ __Plugability__
   - No forced dependency on external queue services.
 
 __Batteries Included__
-  - [In-Memory Queue](https://github.com/koudelka/honeydew/tree/master/examples/local), for fast processing of recreatable jobs.
-  - [Mnesia Queue](https://github.com/koudelka/honeydew/tree/master/examples/mnesia.exs), for persistence and simple distribution scenarios.
+  - [Mnesia Queue](https://github.com/koudelka/honeydew/tree/master/examples/mnesia.exs), for in-memory/persistence and simple distribution scenarios. (default)
   - [Ecto Queue](#ecto), to turn an Ecto schema into its own work queue, using your database.
+  - [Fast In-Memory Queue](https://github.com/koudelka/honeydew/tree/master/examples/local), for fast processing of recreatable jobs without delay requirements.
   - Can optionally heal the cluster after a disconnect or downed node when using a [Global Queue](https://github.com/koudelka/honeydew/tree/master/examples/global).
+  - [Delayed Jobs](https://github.com/koudelka/honeydew/tree/master/examples/delayed_job.exs)
+  - [Exponential Retry](https://github.com/koudelka/honeydew/tree/master/lib/honeydew/failure_mode/exponential_retry.ex), even works with Ecto queues!
+
 
 __Easy API__
   - Jobs are enqueued using `async/3` and you can receive replies with `yield/2`, somewhat like [Task](https://hexdocs.pm/elixir/Task.html).
@@ -74,7 +77,7 @@ end
 
 ### tl;dr
 - Check out the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
-- Enqueue jobs with `Honeydew.async/3`.
+- Enqueue jobs with `Honeydew.async/3`, delay jobs by passing `delay_secs: <integer>`.
 - Receive responses with `Honeydew.yield/2`.
 - Emit job progress with `progress/1`
 - Queue/Worker status with `Honeydew.status/1`

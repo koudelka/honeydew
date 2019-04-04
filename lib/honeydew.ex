@@ -187,9 +187,11 @@ defmodule Honeydew do
 
   Filter jobs with a specific task.
 
-      Honeydew.filter(:my_queue, &match?(%Honeydew.Job{task: {:ping, _}}, &1))
+      Honeydew.filter(:my_queue, &match?(%Honeydew.Job{task: {:ping, _}}, &1)) # ErlangQueue or Mnesia
 
-      Honeydew.filter(:my_queue, :abandoned)
+      Honeydew.filter(:my_queue, %{task: {:ping, ["127.0.0.1"]}}) # Mnesia
+
+      Honeydew.filter(:my_queue, :abandoned) # Ecto queue
 
   Return all jobs.
 
