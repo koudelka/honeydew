@@ -212,8 +212,7 @@ defmodule Honeydew do
 
   * `:ok` - Job had not been started and was able to be cancelled.
   * `{:error, :in_progress}` - Job was in progress and unable to be cancelled.
-  * `{:error, :not_found}` - Job was not found on the queue (or already
-      processed) and was unable to be cancelled.
+  * `{:error, :not_found}` - Job was not found on the queue (or already processed) and was unable to be cancelled.
   """
   @spec cancel(Job.t) :: :ok | {:error, :in_progress} | {:error, :not_found}
   def cancel(%Job{queue: queue} = job) do
@@ -231,8 +230,7 @@ defmodule Honeydew do
 
   * `:ok` - Job had not been started and was able to be cancelled.
   * `{:error, :in_progress}` - Job was in progress and unable to be cancelled, the Ecto Poll Queue does not support this return.
-  * `{:error, :not_found}` - Job was not found on the queue (or already
-  processed) and was unable to be cancelled.
+  * `{:error, :not_found}` - Job was not found on the queue (or already processed) and was unable to be cancelled.
   """
   @spec cancel(Job.private(), queue_name) :: :ok | {:error, :in_progress} | {:error, :not_found}
   def cancel(private, queue) do
