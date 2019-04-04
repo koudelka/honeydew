@@ -9,8 +9,10 @@ defmodule Honeydew.FailureMode.RetryTest do
     queue = :erlang.unique_integer
     failure_queue = "#{queue}_failed"
 
-    :ok = Honeydew.start_queue(queue, queue: {Mnesia, ram_copies: [node()]}, failure_mode: {Honeydew.FailureMode.Retry,
-                                                     times: 3, finally: {Honeydew.FailureMode.Move, queue: failure_queue}})
+    :ok = Honeydew.start_queue(queue, queue: {Mnesia, ram_copies: [node()]},
+                                      failure_mode: {Honeydew.FailureMode.Retry,
+                                                     times: 3,
+                                                     finally: {Honeydew.FailureMode.Move, queue: failure_queue}})
     :ok = Honeydew.start_queue(failure_queue, queue: {Mnesia, [ram_copies: [node()]]})
     :ok = Honeydew.start_workers(queue, Stateless)
 
@@ -20,6 +22,7 @@ defmodule Honeydew.FailureMode.RetryTest do
   test "validate_args!/1" do
     import Honeydew.FailureMode.Retry, only: [validate_args!: 1]
 
+    assert :ok = validate_args!([fun: fn _job, _reason, _args -> :halt end])
     assert :ok = validate_args!([times: 2])
     assert :ok = validate_args!([times: 2, finally: {Honeydew.FailureMode.Move, [queue: :abc]}])
 
@@ -28,11 +31,19 @@ defmodule Honeydew.FailureMode.RetryTest do
     end
 
     assert_raise ArgumentError, fn ->
+      validate_args!([fun: fn _job, _reason -> :halt end])
+    end
+
+    assert_raise ArgumentError, fn ->
       validate_args!([times: -1])
     end
 
     assert_raise ArgumentError, fn ->
       validate_args!([times: 2, finally: {Honeydew.FailureMode.Move, [bad: :args]}])
+    end
+
+    assert_raise ArgumentError, fn ->
+      validate_args!([times: 2, finally: {"bad", []}])
     end
   end
 
