@@ -71,7 +71,6 @@ defmodule Honeydew.Queue.ErlangQueue do
   end
 
   @impl true
-  @spec cancel(Job.t, Queue.private) :: {:ok | {:error, :in_progress | :not_found}, Queue.private}
   def cancel(%Job{private: private}, {pending, in_progress}) do
     filter = fn
       %Job{private: ^private} -> false;

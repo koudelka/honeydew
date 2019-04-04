@@ -203,7 +203,6 @@ defmodule Honeydew.Queue.Mnesia do
   end
 
   @impl true
-  @spec cancel(Job.t, Queue.private) :: {:ok | {:error, :in_progress | :not_found}, Queue.private}
   def cancel(%Job{private: id}, %PState{table: table, in_progress_table: in_progress_table, access_context: access_context} = state) do
     reply =
       :mnesia.activity(access_context, fn ->

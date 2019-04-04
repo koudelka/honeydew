@@ -19,7 +19,7 @@ defmodule Honeydew.Job do
              {:delay_secs, 0}]
 
   @type t :: %__MODULE__{
-    task: Honeydew.task,
+    task: Honeydew.task | nil,
     queue: Honeydew.queue_name,
     private: private,
     delay_secs: integer()
