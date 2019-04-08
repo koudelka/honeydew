@@ -1,5 +1,5 @@
 #
-# iex -S mix run examples/mnesia.exs
+# iex --erl "+C multi_time_warp" -S mix run examples/mnesia.exs
 #
 
 defmodule Worker do
