@@ -41,7 +41,7 @@ before_script:
   - git diff --exit-code
 
 script:
-  - mix test
+  - elixir --erl "+C multi_time_warp" -S mix test
   - cd examples/ecto_poll_queue && MIX_ENV=cockroach mix do deps.get && cd -
   - cd examples/ecto_poll_queue && MIX_ENV=cockroach mix dialyzer --halt-exit-status && cd -
   - cd examples/ecto_poll_queue && MIX_ENV=postgres mix do deps.get && cd -
