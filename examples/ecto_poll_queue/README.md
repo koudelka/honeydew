@@ -140,3 +140,6 @@ Honeydew auto-selects the correct set of SQL queries for your database, dependin
 ```elixir
 honeydew_fields(:classify_photos, database: :cockroachdb)
 ```
+
+### Queue Status
+CockroachDB's execution of `count(*)` is quite slow, so `Honeydew.status/2` will also be slow. You may need to pass the `:timeout` option to increase the amount of time Honeydew will wait for the database to return the status query.

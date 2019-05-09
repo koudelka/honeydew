@@ -140,11 +140,23 @@ defmodule Honeydew do
     |> Enum.each(&Queue.resume/1)
   end
 
-  def status(queue) do
+
+
+  @doc """
+  Returns the currrent status of the queue and all attached workers.
+
+  You can provide any of the following `opts`:
+
+  - `timeout`: specifies the time (in miliseconds) the calling process will wait for the queue to return the status,
+               note that this timeout does not cancel the status callback execution in the queue.
+  """
+  @type status_opt :: {:timeout, pos_integer}
+  @spec status(queue_name, [status_opt]) :: map()
+  def status(queue, opts \\ []) do
     queue_status =
       queue
       |> get_queue
-      |> Queue.status
+      |> Queue.status(opts)
 
     busy_workers =
       queue_status
