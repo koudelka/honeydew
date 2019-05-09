@@ -1,3 +1,10 @@
+## 1.4.1 (2019-5-9)
+
+### Enhancements
+
+* Job execution filtering for Ecto Poll Queue with `:run_if` option, taking a boolean SQL fragment
+* Adding `:timeout` option to `Honeydew.status/2`
+
 ## 1.4.0 (2019-4-8)
 
 ### Enhancements
