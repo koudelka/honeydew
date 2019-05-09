@@ -75,6 +75,8 @@ if Code.ensure_loaded?(Ecto) do
              fn(id, _queue) -> {:run, [id]} end
            end
 
+      run_if = args[:run_if]
+
       reset_stale(reset_stale_interval)
 
       {:ok, %State{schema: schema,
@@ -87,7 +89,8 @@ if Code.ensure_loaded?(Ecto) do
                    task_fn: task_fn,
                    queue: queue,
                    stale_timeout: stale_timeout,
-                   reset_stale_interval: reset_stale_interval}}
+                   reset_stale_interval: reset_stale_interval,
+                   run_if: run_if}}
     end
 
     # lock a row for processing

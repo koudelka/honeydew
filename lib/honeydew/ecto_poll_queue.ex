@@ -46,6 +46,7 @@ defmodule Honeydew.EctoPollQueue do
     validate_module_loaded!(args, :schema)
     validate_module_loaded!(args, :repo)
     validate_stale_timeout!(args[:stale_timeout])
+    validate_run_if!(args[:run_if])
   end
 
   defp validate_module_loaded!(args, type) do
@@ -64,8 +65,16 @@ defmodule Honeydew.EctoPollQueue do
   defp validate_stale_timeout!(nil), do: :ok
   defp validate_stale_timeout!(arg), do: raise ArgumentError, invalid_stale_timeout_error(arg)
 
+  defp validate_run_if!(sql) when is_binary(sql), do: :ok
+  defp validate_run_if!(nil), do: :ok
+  defp validate_run_if!(arg), do: raise ArgumentError, invalid_run_if_error(arg)
+
   defp invalid_stale_timeout_error(argument) do
     "Stale timeout must be an integer number of seconds. You gave #{inspect argument}"
+  end
+
+  defp invalid_run_if_error(argument) do
+    "Run condition (:run_if) must be an SQL string. You gave #{inspect argument}"
   end
 
   defp argument_not_given_error(args, key) do

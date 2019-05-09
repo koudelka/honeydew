@@ -4,6 +4,7 @@ if Code.ensure_loaded?(Ecto) do
 
     alias Honeydew.EctoSource
     alias Honeydew.EctoSource.SQL
+    alias Honeydew.EctoSource.State
 
     @behaviour SQL
 
@@ -46,13 +47,16 @@ if Code.ensure_loaded?(Ecto) do
       WHERE id = (
         SELECT id
         FROM #{state.table}
-        WHERE #{state.lock_field} BETWEEN 0 AND #{ready()}
+        WHERE #{state.lock_field} BETWEEN 0 AND #{ready()} #{run_if(state)}
         ORDER BY #{state.lock_field}, #{state.key_field}
         LIMIT 1
         FOR UPDATE SKIP LOCKED
       )
       RETURNING #{state.key_field}, #{state.private_field}"
     end
+
+    defp run_if(%State{run_if: nil}), do: nil
+    defp run_if(%State{run_if: run_if}), do: "AND (#{run_if})"
 
     @impl true
     def cancel(state) do

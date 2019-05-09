@@ -12,7 +12,8 @@ defmodule Honeydew.EctoSource.State do
     :task_fn,
     :queue,
     :stale_timeout,
-    :reset_stale_interval
+    :reset_stale_interval,
+    :run_if
   ]
 
   @type stale_timeout :: pos_integer
@@ -27,5 +28,6 @@ defmodule Honeydew.EctoSource.State do
                          stale_timeout: stale_timeout,
                          task_fn: function(),
                          queue: Honeydew.queue_name(),
-                         reset_stale_interval: pos_integer()}
+                         reset_stale_interval: pos_integer(),
+                         run_if: String.t()}
 end

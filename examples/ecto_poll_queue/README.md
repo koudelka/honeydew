@@ -113,6 +113,17 @@ iex(1)> {:ok, _photo} = %MyApp.Photo{} |> MyApp.Repo.insert
 #=> "Photo contained a xenomorph!"
 ```
 
+## Execution Criteria
+
+You can filter which rows are selected for execution by providing a boolean SQL fragment with the `:run_if` option, for example:
+
+```elixir
+# run if the User's name is NULL or the name isn't "dont run me"
+:ok = Honeydew.start_queue(:classify_photos, queue: {EctoPollQueue, [schema: User,
+                                                                     repo: Repo,
+                                                                     run_if: ~s{NAME IS NULL OR NAME != 'dont run me'}]})
+```
+
 ## CockroachDB
 
 Honeydew auto-selects the correct set of SQL queries for your database, depending on which Ecto adapter your repository is using. However, since CockroachDB uses the Postgres adapter, Honeydew can't tell it apart. You'll need to tell Honeydew that you're using Cockroach in two places:

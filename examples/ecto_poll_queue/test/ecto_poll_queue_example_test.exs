@@ -91,7 +91,7 @@ defmodule EctoPollQueueExampleTest do
     Honeydew.cancel(cancel_id, User.notify_queue())
 
     Honeydew.resume(User.notify_queue())
-    assert_receive {:notify_job_ran, ^id}
+    assert_receive {:notify_job_ran, ^id}, 1_000
     refute_receive {:notify_job_ran, ^cancel_id, 500}
   end
 
@@ -104,7 +104,7 @@ defmodule EctoPollQueueExampleTest do
 
     {:ok, _user} = %User{from: self(), sleep: 2_000} |> Repo.insert()
 
-    Process.sleep(1_000)
+    Process.sleep(1_500)
 
     assert %{queue: %{stale: 1, ready: 0}} = Honeydew.status(User.notify_queue())
 
@@ -162,6 +162,18 @@ defmodule EctoPollQueueExampleTest do
     assert_in_delta Enum.at(delays, 0), 0, 1
     assert_in_delta Enum.at(delays, 1), 2, 1
     assert_in_delta Enum.at(delays, 2), 8, 1
+  end
+
+  test "supports :run_if" do
+    {:ok, %User{id: run_id}} = %User{from: self(), name: "darwin"} |> Repo.insert()
+    {:ok, %User{id: dont_run_id}} = %User{from: self(), name: "dont run"} |> Repo.insert()
+    {:ok, %User{id: run_id_1}} = %User{from: self(), name: "odo"} |> Repo.insert()
+
+    Process.sleep(1_000)
+
+    assert_receive {:notify_job_ran, ^run_id}
+    refute_receive {:notify_job_ran, ^dont_run_id}
+    assert_receive {:notify_job_ran, ^run_id_1}
   end
 
   test "hammer" do

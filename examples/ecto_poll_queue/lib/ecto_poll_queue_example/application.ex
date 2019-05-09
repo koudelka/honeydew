@@ -22,7 +22,8 @@ defmodule EctoPollQueueExample.Application do
     opts = [strategy: :one_for_one, name: EctoPollQueueExample.Supervisor]
     {:ok, supervisor} = Supervisor.start_link(children, opts)
 
-    :ok = Honeydew.start_queue(notify_queue(), queue: {EctoPollQueue, queue_args(User)}, failure_mode: {ExponentialRetry, base: 3, times: 3})
+    notify_queue_args = queue_args(User) ++ [run_if: ~s{NAME IS NULL OR NAME != 'dont run'}]
+    :ok = Honeydew.start_queue(notify_queue(), queue: {EctoPollQueue, notify_queue_args}, failure_mode: {ExponentialRetry, base: 3, times: 3})
     :ok = Honeydew.start_workers(notify_queue(), Notify)
 
     :ok = Honeydew.start_queue(classify_queue(), queue: {EctoPollQueue, queue_args(Photo)}, failure_mode: {Retry, [times: 1]})
