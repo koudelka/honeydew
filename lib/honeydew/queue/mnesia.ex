@@ -47,10 +47,10 @@ defmodule Honeydew.Queue.Mnesia do
   end
 
   @impl true
-  def init(queue_name, opts) do
-    nodes = nodes_list(opts)
+  def init(queue_name, table_opts) do
+    nodes = nodes_list(table_opts)
 
-    if on_disk?(opts) do
+    if on_disk?(table_opts) do
       case :mnesia.create_schema(nodes) do
         :ok -> :ok
         {:error, {_, {:already_exists, _}}} -> :ok
@@ -60,8 +60,10 @@ defmodule Honeydew.Queue.Mnesia do
     # assert that mnesia started correctly everywhere?
     :rpc.multicall(nodes, :mnesia, :start, [])
 
-    generic_table_def = [attributes: WrappedJob.record_fields(),
-                         record_name: WrappedJob.record_name()]
+    generic_table_def =
+      table_opts
+      |> Keyword.merge([attributes: WrappedJob.record_fields(),
+                       record_name: WrappedJob.record_name()])
 
     # inspect/1 here becase queue_name can be of the form {:global, poolname}
     table = ["honeydew", inspect(queue_name)] |> Enum.join("_") |> String.to_atom
@@ -89,7 +91,7 @@ defmodule Honeydew.Queue.Mnesia do
 
     state = %PState{table: table,
                     in_progress_table: in_progress_table,
-                    access_context: access_context(opts)}
+                    access_context: access_context(table_opts)}
 
     :ok = reset_after_crash(state)
 
