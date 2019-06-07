@@ -61,9 +61,10 @@ defmodule Honeydew.Queue.Mnesia do
     :rpc.multicall(nodes, :mnesia, :start, [])
 
     generic_table_def =
-      table_opts
-      |> Keyword.merge([attributes: WrappedJob.record_fields(),
-                       record_name: WrappedJob.record_name()])
+      Keyword.merge(table_opts, [
+            attributes: WrappedJob.record_fields(),
+            record_name: WrappedJob.record_name()
+          ])
 
     # inspect/1 here becase queue_name can be of the form {:global, poolname}
     table = ["honeydew", inspect(queue_name)] |> Enum.join("_") |> String.to_atom
