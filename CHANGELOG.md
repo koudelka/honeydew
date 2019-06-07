@@ -1,3 +1,9 @@
+## 1.4.2 (2019-6-7)
+
+### Bug Fixes
+
+* Don't ignore mnesia table options provided by the user. Thanks @X4lldux!
+
 ## 1.4.1 (2019-5-9)
 
 ### Enhancements
