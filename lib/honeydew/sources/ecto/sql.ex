@@ -61,4 +61,12 @@ defmodule Honeydew.EctoSource.SQL do
   def far_in_the_past do
     ~N[1994-03-26 04:20:00]
   end
+
+  @spec where_keys_fragment(State.t(), pos_integer()) :: sql
+  def where_keys_fragment(%State{key_fields: key_fields}, starting_index) do
+    key_fields
+    |> Enum.with_index
+    |> Enum.map(fn {key_field, i} -> "#{key_field} = $#{i + starting_index}" end)
+    |> Enum.join(" AND ")
+  end
 end

@@ -1,7 +1,7 @@
 defmodule Honeydew.EctoPollQueueIntegrationTest do
   alias Mix.Shell.IO, as: Output
   use ExUnit.Case, async: false
-  @tag timeout: 2 * 60 * 1_000
+  @moduletag timeout: 4 * 60 * 1_000
   @examples_root "./examples/ecto_poll_queue"
 
   # Postgres

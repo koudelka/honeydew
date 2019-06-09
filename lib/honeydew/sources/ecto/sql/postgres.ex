@@ -37,22 +37,26 @@ if Code.ensure_loaded?(Ecto) do
       "UPDATE #{state.table}
       SET #{state.lock_field} = (#{ready()} + $1 * 1000),
           #{state.private_field} = $2
-      WHERE #{state.key_field} = $3"
+      WHERE
+        #{SQL.where_keys_fragment(state, 3)}"
     end
 
     @impl true
     def reserve(state) do
+      key_list_fragment = Enum.join(state.key_fields, ", ")
+      returning_fragment = [state.private_field | state.key_fields] |> Enum.join(", ")
+
       "UPDATE #{state.table}
       SET #{state.lock_field} = #{reserve_at(state)}
-      WHERE id = (
-        SELECT id
+      WHERE ROW(#{key_list_fragment}) = (
+        SELECT #{key_list_fragment}
         FROM #{state.table}
         WHERE #{state.lock_field} BETWEEN 0 AND #{ready()} #{run_if(state)}
-        ORDER BY #{state.lock_field}, #{state.key_field}
+        ORDER BY #{state.lock_field}
         LIMIT 1
         FOR UPDATE SKIP LOCKED
       )
-      RETURNING #{state.key_field}, #{state.private_field}"
+      RETURNING #{returning_fragment}"
     end
 
     defp run_if(%State{run_if: nil}), do: nil
@@ -63,7 +67,7 @@ if Code.ensure_loaded?(Ecto) do
       "UPDATE #{state.table}
       SET #{state.lock_field} = NULL
       WHERE
-        id = $1
+        #{SQL.where_keys_fragment(state, 1)}
       RETURNING #{state.lock_field}"
     end
 
@@ -95,7 +99,8 @@ if Code.ensure_loaded?(Ecto) do
 
     @impl true
     def filter(state, :abandoned) do
-      "SELECT id FROM #{state.table} WHERE #{state.lock_field} = #{EctoSource.abandoned()}"
+      keys_fragment = Enum.join(state.key_fields, ", ")
+      "SELECT #{keys_fragment} FROM #{state.table} WHERE #{state.lock_field} = #{EctoSource.abandoned()}"
     end
 
     def reserve_at(state) do
