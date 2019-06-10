@@ -66,7 +66,10 @@ This kind of queue process doesn't store any job data, if a queue process crashe
     alias MyApp.Photo
     alias MyApp.Repo
 
-    # By default, Honeydew will call the `run/1` function with the id of your newly inserted row.
+    # By default, Honeydew will call the `run/1` function with the primary key of your newly inserted row.
+    #
+    # If your table uses compound keys, a keyword list suitable for passing to `Repo.get_by/2` will be given
+    # as an arguement. For exaxmple: `[first_name: "Darwin", last_name: "Shapiro"]`
     def run(id) do
       photo = Repo.get(Photo, id)
 
