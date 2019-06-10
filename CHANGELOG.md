@@ -1,3 +1,13 @@
+## 1.4.3 (2019-6-10)
+
+### Enhancements
+
+* Support for compound primary keys in ecto tables.
+
+### Bug Fixes
+
+* No longer assumes that ecto tables have a single primary key named `id`
+
 ## 1.4.2 (2019-6-7)
 
 ### Bug Fixes
