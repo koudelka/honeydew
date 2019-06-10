@@ -64,7 +64,7 @@ if Code.ensure_loaded?(Ecto) do
 
       table = sql.table_name(schema)
 
-      key_field = schema.__schema__(:primary_key) |> List.first()
+      key_fields = schema.__schema__(:primary_key)
 
       task_fn =
         schema.__info__(:functions)
@@ -83,7 +83,7 @@ if Code.ensure_loaded?(Ecto) do
                    repo: repo,
                    sql: sql,
                    table: table,
-                   key_field: key_field,
+                   key_fields: key_fields,
                    lock_field: field_name(queue, :lock),
                    private_field: field_name(queue, :private),
                    task_fn: task_fn,
@@ -95,7 +95,7 @@ if Code.ensure_loaded?(Ecto) do
 
     # lock a row for processing
     @impl true
-    def reserve(%State{queue: queue, schema: schema, repo: repo, sql: sql, key_field: key_field, private_field: private_field, task_fn: task_fn} = state) do
+    def reserve(%State{queue: queue, schema: schema, repo: repo, sql: sql, private_field: private_field, task_fn: task_fn} = state) do
       try do
         state
         |> sql.reserve
@@ -104,18 +104,24 @@ if Code.ensure_loaded?(Ecto) do
         {:error, e}
       end
       |> case do
-        {:ok, %{num_rows: 1, rows: [[id, private]]}} ->
+        {:ok, %{num_rows: 1, rows: [[dumped_private | dumped_key_values]]}} ->
           # convert key and private_field from db representation to schema's type
-          %^schema{^key_field => id, ^private_field => private} =
-            repo.load(schema, %{key_field => id, private_field => private})
+          private = load_field(schema, repo, private_field, dumped_private)
 
+          loaded_keys = load_keys(state, dumped_key_values)
+
+          # if there's only one primary key, just pass the value, otherwise pass the list of compound key values
           job =
-            id
+            loaded_keys
+            |> case do
+                 [{_single_key, value}] -> value
+                 other -> other
+               end
             |> task_fn.(queue)
             |> Job.new(queue)
             |> struct(failure_private: private)
 
-          {{:value, {id, job}}, state}
+          {{:value, {loaded_keys, job}}, state}
 
         {:ok, %{num_rows: 0}} ->
           {:empty, state}
@@ -128,39 +134,43 @@ if Code.ensure_loaded?(Ecto) do
 
     @impl true
     # acked without completing, either moved or abandoned
-    def ack(%Job{private: id, completed_at: nil}, state) do
-      finalize(id, @abandoned, nil, state)
+    def ack(%Job{private: key_fields, completed_at: nil}, state) do
+      finalize(key_fields, @abandoned, nil, state)
     end
 
     @impl true
-    def ack(%Job{private: id}, state) do
-      finalize(id, nil, nil, state)
+    def ack(%Job{private: key_fields}, state) do
+      finalize(key_fields, nil, nil, state)
     end
 
     @impl true
-    def nack(%Job{private: id, failure_private: private, delay_secs: delay_secs}, %State{sql: sql,
-                                                                                         repo: repo,
-                                                                                         schema: schema,
-                                                                                         key_field: key_field,
-                                                                                         private_field: private_field} = state) do
-      {:ok, id} = dump_field(schema, repo, key_field, id)
+    def nack(%Job{private: key_values, failure_private: private, delay_secs: delay_secs}, %State{sql: sql,
+                                                                                                        repo: repo,
+                                                                                                        schema: schema,
+                                                                                                        private_field: private_field} = state) do
+      dumped_keys = dump_keys(state, key_values)
+
       {:ok, private} = dump_field(schema, repo, private_field, private)
 
       {:ok, %{num_rows: 1}} =
         state
         |> sql.delay_ready
-        |> repo.query([delay_secs, private, id])
+        |> repo.query([delay_secs, private | dumped_keys])
 
       state
     end
 
     @impl true
-    def cancel(%Job{private: id}, %State{schema: schema, repo: repo, sql: sql, key_field: key_field} = state) do
-      {:ok, id} = dump_field(schema, repo, key_field, id)
+    # handles the case where Honeydew.cancel/2 is called with just a single primary key id
+    def cancel(%Job{private: id}, state) when not is_list(id), do: cancel(%Job{private: [id: id]}, state)
+
+    # handles the case where Honeydew.cancel/2 is called with a compound key
+    def cancel(%Job{private: key_values}, %State{repo: repo, sql: sql} = state) do
+      dumped_keys = dump_keys(state, key_values)
 
       state
       |> sql.cancel
-      |> repo.query([id])
+      |> repo.query(dumped_keys)
       |> case do
            {:ok, %{num_rows: 1}} ->
              {:ok, state}
@@ -183,16 +193,15 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     @impl true
-    def filter(%State{repo: repo, schema: schema, sql: sql, queue: queue} = state, filter) do
+    def filter(%State{repo: repo, sql: sql, queue: queue} = state, filter) do
       {:ok, %{rows: rows}} =
         state
         |> sql.filter(filter)
         |> repo.query([])
 
-      Enum.map(rows, fn [id] ->
-        # convert key from db representation to schema's type
-        %^schema{id: id} = repo.load(schema, %{id: id})
-        %Job{queue: queue, private: id}
+      Enum.map(rows, fn key_field_values ->
+        %Job{queue: queue,
+             private: load_keys(state, key_field_values)}
       end)
     end
 
@@ -224,11 +233,11 @@ if Code.ensure_loaded?(Ecto) do
       {:ok, _} = :timer.send_after(reset_stale_interval, :__reset_stale__)
     end
 
-    defp finalize(id, lock, private, state) do
+    defp finalize(key_fields, lock, private, state) do
       import Ecto.Query
 
       from(s in state.schema,
-        where: field(s, ^state.key_field) == ^id,
+        where: ^key_fields,
         update: [set: ^[{state.lock_field, lock}, {state.private_field, private}]])
       |> state.repo.update_all([]) # avoids touching auto-generated fields
 
@@ -238,6 +247,28 @@ if Code.ensure_loaded?(Ecto) do
     defp dump_field(schema, repo, field, value) do
       type = schema.__schema__(:type, field)
       Ecto.Type.adapter_dump(repo.__adapter__(), type, value)
+    end
+
+    defp load_field(schema, repo, field, dumped_value) do
+      %^schema{^field => value} = repo.load(schema, %{field => dumped_value})
+      value
+    end
+
+    defp dump_keys(%State{repo: repo, schema: schema}, key_values) do
+      Enum.map(key_values, fn {key_field, dumped_value} ->
+        {:ok, value} = dump_field(schema, repo, key_field, dumped_value)
+        value
+      end)
+    end
+
+    defp load_keys(%State{repo: repo, schema: schema, key_fields: key_fields}, key_values) do
+      key_fields
+      |> Enum.zip(key_values)
+      |> Enum.into(%{})
+      |> Enum.map(fn {key_field, dumped_value} ->
+        key_value = load_field(schema, repo, key_field, dumped_value)
+        {key_field, key_value}
+      end)
     end
   end
 end

@@ -74,7 +74,7 @@ defmodule EctoPollQueueExampleTest do
     assert failed_jobs = Honeydew.filter(Photo.classify_queue(), :abandoned)
 
     ids =
-      Enum.map(failed_jobs, fn %Job{private: id, queue: queue} ->
+      Enum.map(failed_jobs, fn %Job{private: [id: id], queue: queue} ->
         assert queue == Photo.classify_queue
         id
       end)
