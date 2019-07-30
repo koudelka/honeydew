@@ -28,7 +28,7 @@ __Isolation__
 __Strong Job Custody__ 
   - Jobs don't leave the queue until either they succeed, are explicitly abandoned or are moved to another queue.
   - Workers are issued only one job at a time, no batching.
-  - If a worker crashes while processing a job, the job is reset and a "failure mode" (e.g. abandon, move, retry) is executed.
+  - If a worker crashes while processing a job, the job is reset and a "failure mode" (e.g. abandon, move, retry) is executed. (The default failure mode [is to abandon the job](https://hexdocs.pm/honeydew/Honeydew.html#start_queue/2).)
   - [Job Lifecycle](https://github.com/koudelka/honeydew/blob/master/README/job_lifecycle.md)
 
 __Clusterable Components__
