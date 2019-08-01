@@ -157,13 +157,8 @@ defmodule Honeydew.Worker do
     %{state | job_runner: job_runner, job: job}
   end
 
-  defp do_job_finished(%Job{result: {:ok, result}, from: from, job_monitor: job_monitor} = job, %State{queue_pid: queue_pid}) do
-    job = %{job | result: {:ok, result}}
-
-    with {owner, _ref} <- from,
-      do: send(owner, job)
-
-    :ok = JobMonitor.job_succeeded(job_monitor)
+  defp do_job_finished(%Job{result: {:ok, result}, job_monitor: job_monitor}, %State{queue_pid: queue_pid}) do
+    :ok = JobMonitor.job_succeeded(job_monitor, result)
 
     Process.delete(:job_monitor)
     Queue.worker_ready(queue_pid)

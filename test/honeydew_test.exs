@@ -92,7 +92,7 @@ defmodule HoneydewTest do
 
     %Job{private: id} = fn -> :noop end |> Honeydew.async(queue)
 
-    assert_receive %Job{private: ^id}
+    assert_receive %Job{private: ^id, result: {:ok, :noop}}
   end
 
   test "progress updates" do

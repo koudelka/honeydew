@@ -6,6 +6,7 @@ defmodule Honeydew.JobMonitor do
   alias Honeydew.Crash
   alias Honeydew.Logger, as: HoneydewLogger
   alias Honeydew.Queue
+  alias Honeydew.Job
 
   require Logger
   require Honeydew
@@ -42,7 +43,7 @@ defmodule Honeydew.JobMonitor do
   #
 
   def claim(job_monitor, job), do: GenServer.call(job_monitor, {:claim, job})
-  def job_succeeded(job_monitor), do: GenServer.call(job_monitor, :job_succeeded)
+  def job_succeeded(job_monitor, result), do: GenServer.call(job_monitor, {:job_succeeded, result})
   def job_failed(job_monitor, %Crash{} = reason), do: GenServer.call(job_monitor, {:job_failed, reason})
   def status(job_monitor), do: GenServer.call(job_monitor, :status)
   def progress(job_monitor, progress), do: GenServer.call(job_monitor, {:progress, progress})
@@ -63,8 +64,11 @@ defmodule Honeydew.JobMonitor do
     {:reply, :ok, %{state | progress: {:running, progress}}}
   end
 
-  def handle_call(:job_succeeded, {worker, _ref}, %State{job: job, queue_pid: queue_pid, worker: worker, success_mode: success_mode} = state) do
-    job = %{job | completed_at: System.system_time(:millisecond)}
+  def handle_call({:job_succeeded, result}, {worker, _ref}, %State{job: %Job{from: from} = job, queue_pid: queue_pid, worker: worker, success_mode: success_mode} = state) do
+    job = %{job | completed_at: System.system_time(:millisecond), result: {:ok, result}}
+
+    with {owner, _ref} <- from,
+      do: send(owner, job)
 
     Queue.ack(queue_pid, job)
 
