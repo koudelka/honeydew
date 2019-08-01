@@ -1,3 +1,9 @@
+## 1.4.4 (2019-8-1)
+
+### Bug Fixes
+
+* Job results are now correctly passed to Success Modes
+
 ## 1.4.3 (2019-6-10)
 
 ### Enhancements
