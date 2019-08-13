@@ -30,7 +30,7 @@ defmodule Honeydew.Queue.Mnesia do
   @poll_interval 1_000
 
   @impl true
-  def validate_args!(opts) do
+  def validate_args!([_nodes, opts | _]) do
     nodes_list = nodes_list(opts)
 
     if Enum.empty?(nodes_list) do
