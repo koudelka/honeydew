@@ -12,7 +12,7 @@ We'll start the queue on node `queue@dax` with:
 ```elixir
 defmodule QueueApp do
   def start do
-    :ok = Honeydew.start_queue({:global, :my_queue}, queue: {Honeydew.Queue.Mnesia, [[node()], [disc_copies: nodes], []]})
+    :ok = Honeydew.start_queue({:global, :my_queue}, queue: {Honeydew.Queue.Mnesia, [disc_copies: nodes]})
   end
 end
 
