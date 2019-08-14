@@ -366,6 +366,10 @@ defmodule Honeydew do
 
   - `Honeydew.start_queue("my_awesome_queue", queue: {MyQueueModule, [ip: "localhost"]},
                                               dispatcher: {Honeydew.Dispatcher.MRU, []})`
+
+  Note that the `failure_mode` or `success_mode` handler is run in the job's
+  dedicated monitor process. This means the handlers for multiple jobs can run
+  concurrently, but they can also crash that process.
   """
   @spec start_queue(queue_name, [queue_spec_opt]) :: :ok
   defdelegate start_queue(name, opts \\ []), to: Queues
