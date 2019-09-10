@@ -18,11 +18,14 @@ if Code.ensure_loaded?(Ecto) do
       source = schema.__schema__(:source)
       prefix = schema.__schema__(:prefix)
 
-      if prefix do
-        prefix <> "." <> source
-      else
-        source
-      end
+      source =
+        if prefix do
+          prefix <> "." <> source
+        else
+          source
+        end
+
+      ~s("#{source}")
     end
 
     @impl true
