@@ -26,7 +26,7 @@ defmodule Honeydew.Queues do
     end
   end
 
-  @spec start_queue(name, [queue_spec_opt]) :: :ok
+  @spec start_queue(name, [queue_spec_opt]) :: :ok | {:error, term()}
   def start_queue(name, opts) do
     {module, args} =
       case opts[:queue] do
@@ -81,8 +81,9 @@ defmodule Honeydew.Queues do
         opts
       end
 
-    {:ok, _} = Supervisor.start_child(__MODULE__, Queue.child_spec(name, opts))
-    :ok
+    with {:ok, _} <- Supervisor.start_child(__MODULE__, Queue.child_spec(name, opts)) do
+      :ok
+    end
   end
 
   def start_link(args) do
