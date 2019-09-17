@@ -66,6 +66,11 @@ defmodule HoneydewTest do
     assert Honeydew.workers() == [:a_queue, :another_queue]
   end
 
+  test "starting worker twice will result in recoverable error" do
+    assert :ok = Honeydew.start_workers(:a_queue, Stateless)
+    assert {:error, _} = Honeydew.start_workers(:a_queue, Stateless)
+  end
+
   test "group/1" do
     assert Honeydew.group(:my_queue, Workers) == :"Elixir.Honeydew.Workers.my_queue"
   end
