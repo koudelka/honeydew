@@ -371,7 +371,7 @@ defmodule Honeydew do
   dedicated monitor process. This means the handlers for multiple jobs can run
   concurrently, but they can also crash that process.
   """
-  @spec start_queue(queue_name, [queue_spec_opt]) :: :ok
+  @spec start_queue(queue_name, [queue_spec_opt]) :: :ok | {:error, term()}
   defdelegate start_queue(name, opts \\ []), to: Queues
 
   @doc """

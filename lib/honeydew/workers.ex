@@ -45,8 +45,9 @@ defmodule Honeydew.Workers do
 
     Honeydew.create_groups(name)
 
-    {:ok, _} = Supervisor.start_child(__MODULE__, {WorkerRootSupervisor, [name, opts]})
-    :ok
+    with {:ok, _} <- Supervisor.start_child(__MODULE__, {WorkerRootSupervisor, [name, opts]}) do
+      :ok
+    end
   end
 
   def start_link(args) do

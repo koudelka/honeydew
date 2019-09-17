@@ -66,5 +66,10 @@ defmodule Honeydew.QueuesTest do
         suspended: false
       } = :sys.get_state(pid)
     end
+
+    test "starting queue twice will result in error" do
+      assert :ok = Honeydew.start_queue(:foo)
+      assert {:error, _} = Honeydew.start_queue(:foo)
+    end
   end
 end
