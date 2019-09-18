@@ -1,3 +1,9 @@
+## 1.4.5 (2019-9-17)
+
+### Enhancements
+
+* Return {:error, reason} tuple for Honeydew.start_queue/2 + start_workers/3. Thanks @hauleth!
+
 ## 1.4.4 (2019-8-1)
 
 ### Bug Fixes
