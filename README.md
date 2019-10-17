@@ -76,6 +76,20 @@ defp deps do
 end
 ```
 
+## Deployment
+
+If you're using the Mnesia queue (the default), you'll need tell your release system to include the `:mnesia` application.
+
+In your mix.exs file:
+
+```elixir
+def application do
+  [
+    extra_applications: [:mnesia]
+  ]
+end
+```
+
 ### tl;dr
 - Check out the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
 - Enqueue jobs with `Honeydew.async/3`, delay jobs by passing `delay_secs: <integer>`.
