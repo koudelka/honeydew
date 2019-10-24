@@ -111,6 +111,8 @@ This kind of queue process doesn't store any job data, if a queue process crashe
 
 5. You can also configure the arguments to the queue by specifying a configurable poll interval depending on your requirements.
 ```elixir
+  :ok = Honeydew.start_queue(:classify_photos, queue: {EctoPollQueue, queue_args(Photo, Repo)})
+
   defp queue_args(schema, repo) do
     # Note that the interval is in seconds to poll the database for new jobs
     [schema: schema, repo: repo, poll_interval: Application.get_env(:ecto_poll_queue, :interval, 2)]
