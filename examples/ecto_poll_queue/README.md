@@ -59,7 +59,7 @@ This kind of queue process doesn't store any job data, if a queue process crashe
     end
   end
   ```
-  
+
 3. Create a Job.
   ```elixir
   defmodule MyApp.ClassifyPhoto do
@@ -109,7 +109,17 @@ This kind of queue process doesn't store any job data, if a queue process crashe
   end
   ```
 
-5. Try inserting an instance of your schema from any of your nodes. The job will be picked up and executed by one of your worker nodes.
+5. You can also configure the arguments to the queue by specifying a configurable poll interval depending on your requirements.
+```elixir
+  :ok = Honeydew.start_queue(:classify_photos, queue: {EctoPollQueue, queue_args(Photo, Repo)})
+
+  defp queue_args(schema, repo) do
+    # Note that the interval is in seconds to poll the database for new jobs
+    [schema: schema, repo: repo, poll_interval: Application.get_env(:ecto_poll_queue, :interval, 2)]
+  end
+```
+
+6. Try inserting an instance of your schema from any of your nodes. The job will be picked up and executed by one of your worker nodes.
 ```elixir
 iex(1)> {:ok, _photo} = %MyApp.Photo{} |> MyApp.Repo.insert
 
