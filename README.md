@@ -78,14 +78,24 @@ end
 
 ## Deployment
 
-If you're using the Mnesia queue (the default), you'll need tell your release system to include the `:mnesia` application.
+If you're using the Mnesia queue (the default), you'll need tell your release system to include the `:mnesia` application, and you'll have to decide how you're going to create your on-disk schema files, which needs to be done while mnesia is *not* running.
 
-In your mix.exs file:
+If you use mnesia outside of Honeydew, you'll want to use the `:extra_applications` configuration key in your mix.exs file, as well as manually creating your mnesia schema with `:mnesia.create_schema(nodes)` in an iex session in production:
 
 ```elixir
 def application do
   [
     extra_applications: [:mnesia]
+  ]
+end
+```
+
+Otherwise, if Honeydew is the only user of mnesia, you can let Honeydew manage it by simply using the `:included_applications` key instead.
+
+```elixir
+def application do
+  [
+    included_applications: [:mnesia]
   ]
 end
 ```
