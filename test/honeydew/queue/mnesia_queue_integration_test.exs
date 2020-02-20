@@ -254,21 +254,17 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
       Honeydew.async(fn -> Process.sleep(20_000) end, queue, delay_secs: delay_secs)
     end)
 
-    %{queue: %{count: ^num_jobs, in_progress: 0}} = Honeydew.status(queue)
-
     :ok = Honeydew.stop_queue(queue)
-    jobs = wrapped_jobs(queue)
 
     Process.sleep(2_000) # let the monotonic clock tick
+
+    now = :erlang.monotonic_time(:second)
     :ok = start_queue(queue)
-    %{queue: %{count: ^num_jobs, in_progress: 0}} = Honeydew.status(queue)
 
-    reset_jobs = wrapped_jobs(queue)
-
-    Enum.zip(jobs, reset_jobs)
-    |> Enum.each(fn {%WrappedJob{run_at: old_run_at}, %WrappedJob{run_at: new_run_at}} ->
-      refute_in_delta old_run_at, new_run_at, 1
-      assert_in_delta old_run_at, new_run_at, 3
+    queue
+    |> wrapped_jobs()
+    |> Enum.each(fn %WrappedJob{run_at: run_at} ->
+      assert_in_delta run_at, now, 1
     end)
   end
 

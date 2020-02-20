@@ -263,7 +263,7 @@ defmodule Honeydew.Queue.Mnesia do
         new_wrapped_job_record =
           wrapped_job_record
           |> WrappedJob.from_record()
-          |> WrappedJob.reset_run_at()
+          |> WrappedJob.set_run_at_to_now()
           |> WrappedJob.to_record()
 
         :ok = :mnesia.delete_object(table, wrapped_job_record, :write)

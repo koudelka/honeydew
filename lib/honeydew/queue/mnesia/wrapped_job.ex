@@ -20,13 +20,13 @@ defmodule Honeydew.Queue.Mnesia.WrappedJob do
   def record_name, do: @record_name
   def record_fields, do: @record_fields
 
-  def new(%Job{} = job) do
+  def new(%Job{delay_secs: delay_secs} = job) do
     id = :erlang.unique_integer()
+    run_at = now() + delay_secs
 
     job = %{job | private: id}
 
-    %__MODULE__{id: id, job: job}
-    |> reset_run_at()
+    %__MODULE__{id: id, job: job, run_at: run_at}
   end
 
   def from_record({@record_name, {run_at, id}, job}) do
@@ -53,10 +53,8 @@ defmodule Honeydew.Queue.Mnesia.WrappedJob do
     id
   end
 
-  def reset_run_at(%__MODULE__{job: %Job{delay_secs: delay_secs}} = wrapped_job) do
-    run_at = now() + delay_secs
-
-    %__MODULE__{wrapped_job | run_at: run_at}
+  def set_run_at_to_now(%__MODULE__{} = wrapped_job) do
+    %__MODULE__{wrapped_job | run_at: now()}
   end
 
   def id_pattern(id) do
