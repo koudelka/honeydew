@@ -67,7 +67,7 @@ defmodule Honeydew.Queue.Mnesia do
           ])
 
     # inspect/1 here becase queue_name can be of the form {:global, poolname}
-    table = ["honeydew", inspect(queue_name)] |> Enum.join("_") |> String.to_atom
+    table = table_name(queue_name)
     in_progress_table = ["honeydew", inspect(queue_name), "in_progress"] |> Enum.join("_") |> String.to_atom
 
     tables = %{table => [type: :ordered_set],
@@ -94,7 +94,7 @@ defmodule Honeydew.Queue.Mnesia do
                     in_progress_table: in_progress_table,
                     access_context: access_context(table_opts)}
 
-    :ok = reset_after_crash(state)
+    :ok = reset_after_shutdown(state)
 
     time_warp_mode_warning()
     poll()
@@ -232,7 +232,14 @@ defmodule Honeydew.Queue.Mnesia do
     {reply, state}
   end
 
-  defp reset_after_crash(%PState{in_progress_table: in_progress_table} = state) do
+  defp reset_after_shutdown(state) do
+    reset_all_in_progress_jobs(state)
+    reset_all_pending_jobs(state)
+
+    :ok
+  end
+
+  defp reset_all_in_progress_jobs(%PState{in_progress_table: in_progress_table} = state) do
     in_progress_table
     |> :mnesia.dirty_first()
     |> case do
@@ -244,8 +251,26 @@ defmodule Honeydew.Queue.Mnesia do
            |> WrappedJob.id_from_key
            |> move_to_pending_table(%{}, state)
 
-           reset_after_crash(state)
+           reset_all_in_progress_jobs(state)
        end
+
+    :ok
+  end
+
+  defp reset_all_pending_jobs(%PState{access_context: access_context, table: table}) do
+    :mnesia.activity(access_context, fn ->
+      :mnesia.foldl(fn wrapped_job_record, _ ->
+        new_wrapped_job_record =
+          wrapped_job_record
+          |> WrappedJob.from_record()
+          |> WrappedJob.reset_run_at()
+          |> WrappedJob.to_record()
+
+        :ok = :mnesia.delete_object(table, wrapped_job_record, :write)
+        :ok = :mnesia.write(table, new_wrapped_job_record, :write)
+      end, [], table)
+    end)
+
     :ok
   end
 
@@ -319,6 +344,12 @@ defmodule Honeydew.Queue.Mnesia do
   def handle_info(:__poll__, %QueueState{} = queue_state) do
     poll()
     {:noreply, Queue.dispatch(queue_state)}
+  end
+
+  def table_name(queue_name) do
+     ["honeydew", inspect(queue_name)]
+     |> Enum.join("_")
+     |> String.to_atom()
   end
 
   defp poll do
