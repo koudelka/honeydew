@@ -2,7 +2,11 @@ if Code.ensure_loaded?(Ecto) do
   defmodule Honeydew.EctoSource.ErlangTerm do
     @moduledoc false
 
-    @behaviour Ecto.Type
+    if macro_exported?(Ecto.Type, :__using__, 1) do
+      use Ecto.Type
+    else
+      @behaviour Ecto.Type
+    end
 
     @impl true
     def type, do: :binary
