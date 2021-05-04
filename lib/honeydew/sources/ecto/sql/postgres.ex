@@ -35,7 +35,7 @@ if Code.ensure_loaded?(Ecto) do
     @impl true
     def delay_ready(state) do
       "UPDATE #{state.table}
-      SET #{state.lock_field} = (#{ready()} + $1 * 1000),
+      SET #{state.lock_field} = (#{ready()} + CAST($1 AS BIGINT) * 1000),
           #{state.private_field} = $2
       WHERE
         #{SQL.where_keys_fragment(state, 3)}"
