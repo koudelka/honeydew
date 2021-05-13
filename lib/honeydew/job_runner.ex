@@ -59,13 +59,13 @@ defmodule Honeydew.JobRunner do
           end
         {:ok, result}
       rescue e ->
-        {:error, Crash.new(:exception, e, System.stacktrace())}
+        {:error, Crash.new(:exception, e, __STACKTRACE__)}
       catch
         :exit, reason ->
           # catch exit signals and shut down in an orderly manner
           {:error, Crash.new(:exit, reason)}
         e ->
-          {:error, Crash.new(:throw, e, System.stacktrace())}
+          {:error, Crash.new(:throw, e, __STACKTRACE__)}
       end
 
     :ok = Worker.job_finished(worker, %{job | result: result})

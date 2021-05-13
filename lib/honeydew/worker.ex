@@ -111,14 +111,14 @@ defmodule Honeydew.Worker do
           %{state | ready: false}
       end
     rescue e ->
-      HoneydewLogger.worker_init_crashed(module, Crash.new(:exception, e, System.stacktrace()))
+      HoneydewLogger.worker_init_crashed(module, Crash.new(:exception, e, __STACKTRACE__))
       %{state | ready: false}
     catch
       :exit, reason ->
         HoneydewLogger.worker_init_crashed(module, Crash.new(:exit, reason))
         %{state | ready: false}
       e ->
-        HoneydewLogger.worker_init_crashed(module, Crash.new(:throw, e, System.stacktrace()))
+        HoneydewLogger.worker_init_crashed(module, Crash.new(:throw, e, __STACKTRACE__))
         %{state | ready: false}
     end
     |> send_ready_or_callback
