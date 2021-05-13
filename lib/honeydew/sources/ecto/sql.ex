@@ -46,8 +46,8 @@ defmodule Honeydew.EctoSource.SQL do
 
   defmacro ready_fragment(module) do
     quote do
-      unquote(module).ready
-      |> fragment
+      unquote(module).ready()
+      |> fragment()
     end
   end
 
