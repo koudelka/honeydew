@@ -345,7 +345,7 @@ defmodule Honeydew do
   You can provide any of the following `opts`:
 
   - `queue`: is the module that queue will use. Defaults to
-    `Honeydew.Queue.ErlangQueue`. You may also provide args to the queue's
+    `Honeydew.Queue.Mnesia`. You may also provide args to the queue's
     `c:Honeydew.Queue.init/2` callback using the following format:
     `{module, args}`.
   - `dispatcher`: the job dispatching strategy, `{module, init_args}`.
