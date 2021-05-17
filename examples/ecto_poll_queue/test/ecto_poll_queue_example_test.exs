@@ -8,6 +8,7 @@ defmodule EctoPollQueueExampleTest do
   alias Honeydew.EctoSource.State
   alias Honeydew.PollQueue.State, as: PollQueueState
   alias Honeydew.Queue.State, as: QueueState
+  alias Honeydew.Processes
 
   @moduletag :capture_log
 
@@ -109,7 +110,7 @@ defmodule EctoPollQueueExampleTest do
     assert %{queue: %{stale: 1, ready: 0}} = Honeydew.status(User.notify_queue())
 
     User.notify_queue()
-    |> Honeydew.get_queue
+    |> Processes.get_queue()
     |> send(:__reset_stale__)
 
     assert %{queue: %{stale: 0, ready: 1}} = Honeydew.status(User.notify_queue())
@@ -193,7 +194,7 @@ defmodule EctoPollQueueExampleTest do
   defp get_source_state(queue) do
     %QueueState{private: %PollQueueState{source: {EctoSource, state}}} =
       queue
-      |> Honeydew.get_queue()
+      |> Processes.get_queue()
       |> :sys.get_state
 
     state
@@ -201,7 +202,7 @@ defmodule EctoPollQueueExampleTest do
 
   defp update_source_state(queue, state_fn) do
     queue
-    |> Honeydew.get_queue()
+    |> Processes.get_queue()
     |> :sys.replace_state(fn %QueueState{private: %PollQueueState{source: {EctoSource, state}} = poll_queue_state} = queue_state ->
       %QueueState{queue_state |
                   private: %PollQueueState{poll_queue_state |

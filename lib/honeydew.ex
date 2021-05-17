@@ -5,11 +5,12 @@ defmodule Honeydew do
 
   alias Honeydew.Job
   alias Honeydew.JobMonitor
-  alias Honeydew.Worker
-  alias Honeydew.WorkerStarter
-  alias Honeydew.WorkerGroupSupervisor
+  alias Honeydew.Processes
   alias Honeydew.Queue
-  alias Honeydew.{Queues, Workers}
+  alias Honeydew.Queues
+  alias Honeydew.Worker
+  alias Honeydew.Workers
+
   require Logger
 
   @type mod_or_mod_args :: module | {module, args :: term}
@@ -125,8 +126,10 @@ defmodule Honeydew do
   """
   @spec suspend(queue_name) :: :ok
   def suspend(queue) do
+    Processes.start_process_group_scope(queue)
+
     queue
-    |> get_all_members(Queues)
+    |> Processes.get_queues()
     |> Enum.each(&Queue.suspend/1)
   end
 
@@ -135,12 +138,12 @@ defmodule Honeydew do
   """
   @spec resume(queue_name) :: :ok
   def resume(queue) do
+    Processes.start_process_group_scope(queue)
+
     queue
-    |> get_all_members(Queues)
+    |> Processes.get_queues()
     |> Enum.each(&Queue.resume/1)
   end
-
-
 
   @doc """
   Returns the currrent status of the queue and all attached workers.
@@ -153,9 +156,11 @@ defmodule Honeydew do
   @type status_opt :: {:timeout, pos_integer}
   @spec status(queue_name, [status_opt]) :: map()
   def status(queue, opts \\ []) do
+    Processes.start_process_group_scope(queue)
+
     queue_status =
       queue
-      |> get_queue
+      |> Processes.get_queue()
       |> Queue.status(opts)
 
     busy_workers =
@@ -174,7 +179,7 @@ defmodule Honeydew do
 
     workers =
       queue
-      |> get_all_members(Workers)
+      |> Processes.get_workers()
       |> Enum.map(&{&1, nil})
       |> Enum.into(%{})
       |> Map.merge(busy_workers)
@@ -213,7 +218,7 @@ defmodule Honeydew do
   def filter(queue, filter) do
     {:ok, jobs} =
       queue
-      |> get_queue
+      |> Processes.get_queue()
       |> Queue.filter(filter)
 
     jobs
@@ -231,7 +236,7 @@ defmodule Honeydew do
   @spec cancel(Job.t) :: :ok | {:error, :in_progress} | {:error, :not_found}
   def cancel(%Job{queue: queue} = job) do
     queue
-    |> get_queue
+    |> Processes.get_queue()
     |> Queue.cancel(job)
   end
 
@@ -278,11 +283,7 @@ defmodule Honeydew do
   @doc false
   def enqueue(%Job{queue: queue} = job) do
     queue
-    |> get_queue
-    |> case do
-         nil -> raise RuntimeError, no_queues_running_error(job)
-         queue -> queue
-       end
+    |> Processes.get_queue()
     |> Queue.enqueue(job)
   end
 
@@ -302,13 +303,13 @@ defmodule Honeydew do
   end
 
   @doc false
-  def no_queues_running_error(%Job{queue: {:global, _} = queue} = job) do
-    "can't enqueue job because there aren't any queue processes running for the distributed queue `#{inspect queue}, are you connected to the cluster? #{inspect job} `"
+  def no_queues_running_error({:global, _} = queue) do
+    "can't enqueue job because there aren't any queue processes running for the distributed queue `#{inspect queue}`, are you connected to the cluster?"
   end
 
   @doc false
-  def no_queues_running_error(%Job{queue: queue} = job) do
-    "can't enqueue job #{inspect job} because there aren't any queue processes running for `#{inspect queue}`"
+  def no_queues_running_error(queue) do
+    "can't enqueue job because there aren't any queue processes running for `#{inspect queue}`"
   end
 
   @deprecated "Honeydew now supervises your queue processes, please use `Honeydew.start_queue/2 instead.`"
@@ -419,7 +420,7 @@ defmodule Honeydew do
 
   - `Honeydew.start_workers({:global, "my_awesome_queue"}, MyJobModule, nodes: [:clientfacing@dax, :queue@dax])`
   """
-  defdelegate start_workers(name, module_and_args, opts \\ []), to: Honeydew.Workers
+  defdelegate start_workers(name, module_and_args, opts \\ []), to: Workers
 
   @deprecated "Honeydew now supervises your worker processes, please use `Honeydew.start_workers/3 instead.`"
   def worker_spec(_queue, _module_and_args, _opts) do
@@ -442,80 +443,6 @@ defmodule Honeydew do
     Worker.module_init(self())
   end
 
-  @groups [Workers, Queues]
-
-  Enum.each(@groups, fn group ->
-    @doc false
-    def group(queue, unquote(group)) do
-      name(queue, unquote(group))
-    end
-  end)
-
-  @processes [WorkerGroupSupervisor, WorkerStarter]
-
-  Enum.each(@processes, fn process ->
-    @doc false
-    def process(queue, unquote(process)) do
-      name(queue, unquote(process))
-    end
-  end)
-
-
-  @doc false
-  def create_groups(queue) do
-    Enum.each(@groups, fn name ->
-      queue |> group(name) |> :pg2.create
-    end)
-  end
-
-  @doc false
-  def delete_groups(queue) do
-    Enum.each(@groups, fn name ->
-      queue |> group(name) |> :pg2.delete
-    end)
-  end
-
-  @doc false
-  def get_all_members({:global, _} = queue, name) do
-    queue |> group(name) |> :pg2.get_members
-  end
-
-  @doc false
-  def get_all_members(queue, name) do
-    get_all_local_members(queue, name)
-  end
-
-  # we need to know local members to shut down local components
-  @doc false
-  def get_all_local_members(queue, name) do
-    queue |> group(name) |> :pg2.get_local_members
-  end
-
-
-  @doc false
-  def get_queue(queue) do
-    queue
-    |> get_all_queues
-    |> case do
-         {:error, {:no_such_group, _queue}} -> []
-         queues -> queues
-       end
-    |> List.first
-  end
-
-  @doc false
-  def get_all_queues({:global, _name} = queue) do
-    queue
-    |> group(Queues)
-    |> :pg2.get_members
-  end
-
-  @doc false
-  def get_all_queues(queue) do
-    queue
-    |> group(Queues)
-    |> :pg2.get_local_members
-  end
 
   @doc false
   def table_name({:global, queue}) do
@@ -527,14 +454,6 @@ defmodule Honeydew do
     to_string(queue)
   end
 
-  defp name({:global, queue}, component) do
-    name([:global, queue], component)
-  end
-
-  defp name(queue, component) do
-    [component, queue] |> List.flatten |> Enum.join(".") |> String.to_atom
-  end
-
   @doc false
   defmacro debug(ast) do
     quote do
@@ -543,5 +462,4 @@ defmodule Honeydew do
       end
     end
   end
-
 end

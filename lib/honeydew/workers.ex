@@ -2,7 +2,9 @@ defmodule Honeydew.Workers do
   @moduledoc false
 
   use Supervisor
+
   alias Honeydew.WorkerRootSupervisor
+  alias Honeydew.Processes
 
   @type name :: Honeydew.queue_name()
   @type mod_or_mod_args :: Honeydew.mod_or_mod_args()
@@ -43,7 +45,7 @@ defmodule Honeydew.Workers do
       raise ArgumentError, invalid_module_error(module)
     end
 
-    Honeydew.create_groups(name)
+    Processes.start_process_group_scope(name)
 
     with {:ok, _} <- Supervisor.start_child(__MODULE__, {WorkerRootSupervisor, [name, opts]}) do
       :ok

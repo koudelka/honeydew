@@ -12,7 +12,7 @@ end
 defmodule QueueApp do
   def start do
     nodes = [node()]
-    :ok = Honeydew.start_queue({:global, :my_queue}, queue: {Honeydew.Queue.Mnesia, [nodes, [disc_copies: nodes], []]})
+    :ok = Honeydew.start_queue({:global, :my_queue}, queue: {Honeydew.Queue.Mnesia, [disc_copies: nodes]})
   end
 end
 

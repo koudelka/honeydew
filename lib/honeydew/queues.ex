@@ -7,6 +7,7 @@ defmodule Honeydew.Queues do
   alias Honeydew.Dispatcher.LRUNode
   alias Honeydew.Dispatcher.LRU
   alias Honeydew.FailureMode.Abandon
+  alias Honeydew.Processes
 
   @type name :: Honeydew.queue_name()
   @type queue_spec_opt :: Honeydew.queue_spec_opt()
@@ -65,8 +66,6 @@ defmodule Honeydew.Queues do
 
     suspended = Keyword.get(opts, :suspended, false)
 
-    Honeydew.create_groups(name)
-
     module.validate_args!(args)
 
     opts = [name, module, args, dispatcher, failure_mode, success_mode, suspended]
@@ -80,6 +79,8 @@ defmodule Honeydew.Queues do
       else
         opts
       end
+
+    Processes.start_process_group_scope(name)
 
     with {:ok, _} <- Supervisor.start_child(__MODULE__, Queue.child_spec(name, opts)) do
       :ok

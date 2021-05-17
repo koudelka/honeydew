@@ -1,6 +1,7 @@
 defmodule Honeydew.MnesiaQueueIntegrationTest do
   use ExUnit.Case, async: false # shares doctest queue name with ErlangQueue test
   alias Honeydew.Job
+  alias Honeydew.Processes
 
   @moduletag :capture_log
 
@@ -210,7 +211,7 @@ defmodule Honeydew.MnesiaQueueIntegrationTest do
   end
 
   test "should not leak monitors", %{queue: queue} do
-    queue_process = Honeydew.get_queue(queue)
+    queue_process = Processes.get_queue(queue)
 
     Enum.each(0..500, fn _ ->
       me = self()

@@ -3,22 +3,24 @@ defmodule Honeydew.WorkerStarter do
   @moduledoc false
 
   use GenServer
+
   alias Honeydew.WorkerGroupSupervisor
+  alias Honeydew.Processes
+
   require Logger
 
   # called by a queue to tell the workerstarter to start workers
   def queue_available(queue, node) do
-    GenServer.cast({Honeydew.process(queue, __MODULE__), node}, {:queue_available, self()})
+    GenServer.cast({Processes.process(queue, __MODULE__), node}, {:queue_available, self()})
   end
 
   def start_link(queue) do
-    GenServer.start_link(__MODULE__, queue, name: Honeydew.process(queue, __MODULE__))
+    GenServer.start_link(__MODULE__, queue, name: Processes.process(queue, __MODULE__))
   end
 
   def init(queue) do
-    # this process starts after the WorkerGroupSupervisor, so we can send it start requests
     queue
-    |> Honeydew.get_all_queues
+    |> Processes.get_queues()
     |> Enum.each(&WorkerGroupSupervisor.start_worker_group(queue, &1))
 
     {:ok, queue}

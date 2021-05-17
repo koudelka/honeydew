@@ -12,6 +12,7 @@ defmodule Honeydew.FailureMode.Abandon do
   require Logger
   alias Honeydew.Job
   alias Honeydew.Queue
+  alias Honeydew.Processes
 
   @behaviour Honeydew.FailureMode
 
@@ -25,7 +26,7 @@ defmodule Honeydew.FailureMode.Abandon do
 
     # tell the queue that that job can be removed.
     queue
-    |> Honeydew.get_queue
+    |> Processes.get_queue()
     |> Queue.ack(job)
 
     # send the error to the awaiting process, if necessary

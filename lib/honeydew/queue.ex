@@ -9,6 +9,7 @@ defmodule Honeydew.Queue do
   alias Honeydew.Worker
   alias Honeydew.WorkerStarter
   alias Honeydew.Queues
+  alias Honeydew.Processes
 
   defmodule State do
     @moduledoc false
@@ -79,15 +80,7 @@ defmodule Honeydew.Queue do
   def init([queue, module, args, {dispatcher, dispatcher_args}, failure_mode, success_mode, suspended]) do
     Process.flag(:trap_exit, true)
 
-    :ok =
-      queue
-      |> Honeydew.group(Queues)
-      |> :pg2.create
-
-    :ok =
-      queue
-      |> Honeydew.group(Queues)
-      |> :pg2.join(self())
+    :ok = Processes.join_group(Queues, queue, self())
 
     with {:global, _name} <- queue,
       do: :ok = :net_kernel.monitor_nodes(true)

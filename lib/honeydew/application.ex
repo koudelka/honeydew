@@ -3,6 +3,7 @@ defmodule Honeydew.Application do
 
   alias Honeydew.Queues
   alias Honeydew.Workers
+  alias Honeydew.ProcessGroupScopeSupervisor
 
   use Application
 
@@ -10,6 +11,7 @@ defmodule Honeydew.Application do
     children = [
       {Queues, []},
       {Workers, []},
+      {ProcessGroupScopeSupervisor, []}
     ]
 
     opts = [strategy: :one_for_one, name: Honeydew.Supervisor]

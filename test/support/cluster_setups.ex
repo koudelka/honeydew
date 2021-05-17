@@ -1,5 +1,6 @@
 defmodule Honeydew.Support.ClusterSetups do
   alias Honeydew.Support.Cluster
+  alias Honeydew.Processes
 
   def start_queue_node(queue) do
     fn ->
@@ -23,8 +24,8 @@ defmodule Honeydew.Support.ClusterSetups do
 
     me = self()
 
-    # seems to be necessary to get pg2 to sync with the slaves
-    Honeydew.create_groups(queue)
+    # seems to be necessary to get :pg to sync with the slaves
+    Processes.start_process_group_scope(queue)
 
     Node.spawn_link(node, fn ->
       function.()

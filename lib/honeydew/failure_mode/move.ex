@@ -14,6 +14,7 @@ defmodule Honeydew.FailureMode.Move do
 
   alias Honeydew.Job
   alias Honeydew.Queue
+  alias Honeydew.Processes
 
   require Logger
 
@@ -30,7 +31,7 @@ defmodule Honeydew.FailureMode.Move do
 
     # tell the queue that that job can be removed.
     queue
-    |> Honeydew.get_queue
+    |> Processes.get_queue()
     |> Queue.ack(job)
 
     {:ok, job} =

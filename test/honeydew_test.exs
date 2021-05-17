@@ -5,8 +5,7 @@ defmodule HoneydewTest do
   import Honeydew.CrashLoggerHelpers
 
   alias Honeydew.Job
-  alias Honeydew.WorkerGroupSupervisor
-  alias Honeydew.Workers
+  alias Honeydew.Processes
 
   @moduletag :capture_log
 
@@ -24,7 +23,7 @@ defmodule HoneydewTest do
 
       # tell the queue that that job can be removed.
       queue
-      |> Honeydew.get_queue
+      |> Processes.get_queue
       |> Queue.ack(job)
 
       # send the error to the awaiting process, if necessary
@@ -71,20 +70,6 @@ defmodule HoneydewTest do
     assert {:error, _} = Honeydew.start_workers(:a_queue, Stateless)
   end
 
-  test "group/1" do
-    assert Honeydew.group(:my_queue, Workers) == :"Elixir.Honeydew.Workers.my_queue"
-  end
-
-  describe "process/2" do
-    test "local" do
-      assert Honeydew.process(:my_queue, WorkerGroupSupervisor) == :"Elixir.Honeydew.WorkerGroupSupervisor.my_queue"
-    end
-
-    test "global" do
-      assert Honeydew.process({:global, :my_queue}, WorkerGroupSupervisor) == :"Elixir.Honeydew.WorkerGroupSupervisor.global.my_queue"
-    end
-  end
-
   test "table_name/1" do
     assert Honeydew.table_name({:global, :my_queue}) == "global_my_queue"
     assert Honeydew.table_name(:my_queue) == "my_queue"
@@ -125,7 +110,7 @@ defmodule HoneydewTest do
     :ok = Honeydew.start_queue(queue)
     :ok = Honeydew.start_workers(queue, Stateless, num: 5)
 
-    queue_pid = Honeydew.get_queue(queue)
+    queue_pid = Processes.get_queue(queue)
 
     Honeydew.suspend(queue)
     Enum.each(0..200, fn _ ->
@@ -147,7 +132,7 @@ defmodule HoneydewTest do
         :ok
     end
 
-    assert queue_pid == Honeydew.get_queue(queue)
+    assert queue_pid == Processes.get_queue(queue)
   end
 
   test "workers don't restart after a successful job" do
@@ -398,7 +383,7 @@ defmodule HoneydewTest do
   end
 
   defp assert_crash_logged(%Job{private: private}) do
-    assert_receive {:honeydew_crash_log, {level, pid, {_mod, _msg, _ts, metadata}}}
+    assert_receive {:honeydew_crash_log, {_level, _pid, {_mod, _msg, _ts, metadata}}}
 
     assert Keyword.has_key?(metadata, :honeydew_crash_reason)
     assert ^private = Keyword.fetch!(metadata, :honeydew_job) |> Map.fetch!(:private)

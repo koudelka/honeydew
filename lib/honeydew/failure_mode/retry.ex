@@ -1,6 +1,7 @@
 defmodule Honeydew.FailureMode.Retry do
   alias Honeydew.Job
   alias Honeydew.Queue
+  alias Honeydew.Processes
   alias Honeydew.FailureMode.Abandon
   alias Honeydew.FailureMode.Move
 
@@ -76,7 +77,7 @@ defmodule Honeydew.FailureMode.Retry do
         job = %Job{job | failure_private: private, delay_secs: delay_secs, result: {:retrying, reason}}
 
         queue
-        |> Honeydew.get_queue
+        |> Processes.get_queue()
         |> Queue.nack(job)
 
         # send the error to the awaiting process, if necessary

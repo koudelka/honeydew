@@ -6,7 +6,7 @@ defmodule Honeydew.Mixfile do
   def project do
     [app: :honeydew,
      version: @version,
-     elixir: "~> 1.7",
+     elixir: "~> 1.11",
      start_permanent: Mix.env() == :prod,
      docs: docs(),
      deps: deps(),
@@ -16,8 +16,8 @@ defmodule Honeydew.Mixfile do
      dialyzer: [
        plt_add_apps: [:mnesia, :ex_unit],
        flags: [
-         # :unmatched_returns,
-         # :error_handling,
+         :unmatched_returns,
+         :error_handling,
          :race_conditions,
          :no_opaque
        ]
@@ -32,7 +32,8 @@ defmodule Honeydew.Mixfile do
   #
   # Type `mix help compile.app` for more information
   def application do
-    [extra_applications: [:logger, :mnesia],
+    [extra_applications: [:logger],
+     included_applications: [:mnesia],
      mod: {Honeydew.Application, []}]
   end
 

@@ -1,6 +1,8 @@
 defmodule Honeydew.WorkerTest do
   use ExUnit.Case
 
+  alias Honeydew.Processes
+
   import Honeydew.CrashLoggerHelpers
 
   defmodule WorkerWithBadInit do
@@ -17,7 +19,7 @@ defmodule Honeydew.WorkerTest do
 
   @tag :start_workers
   test "workers should die when their queue dies", %{queue: queue} do
-    queue_pid = Honeydew.get_queue(queue)
+    queue_pid = Processes.get_queue(queue)
     %{workers: workers} = Honeydew.status(queue)
 
     Process.exit(queue_pid, :kill)

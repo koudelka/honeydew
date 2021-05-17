@@ -10,6 +10,7 @@ defmodule Honeydew.Worker do
   alias Honeydew.Job
   alias Honeydew.JobMonitor
   alias Honeydew.Logger, as: HoneydewLogger
+  alias Honeydew.Processes
   alias Honeydew.Queue
   alias Honeydew.JobRunner
   alias Honeydew.Workers
@@ -65,9 +66,7 @@ defmodule Honeydew.Worker do
   def init([_supervisor, queue, %{ma: {module, init_args}, init_retry_secs: init_retry_secs}, queue_pid] = start_opts) do
     Process.flag(:trap_exit, true)
 
-    queue
-    |> Honeydew.group(Workers)
-    |> :pg2.join(self())
+    :ok = Processes.join_group(Workers, queue, self())
 
     has_init_fcn =
       :functions
