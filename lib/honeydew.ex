@@ -435,7 +435,7 @@ defmodule Honeydew do
 
   @doc """
   Re-initializes the given worker, this is intended to be used from
-  within a worker's `c:Honeydew.Worker.failed_init/0` callback. Using it otherwise
+  within a worker's `c:Honeydew.Worker.init_failed/0` callback. Using it otherwise
   may cause undefined behavior, at present, don't do it.
   """
   @spec reinitialize_worker() :: :ok

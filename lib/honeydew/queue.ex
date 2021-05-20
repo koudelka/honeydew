@@ -1,6 +1,4 @@
 defmodule Honeydew.Queue do
-  @moduledoc false
-
   use GenServer, restart: :transient
   require Logger
   require Honeydew
