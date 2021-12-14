@@ -1,16 +1,23 @@
-## 1.4.5 (2019-9-17)
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## 1.4.5 (2019-09-17)
 
 ### Enhancements
 
 * Return {:error, reason} tuple for Honeydew.start_queue/2 + start_workers/3. Thanks @hauleth!
 
-## 1.4.4 (2019-8-1)
+## 1.4.4 (2019-08-01)
 
 ### Bug Fixes
 
 * Job results are now correctly passed to Success Modes
 
-## 1.4.3 (2019-6-10)
+## 1.4.3 (2019-06-10)
 
 ### Enhancements
 
@@ -20,20 +27,20 @@
 
 * No longer assumes that ecto tables have a single primary key named `id`
 
-## 1.4.2 (2019-6-7)
+## 1.4.2 (2019-06-07)
 
 ### Bug Fixes
 
 * Don't ignore mnesia table options provided by the user. Thanks @X4lldux!
 
-## 1.4.1 (2019-5-9)
+## 1.4.1 (2019-05-09)
 
 ### Enhancements
 
 * Job execution filtering for Ecto Poll Queue with `:run_if` option, taking a boolean SQL fragment
 * Adding `:timeout` option to `Honeydew.status/2`
 
-## 1.4.0 (2019-4-8)
+## 1.4.0 (2019-04-08)
 
 ### Enhancements
 * __Delayed Jobs__
@@ -44,16 +51,16 @@
 
   Queue Support:
     - `Mnesia`
-  
+
     Fully supported, uses the system's montonic clock. It's recommended to use [Multi Time Warp Mode](http://erlang.org/doc/apps/erts/time_correction.html#multi-time-warp-mode), to prevent the monotonic clock from freezing for extended periods during a time correction, with `--erl "+C multi_time_warp"`.
     - `EctoPollQueue`
-  
+
     Unsupported, since the Ecto queue doesn't use `async/3`. However, delayed retries are supported.
-    
+
     It's technically feasible to delay Ecto jobs. As Honeydew wants nothing to do with your model's insertion transaction (to limit its impact on your application), its job ordering is handled by default values in the migration. In order to delay Ecto jobs, you'll need to manually add a number of milliseconds to the `DEFAULT` value of honeydew's lock field in your insertion transaction.
-  
+
     - `ErlangQueue`
-  
+
     Unsupported, pending a move to a priority queue. See "Breaking Changes" below to use delayed jobs with an in-memory queue.
 
 * __Exponential Retry (backoff)__
@@ -67,7 +74,7 @@
 
   The `Retry` failure mode is now far more customizable, you can provide your own function to determine if, and when, you want
   to retry the job (by returning either `{:cont, state, delay_secs}` or `:halt`).
-  
+
   See the [Exponential Retry Implementation](https://github.com/koudelka/honeydew/blob/master/lib/honeydew/failure_mode/exponential_retry.ex) and [docs](https://hexdocs.pm/honeydew/1.4.0/Honeydew.FailureMode.Retry.html)
 
 
@@ -80,7 +87,7 @@
 * [Mnesia] The arguments for the Mnesia queue have been simplified, you no longer need to explicitly
   provide a separate list of nodes, simply provide the standard mnesia persistence arguments:
   `:ram_copies`, `:disc_copies` and `:disc_only_copies`.
-  
+
   See the [Mnesia Example](https://github.com/koudelka/honeydew/blob/master/examples/mnesia.exs)
 
 * [ErlangQueue] The in-memory ErlangQueue is no longer the default queue, since it doesn't currently
@@ -88,17 +95,17 @@
   your queue, with the `:queue` argument. Instead, the default queue is now an Mnesia queue using `:ram_copies`
   and the `:ets` access mode.
 
-## 1.3.0 (2019-2-13)
+## 1.3.0 (2019-02-13)
 
 ### Enhancements
 * Ecto 3 support
 
-## 1.2.7 (2019-1-8)
+## 1.2.7 (2019-01-08)
 
 ### Enhancements
 * Adding table prefixes to Ecto Poll Queue (thanks @jfornoff!)
 
-## 1.2.6 (2018-9-19)
+## 1.2.6 (2018-09-19)
 
 ### Enhancements
 * Honeydew crash log statements now include the following metadata
@@ -106,34 +113,34 @@
   can be used for building a LoggerBackend that could forward failures
   to an error logger integration like Honeybadger or Bugsnag.
 
-## 1.2.5 (2018-8-24)
+## 1.2.5 (2018-08-24)
 
 ### Bug fixes
 * Don't restart workers when linked process terminates normally
 
-## 1.2.4 (2018-8-23)
+## 1.2.4 (2018-08-23)
 
 ### Bug fixes
 * Catch thrown signals on user's init/1
 
-## 1.2.3 (2018-8-23)
+## 1.2.3 (2018-08-23)
 
 ### Bug fixes
 * Gracefully restart workers when an unhandled message is received.
 
-## 1.2.2 (2018-8-23)
+## 1.2.2 (2018-08-23)
 
 ### Bug fixes
 * Catch thrown signals from user's job code
 
-## 1.2.1 (2018-8-20)
+## 1.2.1 (2018-08-20)
 
 ### Bug fixes
 * Stop ignoring `init_retry_secs` worker option
 * Fixed `Honeydew.worker_opts` typespecs.
 * Fixed `Honeydew.start_workers` specs.
 
-## 1.2.0 (2018-8-17)
+## 1.2.0 (2018-08-17)
 
 Honeydew now supervises your queues and workers for you, you no longer need to
 add them to your supervision trees.
@@ -153,7 +160,7 @@ add them to your supervision trees.
 * Workers can now use the `failed_init/0` callback in combination with
   `Honeydew.reinitialize_worker` to re-init workers if their init fails.
 * Many other things I'm forgetting...
-  
+
 ## ?
 
 ### Breaking Changes
