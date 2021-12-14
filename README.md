@@ -1,7 +1,12 @@
 Honeydew 💪🏻🍈
 ========
+
 [![Build Status](https://travis-ci.org/koudelka/honeydew.svg?branch=master)](https://travis-ci.org/koudelka/honeydew)
-[![Hex pm](https://img.shields.io/hexpm/v/honeydew.svg?style=flat)](https://hex.pm/packages/honeydew)
+[![Module Version](https://img.shields.io/hexpm/v/honeydew.svg)](https://hex.pm/packages/honeydew)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/honeydew/)
+[![Total Download](https://img.shields.io/hexpm/dt/honeydew.svg)](https://hex.pm/packages/honeydew)
+[![License](https://img.shields.io/hexpm/l/honeydew.svg)](https://github.com/koudelka/honeydew/blob/master/LICENSE.md)
+[![Last Updated](https://img.shields.io/github/last-commit/koudelka/honeydew.svg)](https://github.com/koudelka/honeydew/commits/master)
 
 Honeydew (["Honey, do!"](http://en.wiktionary.org/wiki/honey_do_list)) is a pluggable job queue and worker pool for Elixir, focused on at-least-once execution.
 
@@ -25,14 +30,14 @@ __Isolation__
   - Optionally stores immutable state loaned to each worker (a database connection, for example).
   - [Initialized Worker](https://github.com/koudelka/honeydew/tree/master/examples/initialized_worker)
 
-__Strong Job Custody__ 
+__Strong Job Custody__
   - Jobs don't leave the queue until either they succeed, are explicitly abandoned or are moved to another queue.
   - Workers are issued only one job at a time, no batching.
   - If a worker crashes while processing a job, the job is reset and a "failure mode" (e.g. abandon, move, retry) is executed. (The default failure mode [is to abandon the job](https://hexdocs.pm/honeydew/Honeydew.html#start_queue/2).)
   - [Job Lifecycle](https://github.com/koudelka/honeydew/blob/master/README/job_lifecycle.md)
 
 __Clusterable Components__
-  - Queues, workers and your enqueuing processes can exist anywhere in the BEAM cluster. 
+  - Queues, workers and your enqueuing processes can exist anywhere in the BEAM cluster.
   - [Global Queues](https://github.com/koudelka/honeydew/tree/master/examples/global)
 
 __Plugability__
@@ -54,7 +59,7 @@ __Easy API__
   - [Hex Docs](https://hexdocs.pm/honeydew/Honeydew.html)
 
 
-### <a name="ecto">Ecto Queue</a>
+### Ecto Queue
 
 The Ecto Queue is designed to painlessly turn your Ecto schema into a queue, using your repo as the backing store.
 
@@ -112,10 +117,17 @@ end
 - Cancel jobs with `Honeydew.cancel/2`
 
 
-### README
-The rest of the README is broken out into slightly more digestible [sections](https://github.com/koudelka/honeydew/tree/master/README).
+### GUIDES
+The rest of the README is broken out into slightly more digestible [sections](https://github.com/koudelka/honeydew/tree/master/guides).
 
 Also, check out the README files included with each of the [examples](https://github.com/koudelka/honeydew/tree/master/examples).
 
 ### CHANGELOG
 It's worth keeping abreast with the [CHANGELOG](https://github.com/koudelka/honeydew/blob/master/CHANGELOG.md)
+
+## Copyright and License
+
+Copyright (c) 2014 Michael Shapiro
+
+This work is free. You can redistribute it and/or modify it under the
+terms of the MIT License. See the [LICENSE.md](./LICENSE.md) file for more details.
