@@ -66,7 +66,7 @@ defmodule CompoundKeysTest do
 
     # job never ran successfully
     assert lock == EctoSource.abandoned()
-    # cleared when job is abandonded
+    # cleared when job is abandoned
     assert is_nil(private)
   end
 

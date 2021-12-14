@@ -83,7 +83,7 @@ defmodule Honeydew.LoggerTest do
     assert %Job{} = Keyword.fetch!(metadata, :honeydew_job)
   end
 
-  test "job_failed/1 with an unexpecetd exit" do
+  test "job_failed/1 with an unexpected exit" do
     job = %Job{}
     exit_reason = :didnt_want_to_run_anymore
     crash = Crash.new(:exit, exit_reason)

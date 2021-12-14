@@ -24,7 +24,7 @@
 #                                 now - far_in_the_past()                                              now + stale_timeout
 #
 # The private field is a simple binary field that contains an erlang term, it's used for data that needs to be
-# persisted between job attempts, specificaly, it's the "failure_private" contents of the job.
+# persisted between job attempts, specifically, it's the "failure_private" contents of the job.
 #
 #
 # As the main objective is to minimize disruption, I wanted the default values for the additional fields to be set
