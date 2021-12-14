@@ -36,7 +36,7 @@ __Clusterable Components__
   - [Global Queues](https://github.com/koudelka/honeydew/tree/master/examples/global)
 
 __Plugability__
-  - [Queues](https://github.com/koudelka/honeydew/blob/master/README/queues.md), [workers](https://github.com/koudelka/honeydew/blob/master/README/workers.md), [dispatch strategies](https://github.com/koudelka/honeydew/blob/master/README/dispatchers.md), [failure modes and success modes](https://github.com/koudelka/honeydew/blob/master/README/success_and_failure_modes.md) are all plugable with user modules.
+  - [Queues](https://github.com/koudelka/honeydew/blob/master/README/queues.md), [workers](https://github.com/koudelka/honeydew/blob/master/README/workers.md), [dispatch strategies](https://github.com/koudelka/honeydew/blob/master/README/dispatchers.md), [failure modes and success modes](https://github.com/koudelka/honeydew/blob/master/README/success_and_failure_modes.md) are all pluggable with user modules.
   - No forced dependency on external queue services.
 
 __Batteries Included__

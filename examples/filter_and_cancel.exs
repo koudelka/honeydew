@@ -31,7 +31,7 @@ Honeydew.status(:my_queue)
 |> Map.get(:queue)
 |> IO.inspect
 
-# find the job that would run with the argument `10`, as it wont have started yet
+# find the job that would run with the argument `10`, as it won't have started yet
 # and cancel it
 :ok =
   Honeydew.filter(:my_queue, %{task: {:run, [10]}})

@@ -13,7 +13,7 @@ defmodule Honeydew.JobMonitor do
 
   # when the queue casts a job to a worker, it spawns a local JobMonitor with the job as state,
   # the JobMonitor watches the worker, if the worker dies (or its node is disconnected), the JobMonitor returns the
-  # job to the queue. it waits @claim_delay miliseconds for the worker to confirm receipt of the job.
+  # job to the queue. it waits @claim_delay milliseconds for the worker to confirm receipt of the job.
 
   @claim_delay 1_000 # ms
 

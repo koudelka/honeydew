@@ -24,6 +24,6 @@ Your jobs can emit their current status, i.e. "downloaded 10/50 items", using th
 See the included [example](https://github.com/koudelka/honeydew/blob/centralize/examples/progress_and_queue_status.exs).
 
 ### Job Replies
-By passing `reply: true` to [async/3](https://hexdocs.pm/honeydew/Honeydew.html#async/3), you can recieve replies from your jobs with [yield/2](https://hexdocs.pm/honeydew/Honeydew.html#yield/2).
+By passing `reply: true` to [async/3](https://hexdocs.pm/honeydew/Honeydew.html#async/3), you can receive replies from your jobs with [yield/2](https://hexdocs.pm/honeydew/Honeydew.html#yield/2).
 
 See the included [example](https://github.com/koudelka/honeydew/blob/centralize/examples/job_replies.exs)

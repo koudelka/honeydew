@@ -146,11 +146,11 @@ defmodule Honeydew do
   end
 
   @doc """
-  Returns the currrent status of the queue and all attached workers.
+  Returns the current status of the queue and all attached workers.
 
   You can provide any of the following `opts`:
 
-  - `timeout`: specifies the time (in miliseconds) the calling process will wait for the queue to return the status,
+  - `timeout`: specifies the time (in milliseconds) the calling process will wait for the queue to return the status,
                note that this timeout does not cancel the status callback execution in the queue.
   """
   @type status_opt :: {:timeout, pos_integer}
@@ -262,7 +262,7 @@ defmodule Honeydew do
   Raises a `RuntimeError` if `to_queue` is not available.
 
   This function first enqueues the job on `to_queue`, and then tries to
-  cancel it on its current queue. This means there's a possiblity a job could
+  cancel it on its current queue. This means there's a possibility a job could
   be processed on both queues. This behavior is consistent with Honeydew's
   at-least-once execution goal.
 

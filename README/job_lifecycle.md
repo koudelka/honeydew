@@ -5,7 +5,7 @@ In general, a job goes through the following stages:
 |─ The user's process calls `async/3`, which packages the task tuple/fn up into a Job and sends it to a
 |  member of the queue group.
 |
-├─ The queue process recieves the Job and enqueues it
+├─ The queue process receives the Job and enqueues it
 |  ├─ If there is a Worker available, the queue will dispatch the Job immediately to the waiting Worker
 |  |  via the selected dispatch strategy.
 |  └─ If there aren't any Workers available, the Job will remain in the queue until a Worker announces

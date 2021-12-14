@@ -140,7 +140,7 @@ defmodule EctoPollQueueExampleTest do
     # job never ran successfully
     assert is_nil(tag)
     assert lock == EctoSource.abandoned()
-    # cleared when job is abandonded
+    # cleared when job is abandoned
     assert is_nil(private)
   end
 

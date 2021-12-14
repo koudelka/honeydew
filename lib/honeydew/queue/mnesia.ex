@@ -66,7 +66,7 @@ defmodule Honeydew.Queue.Mnesia do
             record_name: WrappedJob.record_name()
           ])
 
-    # inspect/1 here becase queue_name can be of the form {:global, poolname}
+    # inspect/1 here because queue_name can be of the form {:global, poolname}
     table = ["honeydew", inspect(queue_name)] |> Enum.join("_") |> String.to_atom
     in_progress_table = ["honeydew", inspect(queue_name), "in_progress"] |> Enum.join("_") |> String.to_atom
 
