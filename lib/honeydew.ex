@@ -71,7 +71,10 @@ defmodule Honeydew do
       |> Enum.reduce(job, fn
         {:reply, true}, job ->
           %Job{job | from: {self(), make_ref()}}
-
+          
+        {:reply, false}, job ->
+          job
+          
         {:delay_secs, secs}, job when is_integer(secs) and secs >= 0 ->
           %Job{job | delay_secs: secs}
 
