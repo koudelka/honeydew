@@ -102,7 +102,7 @@ defmodule Honeydew.JobMonitor do
   end
 
   def handle_info(msg, state) do
-    Logger.warn "[Honeydew] Monitor #{inspect self()} received unexpected message #{inspect msg}"
+    Logger.warning "[Honeydew] Monitor #{inspect self()} received unexpected message #{inspect msg}"
     {:noreply, state}
   end
 

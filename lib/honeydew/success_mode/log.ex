@@ -17,7 +17,7 @@ defmodule Honeydew.SuccessMode.Log do
 
   @impl true
   def validate_args!([]), do: :ok
-  def validate_args!(args), do: raise ArgumentError, "You provided arguments (#{inspect args}) to the Log success mode, it only accepts an empty list"
+  def validate_args!(args), do: raise(ArgumentError, "You provided arguments (#{inspect args}) to the Log success mode, it only accepts an empty list")
 
   @impl true
   def handle_success(%Job{enqueued_at: enqueued_at, started_at: started_at, completed_at: completed_at, result: {:ok, result}} = job, []) do

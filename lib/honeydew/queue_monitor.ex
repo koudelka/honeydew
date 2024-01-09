@@ -29,7 +29,7 @@ defmodule Honeydew.QueueMonitor do
   end
 
   def handle_info(msg, state) do
-    Logger.warn "[QueueMonitor] Received unexpected message #{inspect msg}"
+    Logger.warning "[QueueMonitor] Received unexpected message #{inspect msg}"
     {:noreply, state}
   end
 end

@@ -12,7 +12,7 @@ defmodule Honeydew.Queue.ErlangQueue do
 
   @impl true
   def validate_args!([]), do: :ok
-  def validate_args!(args), do: raise ArgumentError, "You provided arguments (#{inspect args}) to the #{__MODULE__} queue, it's expecting an empty list, or just the bare module."
+  def validate_args!(args), do: raise(ArgumentError, "You provided arguments (#{inspect args}) to the #{__MODULE__} queue, it's expecting an empty list, or just the bare module.")
 
   @impl true
   def init(_name, []) do

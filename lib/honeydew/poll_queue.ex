@@ -40,7 +40,7 @@ defmodule Honeydew.PollQueue do
 
   defp validate_poll_interval!(interval) when is_integer(interval) and interval > 0, do: :ok
   defp validate_poll_interval!(nil), do: :ok
-  defp validate_poll_interval!(arg), do: raise ArgumentError, invalid_poll_interval_error(arg)
+  defp validate_poll_interval!(arg), do: raise(ArgumentError, invalid_poll_interval_error(arg))
 
   defp invalid_poll_interval_error(argument) do
     "Poll interval must be positive integer number of seconds. You gave #{inspect argument}"
