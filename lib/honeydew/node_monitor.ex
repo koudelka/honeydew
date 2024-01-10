@@ -36,7 +36,7 @@ defmodule Honeydew.NodeMonitor do
   def handle_info({:nodeup, _}, node), do: {:noreply, node}
 
   def handle_info({:nodedown, node}, node) do
-    Logger.warn "[Honeydew] Lost connection to #{node}, attempting to reestablish..."
+    Logger.warning "[Honeydew] Lost connection to #{node}, attempting to reestablish..."
 
     GenServer.cast(self(), :ping)
 

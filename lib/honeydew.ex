@@ -108,8 +108,8 @@ defmodule Honeydew do
   """
   @spec yield(Job.t, timeout) :: {:ok, result} | nil | no_return
   def yield(job, timeout \\ 5000)
-  def yield(%Job{from: nil} = job, _), do: raise ArgumentError, reply_not_requested_error(job)
-  def yield(%Job{from: {owner, _}} = job, _) when owner != self(), do: raise ArgumentError, invalid_owner_error(job)
+  def yield(%Job{from: nil} = job, _), do: raise(ArgumentError, reply_not_requested_error(job))
+  def yield(%Job{from: {owner, _}} = job, _) when owner != self(), do: raise(ArgumentError, invalid_owner_error(job))
 
   def yield(%Job{from: {_, ref}}, timeout) do
     receive do

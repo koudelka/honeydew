@@ -127,7 +127,7 @@ if Code.ensure_loaded?(Ecto) do
           {:empty, state}
 
         {:error, error} ->
-          Logger.warn("[Honeydew] Ecto queue '#{inspect queue}' couldn't poll for jobs because #{inspect error}")
+          Logger.warning("[Honeydew] Ecto queue '#{inspect queue}' couldn't poll for jobs because #{inspect error}")
           {:empty, state}
       end
     end
@@ -220,7 +220,7 @@ if Code.ensure_loaded?(Ecto) do
     end
 
     def handle_info(msg, queue_state) do
-      Logger.warn("[Honeydew] Queue #{inspect(self())} received unexpected message #{inspect(msg)}")
+      Logger.warning("[Honeydew] Queue #{inspect(self())} received unexpected message #{inspect(msg)}")
 
       {:noreply, queue_state}
     end

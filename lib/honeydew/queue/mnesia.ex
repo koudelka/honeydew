@@ -327,7 +327,7 @@ defmodule Honeydew.Queue.Mnesia do
 
   defp time_warp_mode_warning do
     if :erlang.system_info(:time_warp_mode) != :multi_time_warp do
-      Logger.warn "[Honeydew] It's recommended to use the Mnesia queue with the 'multi_time_warp' time correction mode to minimize montonic clock freezes, see http://erlang.org/doc/apps/erts/time_correction.html#multi-time-warp-mode."
+      Logger.warning "[Honeydew] It's recommended to use the Mnesia queue with the 'multi_time_warp' time correction mode to minimize montonic clock freezes, see http://erlang.org/doc/apps/erts/time_correction.html#multi-time-warp-mode."
     end
   end
 end

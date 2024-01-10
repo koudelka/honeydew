@@ -207,7 +207,7 @@ defmodule Honeydew.Worker do
   @impl true
   @doc false
   def handle_info({:EXIT, queue_pid, _reason}, %State{queue: queue, queue_pid: queue_pid} = state) do
-    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) saw its queue die, stopping..."
+    Logger.warning "[Honeydew] Worker #{inspect queue} (#{inspect self()}) saw its queue die, stopping..."
     {:noreply, state}
   end
 
@@ -216,13 +216,13 @@ defmodule Honeydew.Worker do
   def handle_info({:EXIT, _pid, {:shutdown, _}}, %State{job_runner: nil} = state), do: {:noreply, state}
 
   def handle_info({:EXIT, job_runner, reason}, %State{job_runner: job_runner, queue: queue, job: job} = state) do
-    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) saw its job runner (#{inspect job_runner}) die during a job, restarting..."
+    Logger.warning "[Honeydew] Worker #{inspect queue} (#{inspect self()}) saw its job runner (#{inspect job_runner}) die during a job, restarting..."
     job = %{job | result: {:error, Crash.new(:exit, reason)}}
     {:noreply, state, {:continue, {:job_finished, job}}}
   end
 
   def handle_info(msg, %State{queue: queue} = state) do
-    Logger.warn "[Honeydew] Worker #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}, restarting..."
+    Logger.warning "[Honeydew] Worker #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}, restarting..."
     restart(state)
   end
 

@@ -190,7 +190,7 @@ defmodule Honeydew.Queue do
   end
 
   def node_down(node) do
-    Logger.warn "[Honeydew] Lost connection to #{node}."
+    Logger.warning "[Honeydew] Lost connection to #{node}."
   end
 
   def worker_stopped(worker, state) do
@@ -199,7 +199,7 @@ defmodule Honeydew.Queue do
   end
 
   def worker_crashed(worker, reason, state) do
-    Logger.warn "[Honeydew] Queue #{inspect self()} saw worker #{inspect worker} crash because #{inspect reason}"
+    Logger.warning "[Honeydew] Queue #{inspect self()} saw worker #{inspect worker} crash because #{inspect reason}"
     remove_worker(state, worker)
   end
 
@@ -213,7 +213,7 @@ defmodule Honeydew.Queue do
 
   def job_monitor_crashed(job_monitor, reason, %State{job_monitors: job_monitors} = state) do
     {job, job_monitors} = Map.pop(job_monitors, job_monitor)
-    Logger.warn "[Honeydew] Job Monitor #{inspect job_monitor} crashed, this really should never happen, is there a bug in the success/failure mode module? Reason: #{inspect reason} Job: #{inspect job}"
+    Logger.warning "[Honeydew] Job Monitor #{inspect job_monitor} crashed, this really should never happen, is there a bug in the success/failure mode module? Reason: #{inspect reason} Job: #{inspect job}"
     %{state | job_monitors: job_monitors}
   end
 
@@ -280,7 +280,7 @@ defmodule Honeydew.Queue do
     |> if do
       module.handle_info(msg, state)
     else
-      Logger.warn "[Honeydew] Queue #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}"
+      Logger.warning "[Honeydew] Queue #{inspect queue} (#{inspect self()}) received unexpected message #{inspect msg}"
       {:noreply, state}
     end
   end
@@ -297,7 +297,7 @@ defmodule Honeydew.Queue do
         :worker -> worker_stopped(process, state)
         :job_monitor -> job_monitor_stopped(process, state)
         :unknown ->
-          Logger.warn "[Honeydew] Received non-crash EXIT/DOWN message for unknown process #{inspect process}"
+          Logger.warning "[Honeydew] Received non-crash EXIT/DOWN message for unknown process #{inspect process}"
           state
       end
     {:noreply, state}
@@ -309,7 +309,7 @@ defmodule Honeydew.Queue do
         :worker -> worker_crashed(process, reason, state)
         :job_monitor -> job_monitor_crashed(process, reason, state)
         :unknown ->
-          Logger.warn "[Honeydew] Received EXIT/DOWN message for unknown process #{inspect process}, reason: #{inspect reason}"
+          Logger.warning "[Honeydew] Received EXIT/DOWN message for unknown process #{inspect process}, reason: #{inspect reason}"
           state
       end
     {:noreply, state}
